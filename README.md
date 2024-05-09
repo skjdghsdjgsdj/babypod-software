@@ -73,14 +73,14 @@ User-configurability that persists across power cycles of:
 
 Please contribute and submit pull requests if you can help!
 
-- `build-and-deploy.sh` assumes a macOS environment and a `mpy-cross` binary that sits alongside.
+- `build-and-deploy.sh` assumes a macOS environment.
 - Startup takes a few seconds, mostly due to waiting for Wi-Fi to connect and loading imports.
 - Wi-Fi is peridically slow to connect as are network requests in general. Sometimes it takes a couple seconds, but other times 10 or 15 seconds.
 - The rotary encoder doesn't always respond on the first input. There is retry logic in the abstraction for that reason.
-- Some things are hardcoded, like chime intervals during feedings and backlight colors, instead of either user-configurable or defined in `settings.toml`.
+- Some things are hardcoded, like chime intervals during active timers, instead of either user-configurable or defined in `settings.toml`.
 - The child ID is hardcoded to 1.
 - Writing to the LCD is pretty slow, presumably because it's done via I2C. In theory the LCD backpack isn't needed and the LCD can be wired directly to the Feather, but I presume it would be a huge mess of wires shoved into the enclosure, even beyond what's already in there. On the plus side, removal of the LCD backpack could allow a bigger battery and therefore less frequent charging.
-- The chime interval during feeding can slowly drift a bit instead of actually chiming precisely at every 15 minutes.
+- The chime interval during feeding can slowly drift a bit instead of actually chiming precisely at the value passed to an `ActiveTimer`..
 - On MAX17048 battery monitor chips, the battery percent isn't immediately available and is hidden until the chip reports a plausible (non-None, >0) value.
 - Some Feathers don't allow CircuitPython to read the `VBUS` pin to know if the battery is charging, so the battery monitor reports an indeterminate `None` status instead of `True` or `False`. On such Feathers, the BabyPod will nag you to turn it off even if it's plugged in and charging.
 - Weird stuff might happen if you start an action on one BabyPod and continue it on another, like starting a feeding on one and trying to end it on another.
