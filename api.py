@@ -15,14 +15,17 @@ class API:
 
 	def connect(self):
 		if self.requests is None:
-			print("Connecting...")
 			ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
 			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
 			channel = int(os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL"))
+
+			print(f"Connecting to {ssid}...")
 			wifi.radio.connect(ssid = ssid, password = password, channel = channel)
+			print("Creating socket pool")
 			pool = socketpool.SocketPool(wifi.radio)
+			print("Creating requests instance")
 			self.requests = adafruit_requests.Session(pool, ssl.create_default_context())
-			print("Connected")
+			print("Connected!")
 		
 	def get_requests(self):
 		self.connect()
