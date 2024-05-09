@@ -34,6 +34,63 @@ User-configurability that persists across power cycles of:
 - Enabling or disabling the piezo (on by default)
 - LCD backlight at max brightness then dimming after timeout (default), or dim by default
 
+## Building and Deploying
+
+### Requirements
+
+These instructions assume you've already built a BabyPod per the instructions at [the hardware repository](ttps://github.com/skjdghsdjgsdj/babypod-hardware/), including copying a release to the `CIRCUITPY` drive along with setting up `settings.toml`. That is, you have a functioning BabyPod already, and now you want to change the code on it.
+
+To make code changes, you need to do the following to build and deploy them.
+
+1. Clone BabyPod's software GitHub repository first:
+```
+git clone https://github.com/skjdghsdjgsdj/babypod-software.git
+```
+
+2. Plug in the Feather to a USB port and verify the `CIRCUITPY` drive shows up. The power switch must be on.
+
+	Some Feathers don't show up as local drives because they lack the USB support for it. In those cases, the build script won't work right and you'll have to copy files another way, which is usually by Wi-Fi or the serial console. Refer to that Feather's documentation for details.
+	
+3. Compile your own `mpy-cross` executable and put it in your `$PATH`. As of this documentation, there's no prebuilt `mpy-cross` for CircuitPython 9, and they are not backwards-copmatible. Fortunately you only need to do this one because it takes a long time. To do this:
+	1. [Download and build CircuitPython 9](https://learn.adafruit.com/building-circuitpython), including building submodules. Note you have to do a full clone; you can't do `git clone --depth` or you'll miss tags and the build will fail.
+	2. [Build `mpy-cross`](https://learn.adafruit.com/building-circuitpython?view=all#build-circuitpython) and put the resulting binary that ends up in `circuitpython/mpy-cross/build/mpy-cross` in your `$PATH`, like copying it to `/usr/local/bin`.
+	3. You can delete the cloned `circuitpython` repository if you don't plan on building `mpy-cross` again or doing CircuitPython upgrades.
+
+### macOS and Linux
+
+1. On Linux, edit `build-and-deploy.sh` to point to the correct path for your `CIRCUITPY` drive. For now, it assumes you're on macOS. Feel free to make the script less dumb and submit a pull request so others can build on Linux or macOS automatically without needing to edit the script.
+2. With the Feather plugged in and turned on, run `build-and-deploy.sh`. This script will
+	1. Run `mpy-cross` with optimizations on all `.py` files in the project, except for the entry point `code.py`.
+	2. With each resulting `.mpy` compiled output, copy it to the Feather's `lib/` directory.
+	3. Copy `code.py` to the root of the Feather.
+
+### Windows
+
+I haven't tried. You can make your own PowerShell script possibly that does something similar to `build-and-deploy.sh`. You can also copy the `.py` files for debugging's sake as described below.
+
+### Caveats
+
+#### Manual reboot needed
+
+Unlike CircuitPython's default behavior, the Feather won't reboot automatically when you deploy a change. This is deliberate to avoid a storm of reboots as compiled files are copied to the Feather. Instead, you can reboot the Feather by:
+
+- The preferable approach: with a serial console open, like [`tio`](https://formulae.brew.sh/formula/tio) on macOS, press Ctrl-C to abort the currently running code, then `Ctrl-D` to reboot the Feather. This keeps you connected to the console and importantly means you don't miss any console messages as the Feather starts back up.
+- Cycling the power switch. Not ideal if you have a serial console open because it'll disconnect and even if it reconnects you may miss some startup messages.
+- Press the Feather's reset button, if it's accessible.
+
+#### Debugging
+
+`.mpy` files don't have line numbers, so if you get errors within the compiled output, they always show up as line 1. For debugging's sake, you can straight up copy the project `.py` files directly to the `CIRCUITPY` drive instead of building them. But keep in mind:
+
+- You must delete `.mpy` files from the Feather that have the same name because they get loaded first. For example, if you're debugging `api.py`, delete `api.mpy` from the Feather.
+- `.py` files are slower to load, so you only want to do this for debugging, not day-to-day use of BabyPod.
+- `mpy-cross`'s version and CircuitPython's version are linked and often CircuitPython upgrades have breaking changes that require recompiling `mpy-cross`. If you upgrade CircuitPython on the Feather, you may need to rebuild `mpy-cross` too or you'll get errors about incompatible `.mpy` files.
+- Be careful when deleting `.mpy` files when debugging to keep all the Adafruit libraries intact. Some of them don't have an `adafruit_` prefix, like `simpleio.mpy`.
+
+#### `.gitignore`
+
+The names of libraries created during the build process in `lib/` are already defined in `.gitignore`. Not all files are ignored because the Adafruit libraries are always needed. If you end up adding a new `.py` file that results in a new `lib/...mpy` file, you should add that resulting `.mpy` to `.gitignore` so compiled output doesn't get committed.
+
 ## Code design and architectural principles
 
 ### General
