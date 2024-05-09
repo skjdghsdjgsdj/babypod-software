@@ -347,7 +347,7 @@ class Flow:
 			], flow = self).render_and_wait()
 
 			if selected_index == 0: # no timer and start one
-				self.render_splash("Saving...")
+				self.render_splash("Starting timer...")
 				timer_id = self.api.start_timer("feeding")
 
 				self.clear_and_show_battery()
