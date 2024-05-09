@@ -24,7 +24,11 @@ find . -maxdepth 1 -type f -not -name 'code.py' -name '*.py' | while read -r SOU
 		echo "Build failed" 1>&2
 		exit 1
 	fi
+
+	cp -v $MPY_NAME $OUTPUT_PATH/lib/
+	if [ $? -ne 0 ]; then
+	  echo "Failed to copy built library $MPY_NAME to $OUTPUT_PATH/lib"
+	fi
 done
 
-cp -v lib/*.mpy $OUTPUT_PATH/lib/
 cp -v code.py $OUTPUT_PATH/
