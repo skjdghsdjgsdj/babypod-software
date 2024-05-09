@@ -48,7 +48,7 @@ class Backlight:
 	@staticmethod
 	def load_colors():
 		Backlight.DEFAULT_COLOR = os.getenv("BACKLIGHT_COLOR_FULL") or (255, 255, 255)
-		Backlight.OFF = os.getenv("BACKLIGHT_COLOR_FULL") or (128, 128, 128)
+		Backlight.OFF = os.getenv("BACKLIGHT_COLOR_DIM") or (128, 128, 128)
 
 Backlight.load_colors()
 
