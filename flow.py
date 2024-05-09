@@ -209,6 +209,8 @@ class Flow:
 		elif selected_index == 3:
 			self.tummy_time()
 
+		self.clear_and_show_battery()
+
 	def settings(self):
 		options = [None] * 2
 		options[Options.PLAY_SOUNDS] = "Play sounds"
