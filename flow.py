@@ -372,8 +372,16 @@ class Flow:
 
 			if BooleanPrompt(flow = self).render_and_wait():
 				self.render_splash("Starting timer...")
-				self.api.start_timer("tummy_time")
-				self.render_success_splash()
+				timer_id = self.api.start_timer("tummy_time")
+
+				self.clear_and_show_battery()
+				self.render_header_text("Tummy time")
+				response = ActiveTimer(self, chime_at_seconds = 60).render_and_wait()
+				if response == True:
+					self.api.post_tummy_time(timer_id)
+					self.render_success_splash()
+				else:
+					self.api.stop_timer(timer_id)
 		else:
 			self.render_header_text(f"Done? {duration}")
 			if BooleanPrompt(flow = self).render_and_wait():
