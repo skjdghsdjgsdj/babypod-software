@@ -38,7 +38,7 @@ User-configurability that persists across power cycles of:
 
 ### Requirements
 
-These instructions assume you've already built a BabyPod per the instructions at [the hardware repository](ttps://github.com/skjdghsdjgsdj/babypod-hardware/), including copying a release to the `CIRCUITPY` drive along with setting up `settings.toml`. That is, you have a functioning BabyPod already, and now you want to change the code on it.
+These instructions assume you've already built a BabyPod per the instructions at [the hardware repository](https://github.com/skjdghsdjgsdj/babypod-hardware/), including copying a release to the `CIRCUITPY` drive along with setting up `settings.toml`. That is, you have a functioning BabyPod already, and now you want to change the code on it.
 
 To make code changes, you need to do the following to build and deploy them.
 
