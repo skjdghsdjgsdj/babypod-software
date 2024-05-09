@@ -85,9 +85,9 @@ class API:
 				timer = timer_result
 
 		if timer is not None:
-			return (timer_result["id"], API.duration_to_short_format(timer_result["duration"]))
+			return timer["id"], API.duration_to_short_format(timer["duration"])
 		else:
-			return (None, None)
+			return None, None
 
 	def post_feeding(self, food_type, method, timer_id = None):
 		if timer_id is None:
