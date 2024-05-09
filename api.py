@@ -4,11 +4,13 @@ import socketpool
 import ssl
 import os
 from adafruit_datetime import datetime
+import binascii
 
 class API:
 	def __init__(self, child_id):
 		self.requests = None
 		self.child_id = child_id
+		self.mac_id = None
 	
 		self.api_key = os.getenv("BABYBUDDY_AUTH_TOKEN")
 		self.base_url = os.getenv("BABYBUDDY_BASE_URL")
@@ -26,6 +28,9 @@ class API:
 			print("Creating requests instance")
 			self.requests = adafruit_requests.Session(pool, ssl.create_default_context())
 			print("Connected!")
+
+			self.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
+			print(f"This device's MAC ID is {self.mac_id}")
 		
 	def get_requests(self):
 		self.connect()
@@ -68,7 +73,7 @@ class API:
 	def get_timer(self, name):
 		timers = self.get("timers", {
 			"child_id": self.child_id,
-			"name": name
+			"name": self.build_timer_name(name)
 		})
 
 		max_id = None
@@ -95,10 +100,13 @@ class API:
 			"timer": timer_id
 		})
 
+	def build_timer_name(self, base_name):
+		return f"babypod-{self.mac_id}-{base_name}"
+
 	def start_timer(self, name):
 		response = self.post("timers", {
 			"child_id": self.child_id,
-			"name": name
+			"name": self.build_timer_name(name)
 		})
 		return response["id"]
 
