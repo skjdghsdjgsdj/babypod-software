@@ -26,5 +26,5 @@ find . -maxdepth 1 -type f -not -name 'code.py' -name '*.py' | while read -r SOU
 	fi
 done
 
-cp -v lib/*.mpy /Volumes/CIRCUITPY/lib/
-cp -v code.py /Volumes/CIRCUITPY/
+cp -v lib/*.mpy $OUTPUT_PATH/lib/
+cp -v code.py $OUTPUT_PATH/
