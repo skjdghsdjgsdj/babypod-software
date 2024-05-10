@@ -3,17 +3,18 @@ import board
 import time
 
 class Piezo:
-	def tone(self, name):
-		data = Piezo.TONES[name]
-		for i in range(0, len(data)):
-			frequency, duration = data[i]
-			if frequency is None:
-				time.sleep(duration)
-			else:
-				self.__tone(frequency, duration)
+	def __init__(self, is_option_enabled: bool = True):
+		self.is_option_enabled = is_option_enabled
 
-	def __tone(self, frequency, duration):
-		simpleio.tone(board.A3, frequency, duration)
+	def tone(self, name):
+		if self.is_option_enabled:
+			data = Piezo.TONES[name]
+			for i in range(0, len(data)):
+				frequency, duration = data[i]
+				if frequency is None:
+					time.sleep(duration)
+				else:
+					simpleio.tone(board.A3, frequency, duration)
 
 Piezo.TONES = {
 	"startup": [

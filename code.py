@@ -14,9 +14,8 @@ from backlight import Backlight, BacklightColor
 backlight = Backlight(options[Options.BACKLIGHT])
 
 from piezo import Piezo
-piezo = Piezo()
-if options.values[Options.PLAY_SOUNDS]:
-	piezo.tone("startup")
+piezo = Piezo(options[Options.PIEZO])
+piezo.tone("startup")
 
 from digitalio import DigitalInOut, Direction
 from battery_monitor import BatteryMonitor

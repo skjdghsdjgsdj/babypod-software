@@ -86,7 +86,7 @@ class Flow:
 	def idle_warning(self):
 		for i in range(0, 3):
 			self.backlight.set_color(BacklightColor.IDLE_WARNING)
-			self.play_piezo("idle_warning")
+			self.piezo.tone("idle_warning")
 			self.backlight.set_color(BacklightColor.DEFAULT)
 			time.sleep(0.1)
 
@@ -98,10 +98,6 @@ class Flow:
 		self.lcd.clear()
 		self.render_battery_percent()
 
-	def play_piezo(self, tone_name):
-		if self.options.values[Options.PLAY_SOUNDS]:
-			self.piezo.tone(tone_name)
-
 	def start(self):
 		self.lcd.clear()
 
@@ -112,9 +108,7 @@ class Flow:
 		if battery_percent is not None and battery_percent <= 15:
 			self.backlight.set_color(BacklightColor.ERROR)
 			self.render_splash(f"Low battery!")
-
-			if self.options.values[Options.PLAY_SOUNDS]:
-				self.piezo.tone("low_battery")
+			self.piezo.tone("low_battery")
 
 			time.sleep(1.5)
 
@@ -129,7 +123,7 @@ class Flow:
 				traceback.print_exception(e)
 				self.render_splash("Error!")
 				self.backlight.set_color(BacklightColor.ERROR)
-				self.play_piezo("error")
+				self.piezo.tone("error")
 				time.sleep(2)
 				self.backlight.set_color(BacklightColor.DEFAULT)
 			finally:
@@ -188,7 +182,7 @@ class Flow:
 	def render_success_splash(self, text = "Saved!", hold_seconds = 1):
 		self.render_splash(text)
 		self.backlight.set_color(BacklightColor.SUCCESS)
-		self.play_piezo("success")
+		self.piezo.tone("success")
 		time.sleep(hold_seconds)
 		self.backlight.set_color(BacklightColor.DEFAULT)
 
@@ -219,13 +213,13 @@ class Flow:
 
 	def settings(self):
 		options = [None] * 2
-		options[Options.PLAY_SOUNDS] = "Play sounds"
+		options[Options.PIEZO] = "Play sounds"
 		options[Options.BACKLIGHT] = "Backlight"
 
 		responses = VerticalCheckboxes(
 			options = options,
 			initial_states = [
-				self.options.values[Options.PLAY_SOUNDS],
+				self.options.values[Options.PIEZO],
 				self.options.values[Options.BACKLIGHT]
 			], flow = self, anchor = VerticalMenu.ANCHOR_TOP).render_and_wait()
 

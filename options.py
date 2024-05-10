@@ -4,7 +4,7 @@ class Options:
 	def __init__(self):
 		# defaults
 		self.values = {
-			Options.PLAY_SOUNDS: True,
+			Options.PIEZO: True,
 			Options.BACKLIGHT: True
 		}
 
@@ -32,5 +32,5 @@ class Options:
 		self.values[option] = value
 		microcontroller.nvm[option] = self.NVM_TRUE if value else self.NVM_FALSE
 
-Options.PLAY_SOUNDS = 0
+Options.PIEZO = 0
 Options.BACKLIGHT = 1
