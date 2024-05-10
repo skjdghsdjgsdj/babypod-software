@@ -114,6 +114,21 @@ class Flow:
 		self.render_splash("Connecting...")
 		self.api.connect()
 
+		battery_percent = self.battery_monitor.get_percent()
+		if battery_percent is not None and battery_percent <= 15:
+			if self.options.values[Options.BACKLIGHT]:
+				self.backlight.set_color((255, 0, 0))
+
+			self.render_splash(f"Low battery!")
+
+			if self.options.values[Options.PLAY_SOUNDS]:
+				self.piezo.tone("low_battery")
+
+			time.sleep(1.5)
+
+			if self.options.values[Options.BACKLIGHT]:
+				self.backlight.set_color(Backlight.DEFAULT_COLOR)
+
 		self.lcd.clear()
 
 		while True:
