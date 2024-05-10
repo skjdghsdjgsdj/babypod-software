@@ -325,7 +325,7 @@ class Flow:
 
 		last_feeding_str = ""
 		try:
-			last_feeding = self.api.get_last_feeding()
+			last_feeding, method = self.api.get_last_feeding()
 			if last_feeding is not None:
 				hour = last_feeding.hour
 				minute = last_feeding.minute
@@ -340,6 +340,11 @@ class Flow:
 					meridian = "pm"
 
 				last_feeding_str = f"{hour}:{minute:02}{meridian}"
+
+				if method == "right breast":
+					last_feeding_str += ", R"
+				elif method == "left breast":
+					last_feeding_str += ", B"
 		except Exception as e:
 			print(f"Failed to get last feeding: {e}")
 

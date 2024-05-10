@@ -71,7 +71,7 @@ class API:
 		if feeding["count"] <= 0:
 			return None
 
-		return datetime.fromisoformat(feeding["results"][0]["start"])
+		return datetime.fromisoformat(feeding["results"][0]["start"]), feeding["results"][0]["method"]
 
 	def get_timer(self, name):
 		timers = self.get("timers", {
