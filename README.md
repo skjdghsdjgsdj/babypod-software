@@ -150,7 +150,6 @@ Please contribute and submit pull requests if you can help! But some of these th
 
 - Connect to Wi-Fi asynchronously! The slowest part of startup is usually waiting for Wi-Fi, but every selection from the main menu will need a connection; may as well let the menu render and then connect to Wi-Fi in the background so the experience seems faster.
 - Support multiple children, although if there's only one, don't require the user to select him/her. This can be autodiscovered via an API call, but it might be best to force a single child ID in `settings.toml` to avoid the call at startup.
-- Add an explicit low battery warning.
 - Have the build process burn all the code into the CircuitPython image, and the imports go from slow to near-instant. That's no small feat but could be really useful.
 - Better error handling and recovery. There's pretty much none right now except for showing a generic error for uncaught exceptions. There's no retry logic or offline batching.
 - Remove the need for a physical power switch and instead put the device to deep sleep after a few minutes of inactivity (except during timers), and use the rotary encoder or a button on it to wake the device.
