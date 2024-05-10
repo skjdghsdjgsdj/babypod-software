@@ -18,17 +18,23 @@ find . -maxdepth 1 -type f -not -name 'code.py' -name '*.py' | while read -r SOU
 	MPY_NAME="lib/${BASENAME%.py}.mpy"
 	BUILD_COMMAND="mpy-cross $BASENAME -O9 -o $MPY_NAME"
 
-	echo "$BUILD_COMMAND"
-	$BUILD_COMMAND
-	if [ $? -ne 0 ]; then
-		echo "Build failed" 1>&2
-		exit 1
-	fi
+	if [[ -z "$1" || "$1" == "${BASENAME%.py}" ]]; then
+    echo "$BUILD_COMMAND"
+    $BUILD_COMMAND
+    if [ $? -ne 0 ]; then
+      echo "Build failed" 1>&2
+      exit 1
+    fi
 
-	cp -v $MPY_NAME $OUTPUT_PATH/lib/
-	if [ $? -ne 0 ]; then
-	  echo "Failed to copy built library $MPY_NAME to $OUTPUT_PATH/lib"
-	fi
+    cp -v $MPY_NAME $OUTPUT_PATH/lib/
+    if [ $? -ne 0 ]; then
+      echo "Failed to copy built library $MPY_NAME to $OUTPUT_PATH/lib"
+    fi
+  else
+    echo "Skipping building $SOURCE_FILE"
+  fi
 done
 
-cp -v code.py $OUTPUT_PATH/
+if [[ -z "$1" || "$1" == "code" ]]; then
+  cp -v code.py $OUTPUT_PATH/
+fi
