@@ -12,6 +12,9 @@ class Options:
 		self.NVM_TRUE = 0xFF
 		self.NVM_FALSE = 0xF0
 
+	def __getitem__(self, item):
+		return self.values[item]
+
 	def load(self):
 		for index, value in self.values.items():
 			value = microcontroller.nvm[index]
