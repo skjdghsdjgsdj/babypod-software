@@ -1,7 +1,6 @@
 from lcd_special_chars_module import LCDSpecialChars
 from rotary_encoder import RotaryEncoder
 import time
-from backlight import Backlight
 
 class UIComponent:
 	def __init__(self, flow, allow_cancel = True, cancel_text = None, cancel_align = None):
@@ -74,11 +73,7 @@ class ActiveTimer(UIComponent):
 
 			if since_last_chime >= self.chime_at_seconds:
 				self.last_chime = time.monotonic()
-
-				color = self.flow.backlight.color
-				self.flow.backlight.set_color((255, 255, 255))
 				self.flow.piezo.tone("chime")
-				self.flow.backlight.set_color(color)
 
 	def format_elapsed_time(self, elapsed):
 		if elapsed < 60:
