@@ -21,9 +21,6 @@ class BatteryMonitor:
 	def init_raw_device(self):
 		raise NotImplementedError()
 
-	def get_percent(self):
-		raise NotImplementedError()
-
 	def is_charging(self):
 		return None if self.charging_pin is None else self.charging_pin.value
 
