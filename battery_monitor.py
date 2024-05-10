@@ -11,7 +11,6 @@ class BatteryMonitor:
 			self.charging_pin = digitalio.DigitalInOut(board.VBUS)
 			self.charging_pin.direction = digitalio.Direction.INPUT
 		else:
-			print("No VBUS pin to read; charging status will be indeterminate")
 			self.charging_pin = None
 
 	def init_device(self):
@@ -66,6 +65,11 @@ class MAX17048BatteryMonitor(BatteryMonitor):
 
 	def get_current_percent(self):
 		return self.device.cell_percent
+
+	def is_charging(self):
+		self.init_device()
+		charge_rate = self.device.charge_rate
+		return charge_rate > 0
 
 class LC709203FBatteryMonitor(BatteryMonitor):
 	def init_raw_device(self):
