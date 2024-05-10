@@ -3,53 +3,50 @@ import adafruit_rgbled
 import board
 import os
 
-class Backlight:
-	def __init__(self):
-		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
-		self.set_color(Backlight.OFF)
+class BacklightColor:
+	def __init__(self, name, default_value):
+		value = os.getenv(name)
+		if value is None:
+			value = default_value
 
-	def invert_color(self, color):
-		if isinstance(color, int):
-			return 0xFFFFFF - color
+		if not isinstance(value, int) and not isinstance(value, tuple):
+			raise TypeError(value)
 
-		if isinstance(color, tuple):
-			r, g, b = color
+		self.color = value
+
+	def invert(self):
+		if isinstance(self.color, int):
+			return 0xFFFFFF - self.color
+
+		if isinstance(self.color, tuple):
+			r, g, b = self.color
 			return 255 - r, 255 - g, 255 - b
 
-	def set_color(self, color):
-		self.backlight.color = self.invert_color(color)
-		self.color = color
+	def __str__(self):
+		return str(self.color)
 
-	def get_midpoint(self, start, end, percent):
-		return abs((start - end) * percent)
+BacklightColor.DEFAULT = BacklightColor("BACKLIGHT_COLOR_FULL", (255, 255, 255))
+BacklightColor.DIM = BacklightColor("BACKLIGHT_COLOR_DIM", (128, 128, 128))
+BacklightColor.IDLE_WARNING = BacklightColor("BACKLIGHT_COLOR_IDLE_WARNING", (255, 128, 128))
+BacklightColor.ERROR = BacklightColor("BACKLIGHT_COLOR_ERROR", (255, 0, 0))
+BacklightColor.SUCCESS = BacklightColor("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 
-	def transition_color(self, color, duration = 0.5):
-		assert(duration > 0)
+class Backlight:
+	def __init__(self, is_option_enabled: bool = True):
+		self.is_option_enabled = is_option_enabled
+		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 
-		start = time.monotonic()
-		end = start + duration
+		if is_option_enabled:
+			self.set_color(BacklightColor.DEFAULT)
+		else:
+			self.off()
 
-		start_r, start_g, start_b = self.color
-		end_r, end_g, end_b = color
+	def set_color(self, color: BacklightColor):
+		if self.is_option_enabled:
+			self.backlight.color = color.invert()
 
-		while time.monotonic() <= end:
-			percent = max(min(time.monotonic() - start, 1), 0)
-
-			r, g, b = (
-				self.get_midpoint(start_r, end_r, percent),
-				self.get_midpoint(start_g, end_g, percent),
-				self.get_midpoint(start_b, end_b, percent)
-			)
-
-			self.set_color((r, g, b))
-
-		self.set_color(color)
-
-	@staticmethod
-	def load_colors():
-		Backlight.DEFAULT_COLOR = os.getenv("BACKLIGHT_COLOR_FULL") or (255, 255, 255)
-		Backlight.OFF = os.getenv("BACKLIGHT_COLOR_DIM") or (128, 128, 128)
-
-Backlight.load_colors()
+	def off(self):
+		print(f"Disabling backlight")
+		self.backlight.color = (255, 255, 255) # inverted
 
 Backlight.TIMEOUT = 30

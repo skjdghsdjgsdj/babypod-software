@@ -10,10 +10,8 @@ lcd.message = "Starting up..."
 from options import Options
 options = Options().load()
 
-from backlight import Backlight
-backlight = Backlight()
-if options.values[Options.BACKLIGHT]:
-	backlight.set_color(Backlight.DEFAULT_COLOR)
+from backlight import Backlight, BacklightColor
+backlight = Backlight(options[Options.BACKLIGHT])
 
 from piezo import Piezo
 piezo = Piezo()

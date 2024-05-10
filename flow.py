@@ -2,7 +2,7 @@ import time
 import traceback
 
 from api import API
-from backlight import Backlight
+from backlight import Backlight, BacklightColor
 from options import Options
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, BooleanPrompt, ActiveTimer
 from lcd_special_chars_module import LCDSpecialChars
@@ -77,32 +77,26 @@ class Flow:
 		self.render_battery_percent(only_if_changed = True)
 
 		if idle_time >= Backlight.TIMEOUT:
-			self.set_backlight(Backlight.OFF)
+			self.backlight.set_color(BacklightColor.DIM)
 
 		if not self.suppress_idle_warning and idle_time > Flow.IDLE_DISCHARGING_WARNING_INTERVAL and not self.battery_monitor.is_charging() and not self.idle_warning_tripped:
 			self.idle_warning_tripped = True
 			self.idle_warning()
 
 	def idle_warning(self):
-		if self.options.values[Options.PLAY_SOUNDS] or self.options.values[Options.BACKLIGHT]:
-			color = self.backlight.color
-			for i in range(0, 3):
-				self.set_backlight((255, 255, 255))
-				self.play_piezo("idle_warning")
-				self.set_backlight(color)
-				time.sleep(0.1)
+		for i in range(0, 3):
+			self.backlight.set_color(BacklightColor.IDLE_WARNING)
+			self.play_piezo("idle_warning")
+			self.backlight.set_color(BacklightColor.DEFAULT)
+			time.sleep(0.1)
 
 	def on_rotary_encoder_activity(self):
 		self.idle_warning_tripped = False
-		self.set_backlight(Backlight.DEFAULT_COLOR)
+		self.backlight.set_color(BacklightColor.DEFAULT)
 
 	def clear_and_show_battery(self):
 		self.lcd.clear()
 		self.render_battery_percent()
-
-	def set_backlight(self, color):
-		if self.options.values[Options.BACKLIGHT]:
-			self.backlight.set_color(color)
 
 	def play_piezo(self, tone_name):
 		if self.options.values[Options.PLAY_SOUNDS]:
@@ -116,9 +110,7 @@ class Flow:
 
 		battery_percent = self.battery_monitor.get_percent()
 		if battery_percent is not None and battery_percent <= 15:
-			if self.options.values[Options.BACKLIGHT]:
-				self.backlight.set_color((255, 0, 0))
-
+			self.backlight.set_color(BacklightColor.ERROR)
 			self.render_splash(f"Low battery!")
 
 			if self.options.values[Options.PLAY_SOUNDS]:
@@ -126,8 +118,7 @@ class Flow:
 
 			time.sleep(1.5)
 
-			if self.options.values[Options.BACKLIGHT]:
-				self.backlight.set_color(Backlight.DEFAULT_COLOR)
+			self.backlight.set_color(BacklightColor.DEFAULT)
 
 		self.lcd.clear()
 
@@ -137,10 +128,10 @@ class Flow:
 			except Exception as e:
 				traceback.print_exception(e)
 				self.render_splash("Error!")
-				self.set_backlight((255, 0, 0))
+				self.backlight.set_color(BacklightColor.ERROR)
 				self.play_piezo("error")
 				time.sleep(2)
-				self.set_backlight(Backlight.DEFAULT_COLOR)
+				self.backlight.set_color(BacklightColor.DEFAULT)
 			finally:
 				self.clear_and_show_battery()
 
@@ -196,10 +187,10 @@ class Flow:
 
 	def render_success_splash(self, text = "Saved!", hold_seconds = 1):
 		self.render_splash(text)
-		self.set_backlight((0, 255, 0))
+		self.backlight.set_color(BacklightColor.SUCCESS)
 		self.play_piezo("success")
 		time.sleep(hold_seconds)
-		self.set_backlight(Backlight.DEFAULT_COLOR)
+		self.backlight.set_color(BacklightColor.DEFAULT)
 
 	def main_menu(self):
 		self.render_battery_percent()
@@ -244,7 +235,11 @@ class Flow:
 				if new_value != self.options.values[i]:
 					self.options.save(i, new_value)
 					if i == Options.BACKLIGHT:
-						self.backlight.set_color(Backlight.DEFAULT_COLOR if new_value else Backlight.OFF)
+						self.backlight.is_option_enabled = new_value
+						if new_value:
+							self.backlight.set_color(BacklightColor.DEFAULT)
+						else:
+							self.backlight.off()
 
 	def diaper(self):
 		self.render_header_text("How was diaper?")
