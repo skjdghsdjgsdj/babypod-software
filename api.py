@@ -21,6 +21,12 @@ class API:
 			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
 			channel = int(os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL"))
 
+			self.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
+			print(f"This device's MAC ID is {self.mac_id}")
+
+			wifi.radio.hostname = f"babypod-{self.mac_id}"
+			print(f"This device's hostname is {wifi.radio.hostname}")
+
 			print(f"Connecting to {ssid}...")
 			wifi.radio.connect(ssid = ssid, password = password, channel = channel)
 			print("Creating socket pool")
@@ -28,9 +34,6 @@ class API:
 			print("Creating requests instance")
 			self.requests = adafruit_requests.Session(pool, ssl.create_default_context())
 			print("Connected!")
-
-			self.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
-			print(f"This device's MAC ID is {self.mac_id}")
 		
 	def get_requests(self):
 		self.connect()
