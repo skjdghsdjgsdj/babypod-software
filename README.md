@@ -64,6 +64,8 @@ git clone https://github.com/skjdghsdjgsdj/babypod-software.git
 	2. With each resulting `.mpy` compiled output, copy it to the Feather's `lib/` directory.
 	3. Copy `code.py` to the root of the Feather.
 
+	You can also pass a module name to `build-and-deploy.sh` to build and deploy just that one library, like `build-and-deploy.sh api`. Passing `code` just copies `code.py` and nothing else. Omitting all arguments is a full build and deploy.
+
 ### Windows
 
 I haven't tried. You can make your own PowerShell script possibly that does something similar to `build-and-deploy.sh`. You can also copy the `.py` files for debugging's sake as described below.
