@@ -37,7 +37,7 @@ lcd_special_chars = LCDSpecialChars(lcd)
 Flow(
 	lcd_dimensions = (20, 4),
 	lcd = lcd,
-	child_id = 1,
+	child_id = NVRAMValue.CHILD_ID.get(),
 	rotary_encoder = rotary_encoder,
 	battery_monitor = battery_monitor,
 	backlight = backlight,
