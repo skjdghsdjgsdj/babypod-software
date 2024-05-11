@@ -1,4 +1,3 @@
-import time
 import adafruit_rgbled
 import board
 import os
