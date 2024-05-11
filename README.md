@@ -7,7 +7,7 @@ You need to install [Baby Buddy](https://docs.baby-buddy.net/setup/deployment/) 
 ## Features
 
 ### General
-- Simple text-based interface that can be scrolled with the rotary encoder's wheel or the up/down buttons. Select and Right buttons are usually interchangable, and Left usually means cancel or back. Protip: the rotary encoder is physically rotated 90° when mounted in the enclosure, so the abstraction for it accounts for that.
+- Simple text-based interface that can be scrolled with the rotary encoder's wheel or the up/down buttons. Select and Right buttons are usually interchangeable, and Left usually means cancel or back. Protip: the rotary encoder is physically rotated 90° when mounted in the enclosure, so the abstraction for it accounts for that.
 - Backlight color and piezo are used for positive interface feedback, like successful saving of data back to Baby Buddy, reporting of errors, periodic chimes during timers, etc.
 - Some user-configurable options are exposed directly through the interface instead of messing with `settings.toml`, like turning off the piezo if it bothers your baby. The values are stored in NVRAM to persist across reboots. Protip: don't turn off the backlight on [backlight-negative LCDs](https://www.adafruit.com/product/498).
 - Battery percentage shown on most screens and updates periodically.
@@ -134,7 +134,7 @@ Please contribute and submit pull requests if you can help!
 
 - `build-and-deploy.sh` assumes a macOS environment.
 - Startup takes a few seconds, mostly due to waiting for Wi-Fi to connect and loading imports.
-- Wi-Fi is peridically slow to connect as are network requests in general. Sometimes it takes a couple seconds, but other times 10 or 15 seconds.
+- Wi-Fi is periodically slow to connect as are network requests in general. Sometimes it takes a couple seconds, but other times 10 or 15 seconds.
 - The rotary encoder doesn't always respond on the first input. There is retry logic in the abstraction for that reason.
 - Some things are hardcoded, like chime intervals during active timers, instead of either user-configurable or defined in `settings.toml`.
 - The child ID is hardcoded to 1.
