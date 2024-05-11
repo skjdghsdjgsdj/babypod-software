@@ -27,7 +27,7 @@ class NVRAMValue:
             self.value = self.nvram_to_native(nvram_value)
             print(f"Read {self.value} from NVRAM at index {self.index}, stored as {nvram_value}")
         else:
-            print("NVRAM at index {self.index} is 0x0, using default value {self.default}")
+            print(f"NVRAM at index {self.index} is 0x0, using default value {self.default}")
 
         self.has_read = True
 
@@ -54,7 +54,7 @@ class NVRAMBooleanValue(NVRAMValue):
         elif nvram_value == 0xF0:
             return False
         else:
-            print("NVRAM value at index {self.index} isn't known true or false value; using default")
+            print(f"NVRAM value at index {self.index} isn't known true or false value; using default")
             return self.default
 
     def native_to_nvram(self, native_value: bool):
@@ -66,7 +66,7 @@ class NVRAMIntegerValue(NVRAMValue):
 
     def nvram_to_native(self, nvram_value):
         if nvram_value == 0x0:
-            print("NVRAM value is 0x0 which is ambiguous: could be int(0), could be unset, assuming the former")
+            print(f"NVRAM value is 0x0 which is ambiguous: could be int(0), could be unset, assuming the former")
         return int(nvram_value)
 
     def native_to_nvram(self, native_value: int):
