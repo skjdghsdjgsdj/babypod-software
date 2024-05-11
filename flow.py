@@ -3,12 +3,12 @@ import traceback
 
 from api import API
 from backlight import Backlight, BacklightColor
-from options import Options
+from nvram import NVRAMValue
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, BooleanPrompt, ActiveTimer
 from lcd_special_chars_module import LCDSpecialChars
 
 class Flow:
-	def __init__(self, lcd_dimensions, lcd, child_id, rotary_encoder, battery_monitor, backlight, piezo, options, lcd_special_chars):
+	def __init__(self, lcd_dimensions, lcd, child_id, rotary_encoder, battery_monitor, backlight, piezo, lcd_special_chars):
 		self.lcd_dimensions = lcd_dimensions
 		self.lcd = lcd
 		self.child_id = child_id
@@ -16,7 +16,6 @@ class Flow:
 		self.battery_monitor = battery_monitor
 		self.backlight = backlight
 		self.piezo = piezo
-		self.options = options
 		self.lcd_special_chars = lcd_special_chars
 		self.idle_warning_tripped = False
 		self.suppress_idle_warning = False
@@ -212,28 +211,28 @@ class Flow:
 		self.clear_and_show_battery()
 
 	def settings(self):
-		options = [None] * 2
-		options[Options.PIEZO] = "Play sounds"
-		options[Options.BACKLIGHT] = "Backlight"
+		options = [
+			"Play sounds",
+			"Use backlight"
+		]
 
 		responses = VerticalCheckboxes(
 			options = options,
 			initial_states = [
-				self.options.values[Options.PIEZO],
-				self.options.values[Options.BACKLIGHT]
+				NVRAMValue.OPTION_PIEZO.get(),
+				NVRAMValue.OPTION_BACKLIGHT.get()
 			], flow = self, anchor = VerticalMenu.ANCHOR_TOP).render_and_wait()
 
 		if responses is not None:
-			for i in range(0, len(responses)):
-				new_value = responses[i]
-				if new_value != self.options.values[i]:
-					self.options.save(i, new_value)
-					if i == Options.BACKLIGHT:
-						self.backlight.is_option_enabled = new_value
-						if new_value:
-							self.backlight.set_color(BacklightColor.DEFAULT)
-						else:
-							self.backlight.off()
+			NVRAMValue.OPTION_PIEZO.write(responses[0])
+			NVRAMValue.OPTION_BACKLIGHT.write(responses[1])
+
+			if NVRAMValue.OPTION_BACKLIGHT.get() != self.backlight.is_option_enabled:
+				self.backlight.is_option_enabled = NVRAMValue.OPTION_BACKLIGHT.get()
+				if self.backlight.is_option_enabled:
+					self.backlight.set_color(BacklightColor.DEFAULT)
+				else:
+					self.backlight.off()
 
 	def diaper(self):
 		self.render_header_text("How was diaper?")

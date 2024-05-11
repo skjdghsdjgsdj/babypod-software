@@ -7,14 +7,13 @@ lcd = Character_LCD_I2C(i2c, 20, 4)
 
 lcd.message = "Starting up..."
 
-from options import Options
-options = Options().load()
+from nvram import NVRAMValue
 
 from backlight import Backlight, BacklightColor
-backlight = Backlight(options[Options.BACKLIGHT])
+backlight = Backlight(NVRAMValue.OPTION_BACKLIGHT.get())
 
 from piezo import Piezo
-piezo = Piezo(options[Options.PIEZO])
+piezo = Piezo(NVRAMValue.OPTION_PIEZO.get())
 piezo.tone("startup")
 
 from digitalio import DigitalInOut, Direction
@@ -43,6 +42,5 @@ Flow(
 	battery_monitor = battery_monitor,
 	backlight = backlight,
 	piezo = piezo,
-	options = options,
 	lcd_special_chars = lcd_special_chars
 ).start()
