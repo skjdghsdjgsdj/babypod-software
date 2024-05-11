@@ -42,14 +42,9 @@ These instructions assume you've already built a BabyPod per the instructions at
 
 To make code changes, you need to do the following to build and deploy them.
 
-1. Clone BabyPod's software GitHub repository first:
-```
-git clone https://github.com/skjdghsdjgsdj/babypod-software.git
-```
+1. Clone BabyPod's software GitHub repository first: `git clone https://github.com/skjdghsdjgsdj/babypod-software.git`
 
-2. Plug in the Feather to a USB port and verify the `CIRCUITPY` drive shows up. The power switch must be on.
-
-	Some Feathers don't show up as local drives because they lack the USB support for it. In those cases, the build script won't work right and you'll have to copy files another way, which is usually by Wi-Fi or the serial console. Refer to that Feather's documentation for details.
+2. Plug in the Feather to a USB port and verify the `CIRCUITPY` drive shows up. The power switch must be on. Some Feathers don't show up as local drives because they lack the USB support for it. In those cases, the build script won't work right and you'll have to copy files another way, which is usually by Wi-Fi or the serial console. Refer to that Feather's documentation for details.
 	
 3. Compile your own `mpy-cross` executable and put it in your `$PATH`. As of this documentation, there's no prebuilt `mpy-cross` for CircuitPython 9, and they are not backwards-compatible. Fortunately you only need to do this one because it takes a long time. To do this:
 	1. [Download and build CircuitPython 9](https://learn.adafruit.com/building-circuitpython), including building submodules. Note you have to do a full clone; you can't do `git clone --depth` or you'll miss tags and the build will fail.
@@ -103,30 +98,30 @@ The names of libraries created during the build process in `lib/` are already de
 - Keep a given screen simple. For example, don't make vertical menus scrollable such that they have more than four items and you have to scroll to see them. Instead, make a user experience flow that negates the need for scrolling. The idea is you can hand Baby Buddy to a helper (family member, doula, nurse, etc.) and (s)he finds it straightforward to use.
 
 ### Files
-| File | Purpose |
-| ---- | ------- |
-| `api.py` | Connectivity to Wi-Fi and Baby Buddy |
-| `backlight.py` | Abstraction of the LCD's RGB backlight |
-| `battery_monitor.py` | Abstraction of LC709203F and MAX17048 battery monitors with autoselection of the appropriate chip |
-| `build-and-deploy.sh` | Bash script that uses `mpy-cross` to compile the code and copy it to the `CIRCUITPY` drive |
-| `code.py` | CircuitPython's entry point |
-| `flow.py` | Drives the UX |
-| `lcd_special_chars_module.py` | Abstraction of the LCD (just the text, not the backlight) including defining special characters like arrows |
-| `nvram.py` | Persists values in NVRAM across reboots |
-| `piezo.py` | Abstraction of the piezo, including allowing playback of tones by name rather than specifying them externally |
-| `rotary_encoder.py` | Abstraction of the rotary encoder, which takes into account the 90° physical rotation when mounted in the enclosure |
-| `ui_components.py` | Definition of various UI components, detailed below |
+| File                          | Purpose                                                                                                             |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| `api.py`                      | Connectivity to Wi-Fi and Baby Buddy                                                                                |
+| `backlight.py`                | Abstraction of the LCD's RGB backlight                                                                              |
+| `battery_monitor.py`          | Abstraction of LC709203F and MAX17048 battery monitors with autoselection of the appropriate chip                   |
+| `build-and-deploy.sh`         | Bash script that uses `mpy-cross` to compile the code and copy it to the `CIRCUITPY` drive                          |
+| `code.py`                     | CircuitPython's entry point                                                                                         |
+| `flow.py`                     | Drives the UX                                                                                                       |
+| `lcd_special_chars_module.py` | Abstraction of the LCD (just the text, not the backlight) including defining special characters like arrows         |
+| `nvram.py`                    | Persists values in NVRAM across reboots                                                                             |
+| `piezo.py`                    | Abstraction of the piezo, including allowing playback of tones by name rather than specifying them externally       |
+| `rotary_encoder.py`           | Abstraction of the rotary encoder, which takes into account the 90° physical rotation when mounted in the enclosure |
+| `ui_components.py`            | Definition of various UI components, detailed below                                                                 |
 
 ### UI Components
 
-| Class | Purpose |
-| ----- | ------- |
-| `UIComponent` | Base class |
-| `ActiveTimer` | A timer that counts up in real-time, including periodic piezo chimes |
-| `NumericSelector` | Input for a float with upper/lower bounds and increment counts |
-| `VerticalMenu` | User selection a single menu item from up to four options |
-| `VerticalCheckboxes` | Like `VerticalMenu`, but each item is preceded with a checkbox |
-| `BooleanPrompt`| Like `VerticalMenu`, but allows for one selection of exactly two options and returns a boolean |
+| Class                | Purpose                                                                                        |
+|----------------------|------------------------------------------------------------------------------------------------|
+| `UIComponent`        | Base class                                                                                     |
+| `ActiveTimer`        | A timer that counts up in real-time, including periodic piezo chimes                           |
+| `NumericSelector`    | Input for a float with upper/lower bounds and increment counts                                 |
+| `VerticalMenu`       | User selection a single menu item from up to four options                                      |
+| `VerticalCheckboxes` | Like `VerticalMenu`, but each item is preceded with a checkbox                                 |
+| `BooleanPrompt`      | Like `VerticalMenu`, but allows for one selection of exactly two options and returns a boolean |
 
 ## Known limitations and bugs
 
