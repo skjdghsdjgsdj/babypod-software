@@ -183,6 +183,7 @@ class API:
 			"Authorization": f"Token {self.api_key}"
 		}
 
+	@staticmethod
 	def duration_to_short_format(duration):
 		hours_str, minutes_str, seconds_str = duration.split(":")
 
