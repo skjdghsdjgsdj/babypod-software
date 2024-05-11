@@ -8,6 +8,56 @@ from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, Boo
 from lcd_special_chars_module import LCDSpecialChars
 
 class Flow:
+	FOOD_TYPES = [
+		{
+			"name": "Breast milk",
+			"type": "breast milk",
+			"methods": ["left breast", "right breast", "bottle", "both breasts"]
+		},
+		{
+			"name": "Fort. breast milk",
+			"type": "fortified breast milk",
+			"methods": ["bottle"]
+		},
+		{
+			"name": "Formula",
+			"type": "formula",
+			"methods": ["bottle"]
+		},
+		{
+			"name": "Solid food",
+			"type": "solid food",
+			"methods": ["parent fed", "self fed"]
+		}
+	]
+
+	FEEDING_METHODS = [
+		{
+			"name": "Bottle",
+			"method": "bottle",
+		},
+		{
+			"name": "L. breast",
+			"method": "left breast"
+		},
+		{
+			"name": "R. breast",
+			"method": "right breast"
+		},
+		{
+			"name": "Both breasts",
+			"method": "both breasts"
+		},
+		{
+			"name": "Parent-fed",
+			"method": "parent fed"
+		},
+		{
+			"name": "Self-fed",
+			"method": "self fed"
+		}
+	]
+
 	def __init__(self, lcd_dimensions, lcd, child_id, rotary_encoder, battery_monitor, backlight, piezo, lcd_special_chars):
 		self.lcd_dimensions = lcd_dimensions
 		self.lcd = lcd
@@ -19,56 +69,6 @@ class Flow:
 		self.lcd_special_chars = lcd_special_chars
 		self.idle_warning_tripped = False
 		self.suppress_idle_warning = False
-
-		Flow.FOOD_TYPES = [
-			{
-				"name": "Breast milk",
-				"type": "breast milk",
-				"methods": ["left breast", "right breast", "bottle", "both breasts"]
-			},
-			{
-				"name": "Fort. breast milk",
-				"type": "fortified breast milk",
-				"methods": ["bottle"]
-			},
-			{
-				"name": "Formula",
-				"type": "formula",
-				"methods": ["bottle"]
-			},
-			{
-				"name": "Solid food",
-				"type": "solid food",
-				"methods": ["parent fed", "self fed"]
-			}
-		]
-
-		Flow.FEEDING_METHODS = [
-			{
-				"name": "Bottle",
-				"method": "bottle",
-			},
-			{
-				"name": "L. breast",
-				"method": "left breast"
-			},
-			{
-				"name": "R. breast",
-				"method": "right breast"
-			},
-			{
-				"name": "Both breasts",
-				"method": "both breasts"
-			},
-			{
-				"name": "Parent-fed",
-				"method": "parent fed"
-			},
-			{
-				"name": "Self-fed",
-				"method": "self fed"
-			}
-		]
 
 		self.api = API(self.child_id)
 
@@ -132,7 +132,8 @@ class Flow:
 		self.lcd.cursor_position(0, 0)
 		self.lcd.message = text
 
-	def format_battery_percent(self, percent):
+	@staticmethod
+	def format_battery_percent(percent):
 		return f"{percent}%"
 
 	def render_battery_percent(self, only_if_changed = False):
@@ -361,10 +362,11 @@ class Flow:
 				self.clear_and_show_battery()
 				self.render_header_text("Feeding timer")
 				response = ActiveTimer(self).render_and_wait()
+				# noinspection PySimplifyBooleanCheck
 				if response == True:
 					self.clear_and_show_battery()
 					return self.feeding_menu(timer_id)
-				elif response == None:
+				elif response is None:
 					self.api.stop_timer(timer_id)
 			elif selected_index == 1: # no timer but don't care, record with 0 duration
 				return self.feeding_menu(timer_id)
@@ -387,7 +389,7 @@ class Flow:
 				self.clear_and_show_battery()
 				self.render_header_text("Tummy time")
 				response = ActiveTimer(self, chime_at_seconds = 60).render_and_wait()
-				if response == True:
+				if response:
 					self.api.post_tummy_time(timer_id)
 					self.render_success_splash()
 				else:

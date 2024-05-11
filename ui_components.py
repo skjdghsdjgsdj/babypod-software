@@ -155,6 +155,9 @@ class NumericSelector(UIComponent):
 				self.selected_value = maximum
 
 class VerticalMenu(UIComponent):
+	ANCHOR_TOP = 0
+	ANCHOR_BOTTOM = 1
+
 	def __init__(self, flow, options, allow_cancel = True, cancel_text = None, anchor = 1):
 		super().__init__(flow = flow, allow_cancel = allow_cancel, cancel_text = cancel_text)
 
@@ -250,9 +253,6 @@ class VerticalMenu(UIComponent):
 			self.flow.lcd.message = " "
 
 		self.selected_row_index = row_index
-
-VerticalMenu.ANCHOR_TOP = 0
-VerticalMenu.ANCHOR_BOTTOM = 1
 
 class VerticalCheckboxes(VerticalMenu):
 	def __init__(self, flow, options, initial_states, allow_cancel = True, cancel_text = None, anchor = 1):

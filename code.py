@@ -1,6 +1,6 @@
-from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
 import board
 import busio
+from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
 
 i2c = busio.I2C(scl = board.SCL, sda = board.SDA) #board.IO9, board.IO8)
 lcd = Character_LCD_I2C(i2c, 20, 4)

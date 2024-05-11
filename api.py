@@ -116,7 +116,8 @@ class API:
 	def stop_timer(self, timer_id):
 		return self.delete("timers", timer_id)
 
-	def validate_response(self, response):
+	@staticmethod
+	def validate_response(response):
 		if response.status_code < 200 or response.status_code >= 300:
 			raise Exception(f"Got HTTP {response.status_code} for request")
 
@@ -135,8 +136,8 @@ class API:
 
 		return response_json
 
-	def delete(self, endpoint, id):
-		url = endpoint + "/" + str(id) + "/"
+	def delete(self, endpoint, endpoint_item_id):
+		url = endpoint + "/" + str(endpoint_item_id) + "/"
 		full_url = self.base_url + url
 
 		print(f"HTTP DELETE: {full_url}")
@@ -148,7 +149,8 @@ class API:
 		response.close()
 
 	# not escaped! urllib not available for this board
-	def build_url_args(self, args):
+	@staticmethod
+	def build_url_args(args):
 		args_str = ""
 
 		is_first = True
