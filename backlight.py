@@ -32,6 +32,8 @@ BacklightColor.ERROR = BacklightColor("BACKLIGHT_COLOR_ERROR", (255, 0, 0))
 BacklightColor.SUCCESS = BacklightColor("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 
 class Backlight:
+	TIMEOUT = 30
+
 	def __init__(self, is_option_enabled: bool = True):
 		self.is_option_enabled = is_option_enabled
 		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
@@ -48,5 +50,3 @@ class Backlight:
 	def off(self):
 		print(f"Disabling backlight")
 		self.backlight.color = (255, 255, 255) # inverted
-
-Backlight.TIMEOUT = 30

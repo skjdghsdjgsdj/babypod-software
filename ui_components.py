@@ -75,7 +75,8 @@ class ActiveTimer(UIComponent):
 				self.last_chime = time.monotonic()
 				self.flow.piezo.tone("chime")
 
-	def format_elapsed_time(self, elapsed):
+	@staticmethod
+	def format_elapsed_time(elapsed):
 		if elapsed < 60:
 			return f"{elapsed:.0f} sec"
 
