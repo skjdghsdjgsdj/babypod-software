@@ -9,7 +9,7 @@ lcd.message = "Starting up..."
 
 from nvram import NVRAMValues
 
-from backlight import Backlight, BacklightColor
+from backlight import Backlight
 backlight = Backlight(NVRAMValues.OPTION_BACKLIGHT.get())
 
 from piezo import Piezo

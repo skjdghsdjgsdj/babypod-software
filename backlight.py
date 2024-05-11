@@ -24,11 +24,12 @@ class BacklightColor:
 	def __str__(self):
 		return str(self.color)
 
-BacklightColor.DEFAULT = BacklightColor("BACKLIGHT_COLOR_FULL", (255, 255, 255))
-BacklightColor.DIM = BacklightColor("BACKLIGHT_COLOR_DIM", (128, 128, 128))
-BacklightColor.IDLE_WARNING = BacklightColor("BACKLIGHT_COLOR_IDLE_WARNING", (255, 128, 128))
-BacklightColor.ERROR = BacklightColor("BACKLIGHT_COLOR_ERROR", (255, 0, 0))
-BacklightColor.SUCCESS = BacklightColor("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
+class BacklightColors:
+	DEFAULT = BacklightColor("BACKLIGHT_COLOR_FULL", (255, 255, 255))
+	DIM = BacklightColor("BACKLIGHT_COLOR_DIM", (128, 128, 128))
+	IDLE_WARNING = BacklightColor("BACKLIGHT_COLOR_IDLE_WARNING", (255, 128, 128))
+	ERROR = BacklightColor("BACKLIGHT_COLOR_ERROR", (255, 0, 0))
+	SUCCESS = BacklightColor("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 
 class Backlight:
 	TIMEOUT = 30
@@ -38,7 +39,7 @@ class Backlight:
 		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 
 		if is_option_enabled:
-			self.set_color(BacklightColor.DEFAULT)
+			self.set_color(BacklightColors.DEFAULT)
 		else:
 			self.off()
 
