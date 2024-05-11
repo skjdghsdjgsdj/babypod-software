@@ -1,11 +1,17 @@
 from time import monotonic, sleep
-#from adafruit_seesaw import seesaw, rotaryio, digitalio as seesaw_digitalio
 from adafruit_seesaw import rotaryio, seesaw
-from adafruit_seesaw.seesaw import Seesaw
 import digitalio
 from adafruit_seesaw.digitalio import DigitalIO
 
 class RotaryEncoder:
+	SELECT = 1
+	UP = 3
+	LEFT = 4
+	DOWN = 5
+	RIGHT = 2
+	CLOCKWISE = 10
+	COUNTERCLOCKWISE = 11
+
 	def __init__(self, i2c):
 		# it's physically rotated 90 CW so adjust accordingly
 		self.last_position = None
@@ -30,8 +36,6 @@ class RotaryEncoder:
 
 		for index in range(0, len(buttons)):
 			value = buttons[index]
-			#seesaw_controller.pin_mode(value, seesaw_controller.INPUT_PULLUP)
-			#self.buttons[value] = seesaw_digitalio.DigitalIO(seesaw_controller, value)
 
 			success = False
 			while not success:
@@ -87,11 +91,3 @@ class RotaryEncoder:
 					last_tick = now
 
 		return response
-
-RotaryEncoder.SELECT = 1
-RotaryEncoder.UP = 3
-RotaryEncoder.LEFT = 4
-RotaryEncoder.DOWN = 5
-RotaryEncoder.RIGHT = 2
-RotaryEncoder.CLOCKWISE = 10
-RotaryEncoder.COUNTERCLOCKWISE = 11
