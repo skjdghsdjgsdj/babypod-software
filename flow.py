@@ -344,7 +344,7 @@ class Flow:
 				if method == "right breast":
 					last_feeding_str += ", R"
 				elif method == "left breast":
-					last_feeding_str += ", B"
+					last_feeding_str += ", L"
 		except Exception as e:
 			print(f"Failed to get last feeding: {e}")
 
