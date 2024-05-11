@@ -25,7 +25,7 @@ class Flow:
 			{
 				"name": "Breast milk",
 				"type": "breast milk",
-				"methods": ["bottle", "both breasts", "left breast", "right breast"]
+				"methods": ["left breast", "right breast", "bottle", "both breasts"]
 			},
 			{
 				"name": "Fort. breast milk",
