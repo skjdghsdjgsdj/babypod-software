@@ -285,6 +285,8 @@ class VerticalCheckboxes(VerticalMenu):
 
 class BooleanPrompt(VerticalMenu):
 	def __init__(self, flow, allow_cancel = True, cancel_text = None, anchor = 1, yes_text = "Yes", no_text = "No"):
+		if cancel_text is not None:
+			print("cancel_text is not supported for boolean prompts; it will be ignored")
 		super().__init__(options = [yes_text, no_text], flow = flow, allow_cancel = allow_cancel, cancel_text = None, anchor = anchor)
 
 	def render_and_wait(self):
