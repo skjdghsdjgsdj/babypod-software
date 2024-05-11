@@ -9,7 +9,7 @@ You need to install [Baby Buddy](https://docs.baby-buddy.net/setup/deployment/) 
 ### General
 - Simple text-based interface that can be scrolled with the rotary encoder's wheel or the up/down buttons. Select and Right buttons are usually interchangable, and Left usually means cancel or back. Protip: the rotary encoder is physically rotated 90° when mounted in the enclosure, so the abstraction for it accounts for that.
 - Backlight color and piezo are used for positive interface feedback, like successful saving of data back to Baby Buddy, reporting of errors, periodic chimes during timers, etc.
-- Some user-configurable options are exposed directly through the interface instead of messing with `settings.toml`, like turning off the piezo if it bothers your baby.
+- Some user-configurable options are exposed directly through the interface instead of messing with `settings.toml`, like turning off the piezo if it bothers your baby. The values are stored in NVRAM to persist across reboots. Protip: don't turn off the backlight on [backlight-negative LCDs](https://www.adafruit.com/product/498).
 - Battery percentage shown on most screens and updates periodically.
 - Backlight dims after inactivity to save power, although you should turn off the BabyPod when not using it anyway.
 - Information is contextual and non-relevant information isn't shown. For example, when feeding solid food, no bottle options are shown.
@@ -112,7 +112,7 @@ The names of libraries created during the build process in `lib/` are already de
 | `code.py` | CircuitPython's entry point |
 | `flow.py` | Drives the UX |
 | `lcd_special_chars_module.py` | Abstraction of the LCD (just the text, not the backlight) including defining special characters like arrows |
-| `options.py` | Defines and persists user preferences |
+| `nvram.py` | Persists values in NVRAM across reboots |
 | `piezo.py` | Abstraction of the piezo, including allowing playback of tones by name rather than specifying them externally |
 | `rotary_encoder.py` | Abstraction of the rotary encoder, which takes into account the 90° physical rotation when mounted in the enclosure |
 | `ui_components.py` | Definition of various UI components, detailed below |
