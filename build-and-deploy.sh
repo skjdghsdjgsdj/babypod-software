@@ -1,6 +1,5 @@
 #!/bin/bash
-which mpy-cross &> /dev/null
-if [ $? -ne 0 ]; then
+if which mpy-cross &> /dev/null -ne 0; then
 	echo "No mpy-cross in path; build one using these instructions: https://learn.adafruit.com/building-circuitpython/build-circuitpython" 1>&2
 	exit 1
 fi
@@ -21,13 +20,12 @@ find . -maxdepth 1 -type f -not -name 'code.py' -name '*.py' | while read -r SOU
 	if [[ -z "$1" || "$1" == "${BASENAME%.py}" ]]; then
     echo "$BUILD_COMMAND"
     $BUILD_COMMAND
-    if [ $? -ne 0 ]; then
+    if $BUILD_COMMAND -ne 0; then
       echo "Build failed" 1>&2
       exit 1
     fi
 
-    cp -v $MPY_NAME $OUTPUT_PATH/lib/
-    if [ $? -ne 0 ]; then
+    if cp -v "$MPY_NAME" $OUTPUT_PATH/lib/ -ne 0; then
       echo "Failed to copy built library $MPY_NAME to $OUTPUT_PATH/lib"
     fi
   else
