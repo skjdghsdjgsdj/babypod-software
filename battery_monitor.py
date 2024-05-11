@@ -78,6 +78,7 @@ class LC709203FBatteryMonitor(BatteryMonitor):
 
 		from adafruit_lc709203f import LC709203F, LC709203F_CMD_APA
 		device = LC709203F(self.i2c)
+		# noinspection PyProtectedMember
 		device._write_word(LC709203F_CMD_APA, BATTERY_LC709203F_AMA)
 
 		return device
