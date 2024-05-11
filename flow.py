@@ -3,7 +3,7 @@ import traceback
 
 from api import API
 from backlight import Backlight, BacklightColor
-from nvram import NVRAMValue
+from nvram import NVRAMValues
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, BooleanPrompt, ActiveTimer
 from lcd_special_chars_module import LCDSpecialChars
 
@@ -219,16 +219,16 @@ class Flow:
 		responses = VerticalCheckboxes(
 			options = options,
 			initial_states = [
-				NVRAMValue.OPTION_PIEZO.get(),
-				NVRAMValue.OPTION_BACKLIGHT.get()
+				NVRAMValues.OPTION_PIEZO.get(),
+				NVRAMValues.OPTION_BACKLIGHT.get()
 			], flow = self, anchor = VerticalMenu.ANCHOR_TOP).render_and_wait()
 
 		if responses is not None:
-			NVRAMValue.OPTION_PIEZO.write(responses[0])
-			NVRAMValue.OPTION_BACKLIGHT.write(responses[1])
+			NVRAMValues.OPTION_PIEZO.write(responses[0])
+			NVRAMValues.OPTION_BACKLIGHT.write(responses[1])
 
-			if NVRAMValue.OPTION_BACKLIGHT.get() != self.backlight.is_option_enabled:
-				self.backlight.is_option_enabled = NVRAMValue.OPTION_BACKLIGHT.get()
+			if NVRAMValues.OPTION_BACKLIGHT.get() != self.backlight.is_option_enabled:
+				self.backlight.is_option_enabled = NVRAMValues.OPTION_BACKLIGHT.get()
 				if self.backlight.is_option_enabled:
 					self.backlight.set_color(BacklightColor.DEFAULT)
 				else:

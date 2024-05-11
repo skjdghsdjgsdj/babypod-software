@@ -74,6 +74,7 @@ class NVRAMIntegerValue(NVRAMValue):
             print("Using int(0) as an NVRAM value is ambiguous: could be int(0), could be unset, assuming the former")
         return native_value
 
-NVRAMValue.OPTION_PIEZO = NVRAMBooleanValue(0, True)
-NVRAMValue.OPTION_BACKLIGHT = NVRAMBooleanValue(1, True)
-NVRAMValue.CHILD_ID = NVRAMIntegerValue(2, 1)
+class NVRAMValues:
+    OPTION_PIEZO = NVRAMBooleanValue(0, True)
+    OPTION_BACKLIGHT = NVRAMBooleanValue(1, True)
+    CHILD_ID = NVRAMIntegerValue(2, 1)
