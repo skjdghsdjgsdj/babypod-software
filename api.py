@@ -32,6 +32,7 @@ class API:
 			print("Creating socket pool")
 			pool = socketpool.SocketPool(wifi.radio)
 			print("Creating requests instance")
+			# noinspection PyTypeChecker
 			self.requests = adafruit_requests.Session(pool, ssl.create_default_context())
 			print("Connected!")
 		
