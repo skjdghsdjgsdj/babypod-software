@@ -395,7 +395,7 @@ class Flow:
 
 				self.clear_and_show_battery()
 				self.render_header_text("Tummy time")
-				response = ActiveTimer(self, ConsistentIntervalPeriodicChime(self.piezo, 60)).render_and_wait()
+				response = ActiveTimer(self, periodic_chime = ConsistentIntervalPeriodicChime(self.piezo, 60)).render_and_wait()
 				if response:
 					self.api.post_tummy_time(timer_id)
 					self.render_success_splash()
