@@ -1,5 +1,5 @@
 .idea
-.swp
+*.swp
 lib/api.mpy
 lib/backlight.mpy
 lib/battery_monitor.mpy
