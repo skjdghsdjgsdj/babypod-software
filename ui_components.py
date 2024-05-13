@@ -52,6 +52,7 @@ class ActiveTimer(UIComponent):
 				on_wait_tick = self.render_elapsed_time,
 				wait_tick = 1
 			)
+			self.flow.on_rotary_encoder_activity()
 			if button == RotaryEncoder.LEFT and self.allow_cancel:
 				self.flow.suppress_idle_warning = False
 				return None
