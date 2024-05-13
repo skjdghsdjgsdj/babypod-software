@@ -1,6 +1,7 @@
 from lcd_special_chars_module import LCDSpecialChars
 from rotary_encoder import RotaryEncoder
 import time
+from piezo import PeriodicChime
 
 class UIComponent:
 	def __init__(self, flow, allow_cancel = True, cancel_text = None, cancel_align = None):
@@ -28,12 +29,11 @@ UIComponent.RIGHT = 0
 UIComponent.LEFT = 1
 
 class ActiveTimer(UIComponent):
-	def __init__(self, flow, allow_cancel = True, cancel_text = None, chime_at_seconds = 15 * 60):
+	def __init__(self, flow, allow_cancel = True, cancel_text = None, periodic_chime: PeriodicChime = None):
 		super().__init__(flow, allow_cancel, cancel_text, cancel_align = UIComponent.LEFT)
 		self.last_message = None
 		self.start = None
-		self.last_chime = None
-		self.chime_at_seconds = chime_at_seconds
+		self.periodic_chime = periodic_chime
 
 	def render_and_wait(self):
 		self.flow.suppress_idle_warning = True
@@ -43,7 +43,8 @@ class ActiveTimer(UIComponent):
 		self.render_save()
 
 		self.start = time.monotonic()
-		self.last_chime = self.start
+		if self.periodic_chime is not None:
+			self.periodic_chime.start()
 
 		while True:
 			button = self.flow.rotary_encoder.wait(
@@ -68,12 +69,8 @@ class ActiveTimer(UIComponent):
 		)
 		self.last_message = message
 
-		if self.chime_at_seconds is not None:
-			since_last_chime = time.monotonic() - self.last_chime
-
-			if since_last_chime >= self.chime_at_seconds:
-				self.last_chime = time.monotonic()
-				self.flow.piezo.tone("chime")
+		if self.periodic_chime is not None:
+			self.periodic_chime.chime_if_needed()
 
 	@staticmethod
 	def format_elapsed_time(elapsed):

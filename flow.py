@@ -6,6 +6,8 @@ from backlight import Backlight, BacklightColors
 from nvram import NVRAMValues
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, BooleanPrompt, ActiveTimer
 from lcd_special_chars_module import LCDSpecialChars
+from piezo import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime
+
 
 class Flow:
 	FOOD_TYPES = [
@@ -361,7 +363,12 @@ class Flow:
 
 				self.clear_and_show_battery()
 				self.render_header_text("Feeding timer")
-				response = ActiveTimer(self).render_and_wait()
+				response = ActiveTimer(self, periodic_chime = EscalatingIntervalPeriodicChime(
+					self.piezo,
+					chime_at_seconds = 60,
+					escalating_chime_at_seconds = 60 * 30,
+					interval_once_escalated_seconds = 60
+				)).render_and_wait()
 				# noinspection PySimplifyBooleanCheck
 				if response == True:
 					self.clear_and_show_battery()
@@ -388,7 +395,7 @@ class Flow:
 
 				self.clear_and_show_battery()
 				self.render_header_text("Tummy time")
-				response = ActiveTimer(self, chime_at_seconds = 60).render_and_wait()
+				response = ActiveTimer(self, ConsistentIntervalPeriodicChime(self.piezo, 60)).render_and_wait()
 				if response:
 					self.api.post_tummy_time(timer_id)
 					self.render_success_splash()
