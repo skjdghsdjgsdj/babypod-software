@@ -87,13 +87,16 @@ class EscalatingIntervalPeriodicChime(ConsistentIntervalPeriodicChime):
 		super().__init__(piezo, chime_at_seconds)
 		self.escalating_chime_at_seconds = escalating_chime_at_seconds
 		self.interval_once_escalated_seconds = interval_once_escalated_seconds
+		self.last_escalated_chime_seconds = self.escalating_chime_at_seconds
 
 	def is_chime_time(self, elapsed):
 		if super().is_chime_time(elapsed):
 			return True
 
 		if self.total_elapsed >= self.escalating_chime_at_seconds:
-			adjusted_elapsed = int(self.total_elapsed - self.escalating_chime_at_seconds)
-			return adjusted_elapsed % self.interval_once_escalated_seconds == 0
+			elapsed_interval = self.total_elapsed - self.last_escalated_chime_seconds
+			if elapsed_interval >= self.interval_once_escalated_seconds:
+				self.last_escalated_chime_seconds = self.total_elapsed
+				return True
 
 		return False
