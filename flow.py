@@ -369,8 +369,7 @@ class Flow:
 					escalating_chime_at_seconds = 60 * 30,
 					interval_once_escalated_seconds = 60
 				)).render_and_wait()
-				# noinspection PySimplifyBooleanCheck
-				if response == True:
+				if response:
 					self.clear_and_show_battery()
 					return self.feeding_menu(timer_id)
 				elif response is None:
