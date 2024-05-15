@@ -365,7 +365,7 @@ class Flow:
 				self.render_header_text("Feeding timer")
 				response = ActiveTimer(self, periodic_chime = EscalatingIntervalPeriodicChime(
 					self.piezo,
-					chime_at_seconds = 60,
+					chime_at_seconds = 60 * 15,
 					escalating_chime_at_seconds = 60 * 30,
 					interval_once_escalated_seconds = 60
 				)).render_and_wait()
