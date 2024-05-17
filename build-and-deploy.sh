@@ -20,6 +20,7 @@ find . -maxdepth 1 -type f -not -name 'code.py' -name '*.py' | while read -r SOU
 	if [[ -z "$1" || "$1" == "${BASENAME%.py}" ]]; then
 		echo -n "Building $BASENAME..."
 		$BUILD_COMMAND
+		# shellcheck disable=SC2181
 		if [ $? -ne 0 ]; then
 			echo "Build failed" 1>&2
 			exit 1
@@ -27,6 +28,7 @@ find . -maxdepth 1 -type f -not -name 'code.py' -name '*.py' | while read -r SOU
 
 		echo -n "deploying..."
 		cp "$MPY_NAME" "$OUTPUT_PATH/lib/"
+		# shellcheck disable=SC2181
 		if [ $? -ne 0 ]; then
 			echo "Failed to copy built library $MPY_NAME to $OUTPUT_PATH/lib"
 		fi

@@ -1,16 +1,16 @@
 import microcontroller
 
 class NVRAMValue:
-    def __init__(self, index, default = None):
+    def __init__(self, index: int, default = None):
         self.index = index
         self.default = default
         self.value = default
         self.has_read = False
 
-    def nvram_to_native(self, nvram_value):
+    def nvram_to_native(self, nvram_value: int):
         raise NotImplementedError()
 
-    def native_to_nvram(self, native_value):
+    def native_to_nvram(self, native_value) -> int:
         raise NotImplementedError()
 
     def get(self):
@@ -33,7 +33,7 @@ class NVRAMValue:
 
         return self.value
 
-    def write(self, native_value, only_if_changed: bool = True):
+    def write(self, native_value: int, only_if_changed: bool = True) -> None:
         if not only_if_changed or native_value != self.value:
             self.value = native_value
             nvram_value = self.native_to_nvram(self.value)
@@ -45,10 +45,10 @@ class NVRAMValue:
         self.write(self.default)
 
 class NVRAMBooleanValue(NVRAMValue):
-    def __init__(self, index, default: bool = None):
+    def __init__(self, index: int, default: bool = None):
         super().__init__(index, default)
 
-    def nvram_to_native(self, nvram_value):
+    def nvram_to_native(self, nvram_value: int) -> bool:
         if nvram_value == 0xFF:
             return True
         elif nvram_value == 0xF0:
@@ -57,19 +57,19 @@ class NVRAMBooleanValue(NVRAMValue):
             print(f"NVRAM value at index {self.index} isn't known true or false value; using default")
             return self.default
 
-    def native_to_nvram(self, native_value: bool):
+    def native_to_nvram(self, native_value: bool) -> int:
         return 0xFF if native_value else 0xF0
 
 class NVRAMIntegerValue(NVRAMValue):
-    def __init__(self, index, default: int = None):
+    def __init__(self, index: int, default: int = None):
         super().__init__(index, default)
 
-    def nvram_to_native(self, nvram_value):
+    def nvram_to_native(self, nvram_value: int) -> int:
         if nvram_value == 0x0:
             print(f"NVRAM value is 0x0 which is ambiguous: could be int(0), could be unset, assuming the former")
         return int(nvram_value)
 
-    def native_to_nvram(self, native_value: int):
+    def native_to_nvram(self, native_value: int) -> int:
         if native_value == 0x0:
             print("Using int(0) as an NVRAM value is ambiguous: could be int(0), could be unset, assuming the former")
         return native_value
@@ -78,3 +78,5 @@ class NVRAMValues:
     OPTION_PIEZO = NVRAMBooleanValue(0, True)
     OPTION_BACKLIGHT = NVRAMBooleanValue(1, True)
     CHILD_ID = NVRAMIntegerValue(2, 1)
+    BACKLIGHT_DIM_TIMEOUT = NVRAMIntegerValue(3, 30)
+    IDLE_WARNING = NVRAMIntegerValue(4, 60 * 5)

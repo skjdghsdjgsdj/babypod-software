@@ -2,11 +2,13 @@ import time
 import traceback
 
 from api import API
-from backlight import Backlight, BacklightColors
+from backlight import BacklightColors
+from devices import Devices
+from lcd import LCD
 from nvram import NVRAMValues
+from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
+from rotary_encoder import ActivityListener, WaitTickListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, BooleanPrompt, ActiveTimer
-from lcd_special_chars_module import LCDSpecialChars
-from piezo import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime
 
 
 class Flow:
@@ -14,7 +16,7 @@ class Flow:
 		{
 			"name": "Breast milk",
 			"type": "breast milk",
-			"methods": ["left breast", "right breast", "bottle", "both breasts"]
+			"methods": ["left breast", "right breast", "both breasts", "bottle"]
 		},
 		{
 			"name": "Fort. breast milk",
@@ -60,62 +62,78 @@ class Flow:
 		}
 	]
 
-	def __init__(self, lcd_dimensions, lcd, child_id, rotary_encoder, battery_monitor, backlight, piezo, lcd_special_chars):
-		self.lcd_dimensions = lcd_dimensions
-		self.lcd = lcd
+	def __init__(self,
+		child_id: int,
+		devices: Devices
+	):
 		self.child_id = child_id
-		self.rotary_encoder = rotary_encoder
-		self.battery_monitor = battery_monitor
-		self.backlight = backlight
-		self.piezo = piezo
-		self.lcd_special_chars = lcd_special_chars
-		self.idle_warning_tripped = False
+		self.devices = devices
+
 		self.suppress_idle_warning = False
 
 		self.api = API(self.child_id)
 
-	def on_rotary_encoder_wait_tick(self, idle_time):
+		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
+			on_activity = self.on_rotary_encoder_activity
+		))
+
+		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
+			WaitTickListener(
+				on_tick = self.on_backlight_dim_idle,
+				seconds = NVRAMValues.BACKLIGHT_DIM_TIMEOUT.get()
+			),
+			WaitTickListener(
+				on_tick = self.idle_warning,
+				seconds = NVRAMValues.IDLE_WARNING.get(),
+				recurring = True
+			),
+			WaitTickListener(
+				on_tick = self.on_idle,
+				seconds = 5,
+				recurring = True
+			)
+		])
+
+	def on_backlight_dim_idle(self, _: float) -> None:
+		print("Dimming backlight due to inactivity")
+		self.devices.backlight.set_color(BacklightColors.DIM)
+
+	def on_idle(self, _: float) -> None:
 		self.render_battery_percent(only_if_changed = True)
 
-		if idle_time >= Backlight.TIMEOUT:
-			self.backlight.set_color(BacklightColors.DIM)
+	def idle_warning(self, _: float) -> None:
+		print("Idle; warning if not suppressed and is discharging")
+		if not self.suppress_idle_warning and not self.devices.battery_monitor.is_charging():
+			for i in range(0, 3):
+				self.devices.backlight.set_color(BacklightColors.IDLE_WARNING)
+				self.devices.piezo.tone("idle_warning")
+				self.devices.backlight.set_color(BacklightColors.DEFAULT)
+				time.sleep(0.1)
 
-		if not self.suppress_idle_warning and idle_time > Flow.IDLE_DISCHARGING_WARNING_INTERVAL and not self.battery_monitor.is_charging() and not self.idle_warning_tripped:
-			self.idle_warning_tripped = True
-			self.idle_warning()
+	def on_rotary_encoder_activity(self) -> None:
+		self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
-	def idle_warning(self):
-		for i in range(0, 3):
-			self.backlight.set_color(BacklightColors.IDLE_WARNING)
-			self.piezo.tone("idle_warning")
-			self.backlight.set_color(BacklightColors.DEFAULT)
-			time.sleep(0.1)
-
-	def on_rotary_encoder_activity(self):
-		self.idle_warning_tripped = False
-		self.backlight.set_color(BacklightColors.DEFAULT)
-
-	def clear_and_show_battery(self):
-		self.lcd.clear()
+	def clear_and_show_battery(self) -> None:
+		self.devices.lcd.clear()
 		self.render_battery_percent()
 
 	def start(self):
-		self.lcd.clear()
+		self.devices.lcd.clear()
 
 		self.render_splash("Connecting...")
 		self.api.connect()
 
-		battery_percent = self.battery_monitor.get_percent()
+		battery_percent = self.devices.battery_monitor.get_percent()
 		if battery_percent is not None and battery_percent <= 15:
-			self.backlight.set_color(BacklightColors.ERROR)
+			self.devices.backlight.set_color(BacklightColors.ERROR)
 			self.render_splash(f"Low battery!")
-			self.piezo.tone("low_battery")
+			self.devices.piezo.tone("low_battery")
 
 			time.sleep(1.5)
 
-			self.backlight.set_color(BacklightColors.DEFAULT)
+			self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
-		self.lcd.clear()
+		self.devices.lcd.clear()
 
 		while True:
 			try:
@@ -123,26 +141,25 @@ class Flow:
 			except Exception as e:
 				traceback.print_exception(e)
 				self.render_splash("Error!")
-				self.backlight.set_color(BacklightColors.ERROR)
-				self.piezo.tone("error")
+				self.devices.backlight.set_color(BacklightColors.ERROR)
+				self.devices.piezo.tone("error")
 				time.sleep(2)
-				self.backlight.set_color(BacklightColors.DEFAULT)
+				self.devices.backlight.set_color(BacklightColors.DEFAULT)
 			finally:
 				self.clear_and_show_battery()
 
-	def render_header_text(self, text):
-		self.lcd.cursor_position(0, 0)
-		self.lcd.message = text
+	def render_header_text(self, text: str) -> None:
+		self.devices.lcd.write(text, (0, 0))
 
 	@staticmethod
-	def format_battery_percent(percent):
+	def format_battery_percent(percent: int) -> str:
 		return f"{percent}%"
 
-	def render_battery_percent(self, only_if_changed = False):
-		last_percent = self.battery_monitor.last_percent
+	def render_battery_percent(self, only_if_changed: bool = False) -> None:
+		last_percent = self.devices.battery_monitor.last_percent
 
 		try:
-			percent = self.battery_monitor.get_percent()
+			percent = self.devices.battery_monitor.get_percent()
 		except Exception as e:
 			traceback.print_exception(e)
 			return
@@ -153,42 +170,29 @@ class Flow:
 		message = self.format_battery_percent(percent)
 
 		if not only_if_changed or last_percent != percent:
-			lcd_width, _ = self.lcd_dimensions
-
 			if last_percent is not None and percent < last_percent:
 				current_len = len(message)
 				last_len = len(self.format_battery_percent(last_percent))
 				char_count_difference = last_len - current_len
 
 				if char_count_difference > 0:
-					self.lcd.cursor_position(lcd_width - last_len, 0)
-					self.lcd.message = " " * char_count_difference
+					self.devices.lcd.write(" " * char_count_difference, (LCD.COLUMNS - last_len, 0))
 
 			message = self.format_battery_percent(percent)
-			self.lcd.cursor_position(lcd_width - len(message), 0)
-			self.lcd.message = message
+			self.devices.lcd.write(message, (LCD.COLUMNS - len(message), 0))
 
-	def render_splash(self, text):
+	def render_splash(self, text: str) -> None:
 		self.clear_and_show_battery()
-		self.render_centered_text(text)
+		self.devices.lcd.write_centered(text)
 
-	def render_centered_text(self, text, erase_if_shorter_than = None, y_delta = 0):
-		if erase_if_shorter_than is not None and len(text) < erase_if_shorter_than:
-			self.render_centered_text(" " * erase_if_shorter_than)
-
-		lcd_width, lcd_height = self.lcd_dimensions
-
-		self.lcd.cursor_position(max(int(lcd_width / 2 - len(text) / 2), 0), max(int(lcd_height / 2) - 1 + y_delta, 0))
-		self.lcd.message = text
-
-	def render_success_splash(self, text = "Saved!", hold_seconds = 1):
+	def render_success_splash(self, text: str = "Saved!", hold_seconds: int = 1) -> None:
 		self.render_splash(text)
-		self.backlight.set_color(BacklightColors.SUCCESS)
-		self.piezo.tone("success")
+		self.devices.backlight.set_color(BacklightColors.SUCCESS)
+		self.devices.piezo.tone("success")
 		time.sleep(hold_seconds)
-		self.backlight.set_color(BacklightColors.DEFAULT)
+		self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
-	def main_menu(self):
+	def main_menu(self) -> None:
 		self.render_battery_percent()
 
 		selected_index = VerticalMenu(options = [
@@ -196,7 +200,7 @@ class Flow:
 			"Diaper change",
 			"Pumping",
 			"Tummy time"
-		], flow = self, cancel_text = self.lcd_special_chars[LCDSpecialChars.LEFT] + "Opt").render_and_wait()
+		], devices = self.devices, cancel_text = self.devices.lcd[LCD.LEFT] + "Opt").render_and_wait()
 
 		self.clear_and_show_battery() # preps for next menu
 
@@ -213,7 +217,7 @@ class Flow:
 
 		self.clear_and_show_battery()
 
-	def settings(self):
+	def settings(self) -> None:
 		options = [
 			"Play sounds",
 			"Use backlight"
@@ -224,27 +228,28 @@ class Flow:
 			initial_states = [
 				NVRAMValues.OPTION_PIEZO.get(),
 				NVRAMValues.OPTION_BACKLIGHT.get()
-			], flow = self, anchor = VerticalMenu.ANCHOR_TOP).render_and_wait()
+			], devices = self.devices, anchor = VerticalMenu.ANCHOR_TOP
+		).render_and_wait()
 
 		if responses is not None:
 			NVRAMValues.OPTION_PIEZO.write(responses[0])
 			NVRAMValues.OPTION_BACKLIGHT.write(responses[1])
 
-			if NVRAMValues.OPTION_BACKLIGHT.get() != self.backlight.is_option_enabled:
-				self.backlight.is_option_enabled = NVRAMValues.OPTION_BACKLIGHT.get()
-				if self.backlight.is_option_enabled:
-					self.backlight.set_color(BacklightColors.DEFAULT)
+			if NVRAMValues.OPTION_BACKLIGHT.get() != self.devices.backlight.is_option_enabled:
+				self.devices.backlight.is_option_enabled = NVRAMValues.OPTION_BACKLIGHT.get()
+				if self.devices.backlight.is_option_enabled:
+					self.devices.backlight.set_color(BacklightColors.DEFAULT)
 				else:
-					self.backlight.off()
+					self.devices.backlight.off()
 
-	def diaper(self):
+	def diaper(self) -> None:
 		self.render_header_text("How was diaper?")
 
 		selected_index = VerticalMenu(options = [
 			"Wet",
 			"Solid",
 			"Both"
-		], flow = self).render_and_wait()
+		], devices = self.devices).render_and_wait()
 
 		if selected_index is not None:
 			is_wet = selected_index == 0 or selected_index == 2
@@ -258,7 +263,7 @@ class Flow:
 		self.render_header_text("How much pumped?")
 
 		amount = NumericSelector(
-			flow = self,
+			devices = self.devices,
 			minimum = 0,
 			step = 0.5,
 			format_str = "%.1f fl oz"
@@ -269,14 +274,14 @@ class Flow:
 			self.api.post_pumping(amount = amount)
 			self.render_success_splash()
 
-	def feeding_menu(self, timer_id = None):
+	def feeding_menu(self, timer_id: int = None) -> None:
 		self.clear_and_show_battery()
 
 		def get_name(item):
 			return item["name"]
 
 		selected_index = VerticalMenu(
-			flow = self,
+			devices = self.devices,
 			options = list(map(get_name, Flow.FOOD_TYPES))
 		).render_and_wait()
 
@@ -297,12 +302,11 @@ class Flow:
 						method_names.append(available_method["name"])
 
 			self.clear_and_show_battery()
-			_, lcd_height = self.lcd_dimensions
-			if len(method_names) < lcd_height:
+			if len(method_names) < LCD.LINES:
 				self.render_header_text("How was this fed?")
 
 			selected_index = VerticalMenu(
-				flow = self,
+				devices = self.devices,
 				options = method_names,
 				anchor = VerticalMenu.ANCHOR_BOTTOM
 			).render_and_wait()
@@ -320,9 +324,9 @@ class Flow:
 		self.api.post_feeding(timer_id = timer_id, food_type = food_type, method = method)
 		self.render_success_splash()
 
-	def feeding(self):
+	def feeding(self) -> None:
 		self.render_splash("Checking status...")
-		timer_id, duration = self.api.get_timer("feeding")
+		timer_id, _ = self.api.get_timer("feeding")
 		self.clear_and_show_battery()
 
 		last_feeding_str = ""
@@ -355,7 +359,7 @@ class Flow:
 			selected_index = VerticalMenu(options = [
 				"Yes" if last_feeding_str is None else f"Yes ({last_feeding_str})",
 				"No, record"
-			], flow = self).render_and_wait()
+			], devices = self.devices, anchor = VerticalMenu.ANCHOR_BOTTOM).render_and_wait()
 
 			if selected_index == 0: # no timer and start one
 				self.render_splash("Starting timer...")
@@ -363,12 +367,12 @@ class Flow:
 
 				self.clear_and_show_battery()
 				self.render_header_text("Feeding timer")
-				response = ActiveTimer(self, periodic_chime = EscalatingIntervalPeriodicChime(
-					self.piezo,
+				response = self.active_timer(EscalatingIntervalPeriodicChime(
+					devices = self.devices,
 					chime_at_seconds = 60 * 15,
 					escalating_chime_at_seconds = 60 * 30,
 					interval_once_escalated_seconds = 60
-				)).render_and_wait()
+				))
 				if response:
 					self.clear_and_show_battery()
 					return self.feeding_menu(timer_id)
@@ -379,7 +383,7 @@ class Flow:
 		else:
 			return self.feeding_menu(timer_id)
 
-	def tummy_time(self):
+	def tummy_time(self) -> None:
 		self.render_splash("Checking status...")
 		timer_id, duration = self.api.get_timer("tummy_time")
 
@@ -388,23 +392,30 @@ class Flow:
 		if timer_id is None:
 			self.render_header_text("Start timer?")
 
-			if BooleanPrompt(flow = self).render_and_wait():
+			if BooleanPrompt(devices = self.devices).render_and_wait():
 				self.render_splash("Starting timer...")
 				timer_id = self.api.start_timer("tummy_time")
 
 				self.clear_and_show_battery()
 				self.render_header_text("Tummy time")
-				response = ActiveTimer(self, periodic_chime = ConsistentIntervalPeriodicChime(self.piezo, 60)).render_and_wait()
+				response = self.active_timer(ConsistentIntervalPeriodicChime(
+					devices = self.devices,
+					chime_at_seconds = 60
+				))
 				if response:
 					self.api.post_tummy_time(timer_id)
 					self.render_success_splash()
 				else:
 					self.api.stop_timer(timer_id)
 		else:
-			self.render_header_text(f"Done? {duration}")
-			if BooleanPrompt(flow = self).render_and_wait():
+			self.render_header_text(f"Done? {duration.to_short_format()}")
+			if BooleanPrompt(devices = self.devices).render_and_wait():
 				self.render_splash("Saving...")
 				self.api.post_tummy_time(timer_id)
 				self.render_success_splash()
 
-Flow.IDLE_DISCHARGING_WARNING_INTERVAL = 300
+	def active_timer(self, periodic_chime: PeriodicChime = None) -> bool:
+		self.suppress_idle_warning = True
+		response = ActiveTimer(devices = self.devices, periodic_chime = periodic_chime).render_and_wait()
+		self.suppress_idle_warning = False
+		return response

@@ -1,43 +1,45 @@
-from lcd_special_chars_module import LCDSpecialChars
-from rotary_encoder import RotaryEncoder
+from devices import Devices
+from lcd import LCD
+from periodic_chime import PeriodicChime
+from rotary_encoder import RotaryEncoder, WaitTickListener
 import time
-from piezo import PeriodicChime
 
 class UIComponent:
-	def __init__(self, flow, allow_cancel = True, cancel_text = None, cancel_align = None):
-		self.flow = flow
+	RIGHT = 0
+	LEFT = 1
+
+	def __init__(self, devices: Devices, allow_cancel: bool = True, cancel_text: str = None, cancel_align: int = None):
+		self.devices = devices
 		self.allow_cancel = allow_cancel
 		self.cancel_align = cancel_align
-		self.cancel_text = (self.flow.lcd_special_chars[LCDSpecialChars.LEFT] + "Cancel") if cancel_text is None else cancel_text
+		self.cancel_text = (self.devices.lcd[LCD.LEFT] + "Cancel") if cancel_text is None else cancel_text
 
-	def render_and_wait(self):
-		(lcd_width, lcd_height) = self.flow.lcd_dimensions
-
+	def render_and_wait(self) -> None:
 		if self.allow_cancel:
-			col = 0 if self.cancel_align == UIComponent.LEFT else lcd_width - len(self.cancel_text)
-			self.flow.lcd.cursor_position(col, lcd_height - 1)
-			self.flow.lcd.message = self.cancel_text
+			col = 0 if self.cancel_align == UIComponent.LEFT else LCD.COLUMNS - len(self.cancel_text)
+			self.devices.lcd.write(self.cancel_text, (col, LCD.LINES - 1))
 
-	def render_save(self, y_delta = 0):
-		lcd_width, lcd_height = self.flow.lcd_dimensions
-
-		save_message = "Save" + self.flow.lcd_special_chars[LCDSpecialChars.RIGHT]
-		self.flow.lcd.cursor_position(lcd_width - len(save_message), lcd_height - y_delta - 1)
-		self.flow.lcd.message = save_message
-
-UIComponent.RIGHT = 0
-UIComponent.LEFT = 1
+	def render_save(self, y_delta: int = 0) -> None:
+		save_message = "Save" + self.devices.lcd[LCD.RIGHT]
+		self.devices.lcd.write(save_message, (LCD.COLUMNS - len(save_message), LCD.LINES - y_delta - 1))
 
 class ActiveTimer(UIComponent):
-	def __init__(self, flow, allow_cancel = True, cancel_text = None, periodic_chime: PeriodicChime = None):
-		super().__init__(flow, allow_cancel, cancel_text, cancel_align = UIComponent.LEFT)
-		self.last_message = None
+	def __init__(self,
+		devices: Devices,
+		allow_cancel: bool = True,
+		cancel_text: str = None,
+		periodic_chime: PeriodicChime = None
+	):
+		super().__init__(
+			devices = devices,
+			allow_cancel = allow_cancel,
+			cancel_text = cancel_text,
+			cancel_align = UIComponent.LEFT
+		)
 		self.start = None
 		self.periodic_chime = periodic_chime
 
-	def render_and_wait(self):
-		self.flow.suppress_idle_warning = True
-
+	def render_and_wait(self) -> bool:
 		super().render_and_wait()
 
 		self.render_save()
@@ -46,47 +48,63 @@ class ActiveTimer(UIComponent):
 		if self.periodic_chime is not None:
 			self.periodic_chime.start()
 
+		class ActiveTimerWaitTickListener(WaitTickListener):
+			def __init__(self, devices: Devices, start: float, periodic_chime: PeriodicChime):
+				self.start = start
+				self.last_message = None
+				self.devices = devices
+				self.periodic_chime = periodic_chime
+				super().__init__(seconds = 1, on_tick = self.render_elapsed_time, recurring = True)
+
+			@staticmethod
+			def format_elapsed_time(elapsed: float) -> str:
+				if elapsed < 60:
+					return f"{elapsed:.0f} sec"
+
+				return f"{(elapsed // 60):.0f} min {(int(elapsed) % 60):.0f} sec"
+
+			def render_elapsed_time(self, _: float) -> None:
+				message = ActiveTimerWaitTickListener.format_elapsed_time(time.monotonic() - self.start)
+				self.devices.lcd.write_centered(
+					text = message,
+					erase_if_shorter_than = None if self.last_message is None else len(self.last_message)
+				)
+				self.last_message = message
+
+				if self.periodic_chime is not None:
+					self.periodic_chime.chime_if_needed()
+
+		wait_tick_listener = ActiveTimerWaitTickListener(
+			devices = self.devices,
+			start = self.start,
+			periodic_chime = self.periodic_chime
+		)
+
 		while True:
-			button = self.flow.rotary_encoder.wait(
+			button = self.devices.rotary_encoder.wait(
 				listen_for_rotation = False,
-				on_wait_tick = self.render_elapsed_time,
-				wait_tick = 1
+				extra_wait_tick_listeners = [wait_tick_listener]
 			)
-			self.flow.on_rotary_encoder_activity()
 			if button == RotaryEncoder.LEFT and self.allow_cancel:
-				self.flow.suppress_idle_warning = False
 				return None
 			elif button == RotaryEncoder.SELECT or button == RotaryEncoder.RIGHT:
-				self.flow.suppress_idle_warning = False
 				return True
 
-	def render_elapsed_time(self, elapsed):
-		self.flow.on_rotary_encoder_wait_tick(elapsed)
-
-		message = self.format_elapsed_time(time.monotonic() - self.start)
-		self.flow.render_centered_text(
-			message,
-			erase_if_shorter_than = None if self.last_message is None else len(self.last_message)
-		)
-		self.last_message = message
-
-		if self.periodic_chime is not None:
-			self.periodic_chime.chime_if_needed()
-
-	@staticmethod
-	def format_elapsed_time(elapsed):
-		if elapsed < 60:
-			return f"{elapsed:.0f} sec"
-
-		return f"{(elapsed // 60):.0f} min {(int(elapsed) % 60):.0f} sec"
-
 class NumericSelector(UIComponent):
-	def __init__(self, flow, value = None, step = 1, minimum = 0, maximum = None, allow_cancel = True, cancel_text = None, row = 2, format_str = "%d"):
-		super().__init__(flow = flow, allow_cancel = allow_cancel, cancel_text = cancel_text)
+	def __init__(self,
+		devices: Devices,
+		value: float = None,
+		step: float = 1,
+		minimum: float = 0,
+		maximum: float = None,
+		allow_cancel: bool = True,
+		cancel_text: str = None,
+		row: int = 2,
+		format_str: str = "%d"
+	):
+		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text)
 
-		_, lcd_height = self.flow.lcd_dimensions
-
-		assert(0 <= row < lcd_height)
+		assert(0 <= row < LCD.LINES)
 		assert(minimum is None or isinstance(minimum, (int, float)))
 		assert(maximum is None or isinstance(maximum, (int, float)))
 		assert(isinstance(step, (int, float)))
@@ -113,11 +131,10 @@ class NumericSelector(UIComponent):
 		self.row = row
 		self.format_str = format_str
 
-	def render_and_wait(self):
+	def render_and_wait(self) -> float:
 		super().render_and_wait()
 
-		self.flow.lcd.cursor_position(0, self.row)
-		self.flow.lcd.message = chr(LCDSpecialChars.UP_DOWN)
+		self.devices.lcd.write(self.devices.lcd[LCD.UP_DOWN], (0, self.row))
 
 		last_value = None
 		while True:
@@ -127,16 +144,15 @@ class NumericSelector(UIComponent):
 					last_strlen = len(self.format_str % last_value)
 					value_strlen_difference = last_strlen - selected_strlen
 					if value_strlen_difference > 0:
-						self.flow.lcd.cursor_position(1 + last_strlen - value_strlen_difference, self.row)
-						self.flow.lcd.message = " " * value_strlen_difference
+						self.devices.lcd.write(
+							message = " " * value_strlen_difference,
+							coords = (1 + last_strlen - value_strlen_difference, self.row))
 
-				self.flow.lcd.cursor_position(1, self.row)
-				self.flow.lcd.message = self.format_str % self.selected_value
+				self.devices.lcd.write(message = self.format_str % self.selected_value, coords = (1, self.row))
 
 				last_value = self.selected_value
 
-			button = self.flow.rotary_encoder.wait(on_wait_tick = self.flow.on_rotary_encoder_wait_tick)
-			self.flow.on_rotary_encoder_activity()
+			button = self.devices.rotary_encoder.wait()
 			if button == RotaryEncoder.LEFT and self.allow_cancel:
 				return None
 			if button == RotaryEncoder.UP or button == RotaryEncoder.CLOCKWISE:
@@ -156,23 +172,21 @@ class VerticalMenu(UIComponent):
 	ANCHOR_TOP = 0
 	ANCHOR_BOTTOM = 1
 
-	def __init__(self, flow, options, allow_cancel = True, cancel_text = None, anchor = 1):
-		super().__init__(flow = flow, allow_cancel = allow_cancel, cancel_text = cancel_text)
+	def __init__(self, devices: Devices, options: list[str], allow_cancel: bool = True, cancel_text: str = None, anchor: int = ANCHOR_BOTTOM):
+		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text)
 
 		self.options = options
 		self.selected_row_index = None
 		self.anchor = anchor
 
-	def index_to_row(self, i):
-		_, lcd_height = self.flow.lcd_dimensions
-
+	def index_to_row(self, i: int) -> int:
 		row = i
 		if self.anchor == VerticalMenu.ANCHOR_BOTTOM:
-			row += lcd_height - len(self.options)
+			row += LCD.LINES - len(self.options)
 
 		return row
 
-	def move_selection(self, button):
+	def move_selection(self, button: int) -> bool:
 		if button == RotaryEncoder.UP or button == RotaryEncoder.COUNTERCLOCKWISE:
 			self.move_selection_up(wrap = button == RotaryEncoder.UP)
 			return True
@@ -182,25 +196,26 @@ class VerticalMenu(UIComponent):
 
 		return False
 
-	def on_select_pressed(self):
+	def on_select_pressed(self) -> int:
 		return self.selected_row_index
 
-	def on_right_pressed(self):
+	def on_right_pressed(self) -> int:
 		return self.selected_row_index
 
-	def init_extra_ui(self):
+	def init_extra_ui(self) -> None:
 		pass
 
-	def format_menu_item(self, index, name):
+	def format_menu_item(self, index, name) -> str:
 		return name
 
-	def render_and_wait(self):
+	def render_and_wait(self) -> int:
 		super().render_and_wait()
 
 		i = 0
 		for value in self.options:
-			self.flow.lcd.cursor_position(1, self.index_to_row(i)) # skip first column; arrow goes there
-			self.flow.lcd.message = self.format_menu_item(i, value)
+			# skip first column; arrow goes there
+			item_str = self.format_menu_item(i, value)
+			self.devices.lcd.write(item_str, (1, self.index_to_row(i)))
 			i += 1
 
 		self.move_arrow(0)
@@ -208,8 +223,7 @@ class VerticalMenu(UIComponent):
 		self.init_extra_ui()
 
 		while True:
-			button = self.flow.rotary_encoder.wait(on_wait_tick = self.flow.on_rotary_encoder_wait_tick)
-			self.flow.on_rotary_encoder_activity()
+			button = self.devices.rotary_encoder.wait()
 			if not self.move_selection(button):
 				if button == RotaryEncoder.LEFT and self.allow_cancel:
 					return None
@@ -222,7 +236,7 @@ class VerticalMenu(UIComponent):
 					if result is not None:
 						return result
 
-	def move_selection_up(self, wrap = True):
+	def move_selection_up(self, wrap: bool = True) -> None:
 		row_index = self.selected_row_index - 1
 		if row_index < 0:
 			if wrap:
@@ -232,7 +246,7 @@ class VerticalMenu(UIComponent):
 
 		self.move_arrow(row_index)
 
-	def move_selection_down(self, wrap = True):
+	def move_selection_down(self, wrap: bool = True) -> None:
 		row_index = self.selected_row_index + 1
 		if row_index >= len(self.options):
 			if wrap:
@@ -242,52 +256,81 @@ class VerticalMenu(UIComponent):
 
 		self.move_arrow(row_index)
 
-	def move_arrow(self, row_index):
-		self.flow.lcd.cursor_position(0, self.index_to_row(row_index))
-		self.flow.lcd.message = self.flow.lcd_special_chars[LCDSpecialChars.RIGHT]
+	def move_arrow(self, row_index: int) -> None:
+		self.devices.lcd.write(message = self.devices.lcd[LCD.RIGHT], coords = (0, self.index_to_row(row_index)))
 
 		if self.selected_row_index is not None and row_index != self.selected_row_index:
-			self.flow.lcd.cursor_position(0, self.index_to_row(self.selected_row_index))
-			self.flow.lcd.message = " "
+			self.devices.lcd.write(message = " ", coords = (0, self.index_to_row(self.selected_row_index)))
 
 		self.selected_row_index = row_index
 
 class VerticalCheckboxes(VerticalMenu):
-	def __init__(self, flow, options, initial_states, allow_cancel = True, cancel_text = None, anchor = 1):
-		super().__init__(flow = flow, options = options, allow_cancel = allow_cancel, cancel_text = cancel_text, anchor = anchor)
+	def __init__(self,
+		devices: Devices,
+		options: list[str],
+		initial_states: list[bool],
+		allow_cancel: bool = True,
+		cancel_text: str = None,
+		anchor: int = 1
+	):
+		super().__init__(
+			devices = devices,
+			options = options,
+			allow_cancel = allow_cancel,
+			cancel_text = cancel_text,
+			anchor = anchor
+		)
 
 		assert(len(options) == len(initial_states))
 
 		self.states = initial_states
 
-	def get_checkbox_char(self, index):
-		return chr(LCDSpecialChars.CHECKED if self.states[index] else LCDSpecialChars.UNCHECKED)
+	def get_checkbox_char(self, index: int) -> str:
+		return self.devices.lcd[LCD.CHECKED] if self.states[index] else self.devices.lcd[LCD.UNCHECKED]
 
-	def toggle_item(self, index):
+	def toggle_item(self, index: int) -> None:
 		self.states[index] = not self.states[index]
-		self.flow.lcd.cursor_position(1, self.index_to_row(index))
-		self.flow.lcd.message = self.get_checkbox_char(index)
+		self.devices.lcd.write(self.get_checkbox_char(index), (1, self.index_to_row(index)))
 
-	def on_select_pressed(self):
+	def on_select_pressed(self) -> None:
 		self.toggle_item(self.selected_row_index)
 		return None
 
-	def on_right_pressed(self):
+	def on_right_pressed(self) -> list[bool]:
 		return self.states
 
-	def init_extra_ui(self):
+	def init_extra_ui(self) -> None:
 		self.render_save(y_delta = 1 if self.allow_cancel else 0)
 
-	def format_menu_item(self, index, name):
+	def format_menu_item(self, index: int, name: str) -> str:
 		return self.get_checkbox_char(index) + name
 
+	def render_and_wait(self) -> list[int]:
+		response = super().render_and_wait()
+		return None if response is None else self.states
+
 class BooleanPrompt(VerticalMenu):
-	def __init__(self, flow, allow_cancel = True, cancel_text = None, anchor = 1, yes_text = "Yes", no_text = "No"):
+	def __init__(
+		self,
+		devices: Devices,
+		allow_cancel: bool = True,
+		cancel_text: str = None,
+		anchor: int = VerticalMenu.ANCHOR_BOTTOM,
+		yes_text: str = "Yes",
+		no_text: str = "No"
+	):
 		if cancel_text is not None:
 			print("cancel_text is not supported for boolean prompts; it will be ignored")
-		super().__init__(options = [yes_text, no_text], flow = flow, allow_cancel = allow_cancel, cancel_text = None, anchor = anchor)
 
-	def render_and_wait(self):
+		super().__init__(
+			devices = devices,
+			options = [yes_text, no_text],
+			allow_cancel = allow_cancel,
+			cancel_text = None,
+			anchor = anchor
+		)
+
+	def render_and_wait(self) -> bool:
 		selected_index = super().render_and_wait()
 
 		if selected_index == 0:

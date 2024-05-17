@@ -4,8 +4,10 @@ lib/api.mpy
 lib/backlight.mpy
 lib/battery_monitor.mpy
 lib/flow.mpy
-lib/lcd_special_chars_module.mpy
 lib/piezo.mpy
 lib/rotary_encoder.mpy
 lib/ui_components.mpy
 lib/nvram.mpy
+/lib/devices.mpy
+/lib/lcd.mpy
+/lib/periodic_chime.mpy

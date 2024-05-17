@@ -3,7 +3,7 @@ import board
 import os
 
 class BacklightColor:
-	def __init__(self, name, default_value):
+	def __init__(self, name: str, default_value):
 		value = os.getenv(name)
 		if value is None:
 			value = default_value
@@ -43,10 +43,10 @@ class Backlight:
 		else:
 			self.off()
 
-	def set_color(self, color: BacklightColor):
+	def set_color(self, color: BacklightColor) -> None:
 		if self.is_option_enabled:
 			self.backlight.color = color.invert()
 
-	def off(self):
+	def off(self) -> None:
 		print(f"Disabling backlight")
 		self.backlight.color = (255, 255, 255) # inverted
