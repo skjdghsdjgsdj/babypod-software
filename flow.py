@@ -8,8 +8,7 @@ from lcd import LCD
 from nvram import NVRAMValues
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from rotary_encoder import ActivityListener, WaitTickListener
-from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, BooleanPrompt, ActiveTimer
-
+from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer
 
 class Flow:
 	FOOD_TYPES = [
@@ -248,12 +247,10 @@ class Flow:
 			NVRAMValues.OPTION_PIEZO.write(responses[0])
 			NVRAMValues.OPTION_BACKLIGHT.write(responses[1])
 
-			if NVRAMValues.OPTION_BACKLIGHT.get() != self.devices.backlight.is_option_enabled:
-				self.devices.backlight.is_option_enabled = NVRAMValues.OPTION_BACKLIGHT.get()
-				if self.devices.backlight.is_option_enabled:
-					self.devices.backlight.set_color(BacklightColors.DEFAULT)
-				else:
-					self.devices.backlight.off()
+			if NVRAMValues.OPTION_BACKLIGHT.get():
+				self.devices.backlight.set_color(BacklightColors.DEFAULT)
+			else:
+				self.devices.backlight.off()
 
 	def diaper(self) -> None:
 		self.render_header_text("How was diaper?")

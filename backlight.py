@@ -2,6 +2,8 @@ import adafruit_rgbled
 import board
 import os
 
+from nvram import NVRAMValues
+
 class BacklightColor:
 	def __init__(self, name: str, default_value):
 		value = os.getenv(name)
@@ -34,17 +36,16 @@ class BacklightColors:
 class Backlight:
 	TIMEOUT = 30
 
-	def __init__(self, is_option_enabled: bool = True):
-		self.is_option_enabled = is_option_enabled
+	def __init__(self):
 		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 
-		if is_option_enabled:
+		if NVRAMValues.OPTION_BACKLIGHT.get():
 			self.set_color(BacklightColors.DEFAULT)
 		else:
 			self.off()
 
 	def set_color(self, color: BacklightColor) -> None:
-		if self.is_option_enabled:
+		if NVRAMValues.OPTION_BACKLIGHT.get():
 			self.backlight.color = color.invert()
 
 	def off(self) -> None:

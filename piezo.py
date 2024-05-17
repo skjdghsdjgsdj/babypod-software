@@ -2,6 +2,8 @@ import simpleio
 import board
 import time
 
+from nvram import NVRAMValues
+
 class Piezo:
 	TONES = {
 		"startup": [
@@ -35,11 +37,9 @@ class Piezo:
 		]
 	}
 
-	def __init__(self, is_option_enabled: bool = True):
-		self.is_option_enabled = is_option_enabled
-
-	def tone(self, name: str) -> None:
-		if self.is_option_enabled:
+	@staticmethod
+	def tone(name: str) -> None:
+		if NVRAMValues.OPTION_PIEZO.get():
 			data = Piezo.TONES[name]
 			for i in range(0, len(data)):
 				frequency, duration = data[i]

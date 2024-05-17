@@ -14,11 +14,11 @@ lcd.write("Starting up...")
 from nvram import NVRAMValues
 
 from piezo import Piezo
-piezo = Piezo(NVRAMValues.OPTION_PIEZO.get())
+piezo = Piezo()
 piezo.tone("startup")
 
 from backlight import Backlight
-backlight = Backlight(NVRAMValues.OPTION_BACKLIGHT.get())
+backlight = Backlight()
 
 from digitalio import DigitalInOut, Direction
 from battery_monitor import BatteryMonitor
