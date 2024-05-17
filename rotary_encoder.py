@@ -124,7 +124,6 @@ class RotaryEncoder:
 						listener.trigger(elapsed)
 						listener.last_triggered = now
 
-
 		for activity_listener in self.on_activity_listeners:
 			activity_listener.trigger()
 
