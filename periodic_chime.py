@@ -2,7 +2,6 @@ import time
 
 from devices import Devices
 
-
 class PeriodicChime:
 	def __init__(self, devices: Devices):
 		self.last_chime = None
