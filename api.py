@@ -217,3 +217,19 @@ class API:
 		return {
 			"Authorization": f"Token {self.api_key}"
 		}
+
+	@staticmethod
+	def datetime_to_time_str(datetime_obj: adafruit_datetime.datetime) -> str:
+		hour = datetime_obj.hour
+		minute = datetime_obj.minute
+		meridian = "am"
+
+		if hour == 0:
+			hour = 12
+		elif hour == 12:
+			meridian = "pm"
+		elif hour > 12:
+			hour = hour - 12
+			meridian = "pm"
+
+		return f"{hour}:{minute:02}{meridian}"

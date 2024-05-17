@@ -28,7 +28,8 @@ class ActiveTimer(UIComponent):
 		devices: Devices,
 		allow_cancel: bool = True,
 		cancel_text: str = None,
-		periodic_chime: PeriodicChime = None
+		periodic_chime: PeriodicChime = None,
+		start_at: float = 0
 	):
 		super().__init__(
 			devices = devices,
@@ -38,6 +39,7 @@ class ActiveTimer(UIComponent):
 		)
 		self.start = None
 		self.periodic_chime = periodic_chime
+		self.start_at = start_at
 
 	def render_and_wait(self) -> bool:
 		super().render_and_wait()
@@ -76,7 +78,7 @@ class ActiveTimer(UIComponent):
 
 		wait_tick_listener = ActiveTimerWaitTickListener(
 			devices = self.devices,
-			start = self.start,
+			start = self.start - self.start_at,
 			periodic_chime = self.periodic_chime
 		)
 

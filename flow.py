@@ -1,7 +1,7 @@
 import time
 import traceback
 
-from api import API
+from api import API, Duration
 from backlight import BacklightColors
 from devices import Devices
 from lcd import LCD
@@ -274,7 +274,69 @@ class Flow:
 			self.api.post_pumping(amount = amount)
 			self.render_success_splash()
 
-	def feeding_menu(self, timer_id: int = None) -> None:
+
+	def start_or_resume_timer(self, header_text: str, timer_name: str, periodic_chime: PeriodicChime = None, subtext: str = None) -> int:
+		self.render_splash("Checking status...")
+		timer_id, elapsed = self.api.get_timer(timer_name)
+
+		if timer_id is None:
+			elapsed = Duration(0)
+			timer_id = self.api.start_timer(timer_name)
+
+		self.clear_and_show_battery()
+		self.render_header_text(header_text)
+
+		if subtext is not None:
+			self.devices.lcd.write(message = subtext, coords = (0, 2))
+
+		self.suppress_idle_warning = True
+		response = ActiveTimer(
+			devices = self.devices,
+			periodic_chime = periodic_chime,
+			start_at = elapsed.seconds
+		).render_and_wait()
+		self.suppress_idle_warning = False
+
+		if response is None:
+			self.api.stop_timer(timer_id)
+			return None # canceled
+
+		return timer_id
+
+	def feeding(self) -> None:
+		self.render_splash("Getting feeding...")
+
+		last_feeding, method = self.api.get_last_feeding()
+		if last_feeding is not None:
+			last_feeding_str = "Last was " + API.datetime_to_time_str(last_feeding)
+
+			if method == "right breast":
+				last_feeding_str += ", R"
+			elif method == "left breast":
+				last_feeding_str += ", L"
+		else:
+			last_feeding_str = None
+
+		saved = False
+		while not saved:
+			timer_id = self.start_or_resume_timer(
+				header_text = "Feeding",
+				timer_name = "feeding",
+				periodic_chime = EscalatingIntervalPeriodicChime(
+					devices = self.devices,
+					chime_at_seconds = 60 * 15,
+					escalating_chime_at_seconds = 60 * 30,
+					interval_once_escalated_seconds = 60
+				),
+				subtext = last_feeding_str
+			)
+
+			if timer_id is not None:
+				saved = self.save_feeding(timer_id)
+			else:
+				return # canceled the timer
+
+	def save_feeding(self, timer_id: int) -> bool:
 		self.clear_and_show_battery()
 
 		def get_name(item):
@@ -286,7 +348,7 @@ class Flow:
 		).render_and_wait()
 
 		if selected_index is None:
-			return
+			return False
 
 		food_type_metadata = Flow.FOOD_TYPES[selected_index]
 		food_type = food_type_metadata["type"]
@@ -312,7 +374,7 @@ class Flow:
 			).render_and_wait()
 
 			if selected_index is None:
-				return
+				return False
 
 			selected_method_name = method_names[selected_index]
 			for available_method in Flow.FEEDING_METHODS:
@@ -324,98 +386,18 @@ class Flow:
 		self.api.post_feeding(timer_id = timer_id, food_type = food_type, method = method)
 		self.render_success_splash()
 
-	def feeding(self) -> None:
-		self.render_splash("Checking status...")
-		timer_id, _ = self.api.get_timer("feeding")
-		self.clear_and_show_battery()
-
-		last_feeding_str = ""
-		try:
-			last_feeding, method = self.api.get_last_feeding()
-			if last_feeding is not None:
-				hour = last_feeding.hour
-				minute = last_feeding.minute
-				meridian = "am"
-
-				if hour == 0:
-					hour = 12
-				elif hour == 12:
-					meridian = "pm"
-				elif hour > 12:
-					hour = hour - 12
-					meridian = "pm"
-
-				last_feeding_str = f"{hour}:{minute:02}{meridian}"
-
-				if method == "right breast":
-					last_feeding_str += ", R"
-				elif method == "left breast":
-					last_feeding_str += ", L"
-		except Exception as e:
-			print(f"Failed to get last feeding: {e}")
-
-		if timer_id is None:
-			self.render_header_text("Start timer?")
-			selected_index = VerticalMenu(options = [
-				"Yes" if last_feeding_str is None else f"Yes ({last_feeding_str})",
-				"No, record"
-			], devices = self.devices, anchor = VerticalMenu.ANCHOR_BOTTOM).render_and_wait()
-
-			if selected_index == 0: # no timer and start one
-				self.render_splash("Starting timer...")
-				timer_id = self.api.start_timer("feeding")
-
-				self.clear_and_show_battery()
-				self.render_header_text("Feeding timer")
-				response = self.active_timer(EscalatingIntervalPeriodicChime(
-					devices = self.devices,
-					chime_at_seconds = 60 * 15,
-					escalating_chime_at_seconds = 60 * 30,
-					interval_once_escalated_seconds = 60
-				))
-				if response:
-					self.clear_and_show_battery()
-					return self.feeding_menu(timer_id)
-				elif response is None:
-					self.api.stop_timer(timer_id)
-			elif selected_index == 1: # no timer but don't care, record with 0 duration
-				return self.feeding_menu(timer_id)
-		else:
-			return self.feeding_menu(timer_id)
+		return True
 
 	def tummy_time(self) -> None:
-		self.render_splash("Checking status...")
-		timer_id, duration = self.api.get_timer("tummy_time")
+		timer_id = self.start_or_resume_timer(
+			header_text = "Tummy time",
+			timer_name = "tummy_time",
+			periodic_chime = ConsistentIntervalPeriodicChime(
+				devices = self.devices,
+				chime_at_seconds = 60
+			)
+		)
 
-		self.clear_and_show_battery()
-
-		if timer_id is None:
-			self.render_header_text("Start timer?")
-
-			if BooleanPrompt(devices = self.devices).render_and_wait():
-				self.render_splash("Starting timer...")
-				timer_id = self.api.start_timer("tummy_time")
-
-				self.clear_and_show_battery()
-				self.render_header_text("Tummy time")
-				response = self.active_timer(ConsistentIntervalPeriodicChime(
-					devices = self.devices,
-					chime_at_seconds = 60
-				))
-				if response:
-					self.api.post_tummy_time(timer_id)
-					self.render_success_splash()
-				else:
-					self.api.stop_timer(timer_id)
-		else:
-			self.render_header_text(f"Done? {duration.to_short_format()}")
-			if BooleanPrompt(devices = self.devices).render_and_wait():
-				self.render_splash("Saving...")
-				self.api.post_tummy_time(timer_id)
-				self.render_success_splash()
-
-	def active_timer(self, periodic_chime: PeriodicChime = None) -> bool:
-		self.suppress_idle_warning = True
-		response = ActiveTimer(devices = self.devices, periodic_chime = periodic_chime).render_and_wait()
-		self.suppress_idle_warning = False
-		return response
+		if timer_id is not None:
+			self.api.post_tummy_time(timer_id)
+			self.render_success_splash()
