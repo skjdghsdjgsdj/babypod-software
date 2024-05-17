@@ -193,10 +193,23 @@ class Flow:
 		self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
 	def main_menu(self) -> None:
-		self.render_battery_percent()
+		self.render_splash("Getting feeding...")
+
+		last_feeding, method = self.api.get_last_feeding()
+		if last_feeding is not None:
+			last_feeding_str = "Feed " + API.datetime_to_time_str(last_feeding)
+
+			if method == "right breast":
+				last_feeding_str += " R"
+			elif method == "left breast":
+				last_feeding_str += " L"
+		else:
+			last_feeding_str = "Feeding"
+
+		self.clear_and_show_battery()
 
 		selected_index = VerticalMenu(options = [
-			f"Feeding",
+			last_feeding_str,
 			"Diaper change",
 			"Pumping",
 			"Tummy time"
@@ -304,19 +317,6 @@ class Flow:
 		return timer_id
 
 	def feeding(self) -> None:
-		self.render_splash("Getting feeding...")
-
-		last_feeding, method = self.api.get_last_feeding()
-		if last_feeding is not None:
-			last_feeding_str = "Last was " + API.datetime_to_time_str(last_feeding)
-
-			if method == "right breast":
-				last_feeding_str += ", R"
-			elif method == "left breast":
-				last_feeding_str += ", L"
-		else:
-			last_feeding_str = None
-
 		saved = False
 		while not saved:
 			timer_id = self.start_or_resume_timer(
@@ -327,8 +327,7 @@ class Flow:
 					chime_at_seconds = 60 * 15,
 					escalating_chime_at_seconds = 60 * 30,
 					interval_once_escalated_seconds = 60
-				),
-				subtext = last_feeding_str
+				)
 			)
 
 			if timer_id is not None:
