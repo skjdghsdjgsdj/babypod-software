@@ -395,5 +395,6 @@ class Flow:
 		)
 
 		if timer_id is not None:
+			self.render_splash("Saving...")
 			self.api.post_tummy_time(timer_id)
 			self.render_success_splash()
