@@ -229,7 +229,7 @@ class API:
 		elif hour == 12:
 			meridian = "p"
 		elif hour > 12:
-			hour = hour - 12
+			hour -= 12
 			meridian = "p"
 
 		return f"{hour}:{minute:02}{meridian}"
