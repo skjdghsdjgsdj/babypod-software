@@ -6,6 +6,7 @@ supervisor.runtime.autoreload = False
 from busio import I2C
 from lcd import LCD
 
+# noinspection PyUnresolvedReferences
 i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
 lcd = LCD(i2c)
@@ -26,6 +27,7 @@ from rotary_encoder import RotaryEncoder
 from flow import Flow
 
 # turn off Neopixel
+# noinspection PyUnresolvedReferences
 neopixel = DigitalInOut(board.NEOPIXEL)
 neopixel.direction = Direction.OUTPUT
 neopixel.value = False

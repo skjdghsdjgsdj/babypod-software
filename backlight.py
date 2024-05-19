@@ -37,6 +37,7 @@ class Backlight:
 	TIMEOUT = 30
 
 	def __init__(self):
+		# noinspection PyUnresolvedReferences
 		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 
 		if NVRAMValues.OPTION_BACKLIGHT.get():
