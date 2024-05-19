@@ -4,6 +4,13 @@ from periodic_chime import PeriodicChime
 from rotary_encoder import RotaryEncoder, WaitTickListener
 import time
 
+# noinspection PyBroadException
+try:
+	from typing import Optional
+except:
+	pass
+	# ignore, just for IDE's sake, not supported on board
+
 class UIComponent:
 	RIGHT = 0
 	LEFT = 1
@@ -41,7 +48,7 @@ class ActiveTimer(UIComponent):
 		self.periodic_chime = periodic_chime
 		self.start_at = start_at
 
-	def render_and_wait(self) -> bool:
+	def render_and_wait(self) -> Optional[bool]:
 		super().render_and_wait()
 
 		self.render_save()
@@ -133,7 +140,7 @@ class NumericSelector(UIComponent):
 		self.row = row
 		self.format_str = format_str
 
-	def render_and_wait(self) -> float:
+	def render_and_wait(self) -> Optional[float]:
 		super().render_and_wait()
 
 		self.devices.lcd.write(self.devices.lcd[LCD.UP_DOWN], (0, self.row))
@@ -210,7 +217,7 @@ class VerticalMenu(UIComponent):
 	def format_menu_item(self, index, name) -> str:
 		return name
 
-	def render_and_wait(self) -> int:
+	def render_and_wait(self) -> Optional[int]:
 		super().render_and_wait()
 
 		i = 0
@@ -332,7 +339,7 @@ class BooleanPrompt(VerticalMenu):
 			anchor = anchor
 		)
 
-	def render_and_wait(self) -> bool:
+	def render_and_wait(self) -> Optional[bool]:
 		selected_index = super().render_and_wait()
 
 		if selected_index == 0:

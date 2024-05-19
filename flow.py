@@ -10,6 +10,13 @@ from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPe
 from rotary_encoder import ActivityListener, WaitTickListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer
 
+# noinspection PyBroadException
+try:
+	from typing import Optional
+except:
+	pass
+	# ignore, just for IDE's sake, not supported on board
+
 class Flow:
 	FOOD_TYPES = [
 		{
@@ -285,7 +292,12 @@ class Flow:
 			self.render_success_splash()
 
 
-	def start_or_resume_timer(self, header_text: str, timer_name: str, periodic_chime: PeriodicChime = None, subtext: str = None) -> int:
+	def start_or_resume_timer(self,
+		header_text: str,
+		timer_name: str,
+		periodic_chime: PeriodicChime = None,
+		subtext: str = None
+	) -> Optional[int]:
 		self.render_splash("Checking status...")
 		timer_id, elapsed = self.api.get_timer(timer_name)
 

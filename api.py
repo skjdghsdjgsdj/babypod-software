@@ -7,6 +7,13 @@ import os
 from adafruit_datetime import datetime
 import binascii
 
+# noinspection PyBroadException
+try:
+	from typing import Optional
+except:
+	pass
+	# ignore, just for IDE's sake, not supported on board
+
 class Duration:
 	def __init__(self, seconds: float):
 		assert(seconds >= 0)
@@ -95,7 +102,7 @@ class API:
 			"timer": timer_id
 		})
 
-	def get_last_feeding(self) -> tuple[adafruit_datetime.datetime, str]:
+	def get_last_feeding(self) -> tuple[Optional[adafruit_datetime.datetime], Optional[str]]:
 		feeding = self.get("feedings", {
 			"child_id": self.child_id,
 			"limit": 1
@@ -106,7 +113,7 @@ class API:
 
 		return datetime.fromisoformat(feeding["results"][0]["start"]), feeding["results"][0]["method"]
 
-	def get_timer(self, name: str) -> tuple[int, Duration]:
+	def get_timer(self, name: str) -> tuple[Optional[int], Optional[Duration]]:
 		timers = self.get("timers", {
 			"child_id": self.child_id,
 			"name": self.build_timer_name(name)
