@@ -22,22 +22,26 @@ class Flow:
 		{
 			"name": "Breast milk",
 			"type": "breast milk",
-			"methods": ["left breast", "right breast", "both breasts", "bottle"]
+			"methods": ["left breast", "right breast", "both breasts", "bottle"],
+			"mask": 0x1
 		},
 		{
 			"name": "Fort. breast milk",
 			"type": "fortified breast milk",
-			"methods": ["bottle"]
+			"methods": ["bottle"],
+			"mask": 0x2
 		},
 		{
 			"name": "Formula",
 			"type": "formula",
-			"methods": ["bottle"]
+			"methods": ["bottle"],
+			"mask": 0x4
 		},
 		{
 			"name": "Solid food",
 			"type": "solid food",
-			"methods": ["parent fed", "self fed"]
+			"methods": ["parent fed", "self fed"],
+			"mask": 0x8
 		}
 	]
 
@@ -350,15 +354,29 @@ class Flow:
 		def get_name(item):
 			return item["name"]
 
-		selected_index = VerticalMenu(
-			devices = self.devices,
-			options = list(map(get_name, Flow.FOOD_TYPES))
-		).render_and_wait()
+		enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
 
-		if selected_index is None:
-			return False
+		options = []
+		for food_type in Flow.FOOD_TYPES:
+			if food_type["mask"] & enabled_food_types:
+				options.append(food_type)
 
-		food_type_metadata = Flow.FOOD_TYPES[selected_index]
+		if not options:
+			raise ValueError(f"All food types excluded by ENABLED_FOOD_TYPES_MASK bitmask {enabled_food_types}")
+
+		if len(options) == 1:
+			food_type_metadata = options[0]
+		else:
+			selected_index = VerticalMenu(
+				devices = self.devices,
+				options = list(map(get_name, options))
+			).render_and_wait()
+
+			if selected_index is None:
+				return False
+
+			food_type_metadata = options[selected_index]
+
 		food_type = food_type_metadata["type"]
 
 		method = None

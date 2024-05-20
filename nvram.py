@@ -86,3 +86,4 @@ class NVRAMValues:
     CHILD_ID = NVRAMIntegerValue(2, 1)
     BACKLIGHT_DIM_TIMEOUT = NVRAMIntegerValue(3, 30)
     IDLE_WARNING = NVRAMIntegerValue(4, 60 * 5)
+    ENABLED_FOOD_TYPES_MASK = NVRAMIntegerValue(5, 0x1 + 0x2 + 0x4 + 0x8)
