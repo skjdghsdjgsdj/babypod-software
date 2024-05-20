@@ -14,7 +14,7 @@ if [ $? -eq 0 ]; then
     if [ -z "$GIT_STATUS" ]; then
       GIT_HASH=$(git rev-parse --short HEAD)
       if [ $? -eq 0 ]; then
-        "BABYPOD_VERSION = \"$GIT_HASH\"" > version.py
+        echo "BABYPOD_VERSION = \"$GIT_HASH\"" > version.py
         echo "done ($GIT_STATUS)"
       else
         echo "Failed to get git short hash; not including versioning info" 1>&2
