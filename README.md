@@ -163,7 +163,7 @@ Please contribute and submit pull requests if you can help!
 - Wi-Fi is periodically slow to connect as are network requests in general. Sometimes it takes a couple seconds, but other times 10 or 15 seconds.
 - The rotary encoder doesn't always respond on the first input. There is retry logic in the abstraction for that reason.
 - Some things are hardcoded, like chime intervals during active timers, instead of either user-configurable or defined in `settings.toml`.
-- The child ID is hardcoded to 1.
+- Only one child is supported. If multiple are defined in Baby Buddy, the first is used.
 - Writing to the LCD is pretty slow, presumably because it's done via I2C. In theory the LCD backpack isn't needed and the LCD can be wired directly to the Feather, but I presume it would be a huge mess of wires shoved into the enclosure, even beyond what's already in there. On the plus side, removal of the LCD backpack could allow a bigger battery and therefore less frequent charging.
 - The chime interval during feeding can slowly drift a bit instead of actually chiming precisely at the value passed to an `ActiveTimer`..
 - On MAX17048 battery monitor chips, the battery percent isn't immediately available and is hidden until the chip reports a plausible (non-None, >0) value.
