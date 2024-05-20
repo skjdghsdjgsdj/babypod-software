@@ -1,11 +1,5 @@
-import supervisor
 import board
-
-try:
-	from version import *
-except ImportError:
-	# don't care
-	pass
+import supervisor
 
 supervisor.runtime.autoreload = False
 
@@ -17,6 +11,12 @@ i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
 lcd = LCD(i2c)
 lcd.write("Starting up...")
+
+try:
+	from version import *
+except ImportError:
+	# don't care
+	pass
 
 if "BABYPOD_VERSION" in globals():
 	# noinspection PyUnresolvedReferences
