@@ -19,6 +19,7 @@ lcd = LCD(i2c)
 lcd.write("Starting up...")
 
 if "BABYPOD_VERSION" in globals():
+	# noinspection PyUnresolvedReferences
 	lcd.write_bottom_right_aligned(BABYPOD_VERSION)
 
 from nvram import NVRAMValues
