@@ -15,7 +15,7 @@ if [ $? -eq 0 ]; then
       GIT_HASH=$(git rev-parse --short HEAD)
       if [ $? -eq 0 ]; then
         echo "BABYPOD_VERSION = \"$GIT_HASH\"" > version.py
-        echo "done ($GIT_STATUS)"
+        echo "done ($GIT_HASH)"
       else
         echo "Failed to get git short hash; not including versioning info" 1>&2
       fi
@@ -74,6 +74,8 @@ echo -n "Deploying version info..."
 cp version.py $OUTPUT_PATH/
 if [ $? -ne 0 ]; then
   echo "failed to copy version info" 1>&2
+else
+  echo "done"
 fi
 
 rm version.py 2>/dev/null
