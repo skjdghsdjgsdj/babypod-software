@@ -46,10 +46,10 @@ class LCD:
         self.write(text, coords)
 
     def write_right_aligned(self, text: str, y: int = 0) -> None:
-        if len(str) >= LCD.COLUMNS:
+        if len(text) >= LCD.COLUMNS:
             raise ValueError(f"Text exceeds {LCD.COLUMNS} chars: {text}")
 
-        self.write(text, (LCD.COLUMNS - len(str), y))
+        self.write(text, (LCD.COLUMNS - len(text), y))
 
     def write_bottom_right_aligned(self, text: str, y_delta: int = 0) -> None:
         self.write_right_aligned(text, LCD.LINES - 1 - y_delta)
