@@ -126,6 +126,34 @@ The names of libraries created during the build process in `lib/` are already de
 | `VerticalCheckboxes` | Like `VerticalMenu`, but each item is preceded with a checkbox                                 |
 | `BooleanPrompt`      | Like `VerticalMenu`, but allows for one selection of exactly two options and returns a boolean |
 
+## Tips and Tricks
+
+### Feeding menu simplification
+
+You can hide types of feeding options (breast milk, fortified breast milk, formula, and solid food) with a bitmask
+stored in NVRAM. If only one is enabled, the user isn't prompted at all for the food type.
+
+The values are:
+
+| Food type             | Value |
+|-----------------------|-------|
+| Breast milk           | `0x1` |
+| Fortified breast milk | `0x2` |
+| Formula               | `0x4` |
+| Solid food            | `0x8` |
+
+Calculate the bitmask of the options you want by adding the values. For example, to only show the two types of
+breast milk, use `0x1 + 0x2`, or to show just breast milk, use `0x1`. Then, in the REPL serial console, store the
+value in NVRAM like this:
+
+```
+import microcontroller
+microcontroller.nvm[5] = value
+```
+
+...where `value` is the bitmask. There's no user interface to do this for now, but being in NVRAM, this will
+persist across reboots.
+
 ## Known limitations and bugs
 
 Please contribute and submit pull requests if you can help!
