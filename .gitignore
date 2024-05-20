@@ -11,3 +11,5 @@ lib/nvram.mpy
 /lib/devices.mpy
 /lib/lcd.mpy
 /lib/periodic_chime.mpy
+version.py
+/lib/version.mpy

@@ -1,6 +1,12 @@
 import supervisor
 import board
 
+try:
+	from version import *
+except ImportError:
+	# don't care
+	pass
+
 supervisor.runtime.autoreload = False
 
 from busio import I2C
@@ -11,6 +17,9 @@ i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
 lcd = LCD(i2c)
 lcd.write("Starting up...")
+
+if "BABYPOD_VERSION" in globals():
+	lcd.write_bottom_right_aligned(BABYPOD_VERSION)
 
 from nvram import NVRAMValues
 
