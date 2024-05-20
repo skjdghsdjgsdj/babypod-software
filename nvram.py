@@ -60,6 +60,9 @@ class NVRAMBooleanValue(NVRAMValue):
     def native_to_nvram(self, native_value: bool) -> int:
         return 0xFF if native_value else 0xF0
 
+    def get(self) -> bool:
+        return super().get()
+
 class NVRAMIntegerValue(NVRAMValue):
     def __init__(self, index: int, default: int = None):
         super().__init__(index, default)
@@ -73,6 +76,9 @@ class NVRAMIntegerValue(NVRAMValue):
         if native_value == 0x0:
             print("Using int(0) as an NVRAM value is ambiguous: could be int(0), could be unset, assuming the former")
         return native_value
+    
+    def get(self) -> int:
+        return super().get()
 
 class NVRAMValues:
     OPTION_PIEZO = NVRAMBooleanValue(0, True)
