@@ -53,7 +53,4 @@ devices = Devices(
 	battery_monitor = battery_monitor
 )
 
-Flow(
-	child_id = NVRAMValues.CHILD_ID.get(),
-	devices = devices
-).start()
+Flow(devices = devices).start()

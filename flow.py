@@ -72,16 +72,12 @@ class Flow:
 		}
 	]
 
-	def __init__(self,
-		child_id: int,
-		devices: Devices
-	):
-		self.child_id = child_id
+	def __init__(self, devices: Devices):
 		self.devices = devices
 
 		self.suppress_idle_warning = False
 
-		self.api = API(self.child_id)
+		self.api = API()
 
 		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
 			on_activity = self.on_rotary_encoder_activity
@@ -144,6 +140,16 @@ class Flow:
 			self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
 		self.devices.lcd.clear()
+
+		child_id = NVRAMValues.CHILD_ID.get()
+		if not child_id:
+			self.render_splash("Getting children...")
+			child_id = self.api.get_child_id()
+			NVRAMValues.CHILD_ID.write(child_id)
+			self.devices.lcd.clear()
+			self.api.child_id = child_id
+
+		print(f"Using child ID {child_id}")
 
 		while True:
 			try:

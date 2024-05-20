@@ -83,7 +83,7 @@ class NVRAMIntegerValue(NVRAMValue):
 class NVRAMValues:
     OPTION_PIEZO = NVRAMBooleanValue(0, True)
     OPTION_BACKLIGHT = NVRAMBooleanValue(1, True)
-    CHILD_ID = NVRAMIntegerValue(2, 1)
+    CHILD_ID = NVRAMIntegerValue(2, 0)
     BACKLIGHT_DIM_TIMEOUT = NVRAMIntegerValue(3, 30)
     IDLE_WARNING = NVRAMIntegerValue(4, 60 * 5)
     ENABLED_FOOD_TYPES_MASK = NVRAMIntegerValue(5, 0x1 + 0x2 + 0x4 + 0x8)

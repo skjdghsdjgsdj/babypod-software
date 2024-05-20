@@ -46,9 +46,9 @@ class Duration:
 		return "0s" if len(parts) == 0 else " ".join(parts)
 
 class API:
-	def __init__(self, child_id: int):
+	def __init__(self):
 		self.requests = None
-		self.child_id = child_id
+		self.child_id = None
 		self.mac_id = None
 	
 		self.api_key = os.getenv("BABYBUDDY_AUTH_TOKEN")
@@ -152,6 +152,16 @@ class API:
 			"name": self.build_timer_name(name)
 		})
 		return response["id"]
+
+	def get_child_id(self) -> int:
+		response = self.get("children")
+		if response["count"] <= 0:
+			raise ValueError("No children defined in Baby Buddy")
+		else:
+			if response["count"] > 1:
+				print("More than one child defined in Baby Buddy; using first one")
+
+			return response["results"][0]["id"]
 
 	def stop_timer(self, timer_id: int) -> None:
 		self.delete("timers", timer_id)
