@@ -34,8 +34,6 @@ class BacklightColors:
 	SUCCESS = BacklightColor("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 
 class Backlight:
-	TIMEOUT = 30
-
 	def __init__(self):
 		# noinspection PyUnresolvedReferences
 		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
