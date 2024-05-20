@@ -147,7 +147,8 @@ class Flow:
 			child_id = self.api.get_child_id()
 			NVRAMValues.CHILD_ID.write(child_id)
 			self.devices.lcd.clear()
-			self.api.child_id = child_id
+
+		self.api.child_id = child_id
 
 		print(f"Using child ID {child_id}")
 
