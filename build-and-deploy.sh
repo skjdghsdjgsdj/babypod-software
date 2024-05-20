@@ -55,7 +55,8 @@ find . -maxdepth 1 -type f -not -name 'code.py' -name '*.py' | while read -r SOU
 		cp "$MPY_NAME" "$OUTPUT_PATH/lib/"
 		# shellcheck disable=SC2181
 		if [ $? -ne 0 ]; then
-			echo "Failed to copy built library $MPY_NAME to $OUTPUT_PATH/lib"
+			echo "Failed to copy built library $MPY_NAME to $OUTPUT_PATH/lib" 1>&2
+			exit 1
 		fi
 
 		echo "done"
@@ -67,6 +68,10 @@ done
 if [[ -z "$1" || "$1" == "code" ]]; then
 	echo -n "Deploying code.py..."
 	cp code.py $OUTPUT_PATH/
+	if [ $? -ne 0 ]; then
+	  echo "failed to copy code.py to $OUTPUT_PATH" 1>&2
+	  exit 1
+	fi
 	echo "done"
 fi
 
