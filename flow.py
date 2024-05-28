@@ -1,7 +1,9 @@
 import time
 import traceback
 
-from api import API, Duration
+from adafruit_datetime import datetime
+
+from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest
 from backlight import BacklightColors
 from devices import Devices
 from lcd import LCD
@@ -73,11 +75,10 @@ class Flow:
 	]
 
 	def __init__(self, devices: Devices):
+		self.child_id = None
 		self.devices = devices
 
 		self.suppress_idle_warning = False
-
-		self.api = API()
 
 		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
 			on_activity = self.on_rotary_encoder_activity
@@ -127,7 +128,7 @@ class Flow:
 		self.devices.lcd.clear()
 
 		self.render_splash("Connecting...")
-		self.api.connect()
+		APIRequest.connect()
 
 		battery_percent = self.devices.battery_monitor.get_percent()
 		if battery_percent is not None and battery_percent <= 15:
@@ -144,11 +145,11 @@ class Flow:
 		child_id = NVRAMValues.CHILD_ID.get()
 		if not child_id:
 			self.render_splash("Getting children...")
-			child_id = self.api.get_child_id()
+			child_id = GetFirstChildIDAPIRequest().get_first_child_id()
 			NVRAMValues.CHILD_ID.write(child_id)
 			self.devices.lcd.clear()
 
-		self.api.child_id = child_id
+		self.child_id = child_id
 
 		print(f"Using child ID {child_id}")
 
@@ -209,12 +210,28 @@ class Flow:
 		time.sleep(hold_seconds)
 		self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
+	@staticmethod
+	def datetime_to_time_str(datetime_obj: datetime) -> str:
+		hour = datetime_obj.hour
+		minute = datetime_obj.minute
+		meridian = "a"
+
+		if hour == 0:
+			hour = 12
+		elif hour == 12:
+			meridian = "p"
+		elif hour > 12:
+			hour -= 12
+			meridian = "p"
+
+		return f"{hour}:{minute:02}{meridian}"
+
 	def main_menu(self) -> None:
 		self.render_splash("Getting feeding...")
 
-		last_feeding, method = self.api.get_last_feeding()
+		last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
 		if last_feeding is not None:
-			last_feeding_str = "Feed " + API.datetime_to_time_str(last_feeding)
+			last_feeding_str = "Feed " + Flow.datetime_to_time_str(last_feeding)
 
 			if method == "right breast":
 				last_feeding_str += " R"
@@ -284,7 +301,11 @@ class Flow:
 			is_solid = selected_index == 1 or selected_index == 2
 
 			self.render_splash("Saving...")
-			self.api.post_change(is_wet = is_wet, is_solid = is_solid)
+			PostChangeAPIRequest(
+				child_id = self.child_id,
+				is_wet = is_wet,
+				is_solid = is_solid
+			).invoke()
 			self.render_success_splash()
 
 	def pumping(self):
