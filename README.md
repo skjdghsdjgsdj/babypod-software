@@ -13,7 +13,6 @@ You need to install [Baby Buddy](https://docs.baby-buddy.net/setup/deployment/) 
 - Battery percentage shown on most screens and updates periodically.
 - Backlight dims after inactivity to save power, although you should turn off the BabyPod when not using it anyway.
 - Information is contextual and non-relevant information isn't shown. For example, when feeding solid food, no bottle options are shown.
-- If you start doing a thing and forget to start a timer, usually it's fine: for example, you can record a feeding _ex post facto_ and it'll get logged with zero duration.
 
 ### Feedings
 - Record feedings, including start and end times, food types, which breasts(s) were used for feeding, etc.
