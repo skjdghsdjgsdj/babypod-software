@@ -53,29 +53,17 @@ class APIRequest:
 	requests = None
 	mac_id = None
 
-	def __init__(self, uri: str, uri_args = None, payload: object = None):
+	def __init__(self, uri: str, uri_args = None, payload = None):
 		self.uri = uri
 		self.uri_args = uri_args
 		self.payload = payload
 
-	def serialize(self):
-		return json.dumps({
-			"class": str(type(self)),
-			"uri": self.uri,
-			"uri_args": self.uri_args,
-			"payload": self.payload
-		})
+	def serialize_to_json(self) -> object:
+		raise RuntimeError(f"{str(type(self))} is not supported offline")
 
-	@staticmethod
-	def deserialize(json_str: str):
-		obj = json.loads(json_str)
-
-		klass = type(obj["class"])
-		if not issubclass(klass, APIRequest):
-			raise ValueError(f"Serialized JSON references class {str(klass)} which doesn't extend APIRequest")
-
-		instance = klass(uri = obj["uri"], uri_args = obj["uri_args"], payload = obj["payload"])
-		return instance
+	@classmethod
+	def deserialize_from_json(cls, json_object):
+		raise RuntimeError(f"{str(cls)} is not supported offline")
 
 	def build_full_url(self) -> str:
 		full_url = APIRequest.BASE_URL + self.uri
@@ -167,6 +155,7 @@ class Timer:
 	def __init__(self, name: str, offline: bool):
 		self.offline = offline
 		self.started_at: Optional[datetime] = None
+		self.ended_at: Optional[datetime] = None
 		self.timer_id: Optional[int] = None
 		self.name = name
 
@@ -200,14 +189,31 @@ class Timer:
 			if self.started_at is None:
 				raise ValueError("Timer was never started or resumed")
 
+			if self.ended_at is None:
+				self.ended_at = datetime.now()
+
 			return {
 				"start": self.started_at.isoformat(),
-				"end": datetime.now().isoformat()
+				"end": self.ended_at.isoformat()
 			}
 		else:
 			return {
 				"timer": self.timer_id
 			}
+
+	@staticmethod
+	def from_payload(name: str, payload):
+		if "timer" in payload:
+			timer = Timer(name = name, offline = False)
+			timer.timer_id = payload["timer"]
+		elif "start" in payload and "end" in payload:
+			timer = Timer(name = name, offline = True)
+			timer.started_at = datetime.fromisoformat(payload["start"])
+			timer.ended_at = datetime.fromisoformat(payload["end"])
+		else:
+			raise ValueError("Don't know how to create a timer from this payload")
+
+		return timer
 
 class PostChangeAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, is_wet: bool, is_solid: bool):
@@ -217,6 +223,21 @@ class PostChangeAPIRequest(PostAPIRequest):
 			"solid": is_solid
 		})
 
+	def serialize_to_json(self) -> object:
+		return {
+			"child_id": self.payload["child"],
+			"is_wet": self.payload["wet"],
+			"is_solid": self.payload["solid"]
+		}
+
+	@classmethod
+	def deserialize_from_json(cls, json_object):
+		return PostChangeAPIRequest(
+			child_id = json_object["child_id"],
+			is_wet = json_object["is_wet"],
+			is_solid = json_object["is_dry"]
+		)
+
 class PostPumpingAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, amount: float):
 		super().__init__(uri = "pumping", payload = {
@@ -224,11 +245,39 @@ class PostPumpingAPIRequest(PostAPIRequest):
 			"amount": amount
 		})
 
+	def serialize_to_json(self) -> object:
+		return {
+			"child_id": self.payload["child"],
+			"amount": self.payload["amount"]
+		}
+
+	@classmethod
+	def deserialize_from_json(cls, json_object):
+		return PostPumpingAPIRequest(
+			child_id = json_object["child_id"],
+			amount = json_object["amount"]
+		)
+
 class PostTummyTimeAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, timer: Timer):
 		super().__init__(uri = "tummy-times", payload = {
 			"child": child_id
 		}.update(timer.as_payload()))
+
+		self.timer = timer
+
+	def serialize_to_json(self) -> object:
+		return {
+			"child_id": self.payload["child"]
+		}.update(self.timer.as_payload())
+
+	@classmethod
+	def deserialize_from_json(cls, json_object):
+		timer = Timer.from_payload(name = "tummy-time", payload = json_object)
+		return PostTummyTimeAPIRequest(
+			child_id = json_object["child_id"],
+			timer = timer
+		)
 
 class PostFeedingAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer):
@@ -237,6 +286,25 @@ class PostFeedingAPIRequest(PostAPIRequest):
 			"type": food_type,
 			"method": method
 		}.update(timer.as_payload()))
+
+		self.timer = timer
+
+	def serialize_to_json(self) -> object:
+		return {
+			"child_id": self.payload["child"],
+			"food_type": self.payload["type"],
+			"method": self.payload["timer"]
+		}.update(self.timer.as_payload())
+
+	@classmethod
+	def deserialize_from_json(cls, json_object):
+		timer = Timer.from_payload(name = "feeding", payload = json_object)
+		return PostFeedingAPIRequest(
+			child_id = json_object["child_id"],
+			food_type = json_object["food_type"],
+			method = json_object["method"],
+			timer = timer
+		)
 
 class GetLastFeedingAPIRequest(GetAPIRequest):
 	def __init__(self, child_id: int):
