@@ -10,7 +10,7 @@ import binascii
 
 # noinspection PyBroadException
 try:
-	from typing import Optional
+	from typing import Optional, List
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -102,6 +102,59 @@ class APIRequest:
 
 	def invoke(self):
 		raise NotImplementedError()
+
+class OfflineEventQueue:
+	JSON_PATH = "/sd/queue/"
+	INDEX = "index.json"
+
+	def __init__(self):
+		self.queue: List[APIRequest] = []
+
+		index_json_path = f"{OfflineEventQueue.JSON_PATH}/{OfflineEventQueue.INDEX}"
+		create_new_index = not os.path.exists(index_json_path)
+
+		self.index_fp = open(index_json_path, mode = "rw")
+		if create_new_index:
+			self.reset_index()
+
+	def __del__(self):
+		self.index_fp.close()
+
+	def reset_index(self):
+		self.index_fp.seek(0)
+		self.index_fp.write(json.dumps([]))
+
+	def load_index(self):
+		self.index_fp.seek(0)
+		return json.load(self.index_fp)
+
+	def append_to_index(self, payload):
+		index = self.load_index()
+		print(f"Appending {type(payload)} to index (now {len(index)} items)")
+		index.append(payload)
+		json.dump(index, self.index_fp)
+
+	def add(self, request: APIRequest):
+		payload = {
+			"type": type(request),
+			"payload": request.serialize_to_json()
+		}
+		self.append_to_index(payload)
+
+	def replay_all(self, empty_on_success = True):
+		index = self.load_index()
+		print(f"Replaying index ({len(index)} items)")
+		for item in index:
+			klass = locals().get(item["type"])
+			method = getattr(klass, "deserialize_from_json")
+			request: APIRequest = method(item["payload"])
+
+			print(f"Replaying {request}")
+
+			request.invoke()
+
+		if empty_on_success:
+			self.reset_index()
 
 class PostAPIRequest(APIRequest):
 	def invoke(self):
