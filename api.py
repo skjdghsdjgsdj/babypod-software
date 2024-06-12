@@ -86,7 +86,9 @@ class APIRequest:
 		if APIRequest.requests is None:
 			ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
 			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
-			channel = int(os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL"))
+
+			channel = os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL")
+			channel = int(channel) if channel else 0
 
 			APIRequest.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
 			wifi.radio.hostname = f"babypod-{APIRequest.mac_id}"

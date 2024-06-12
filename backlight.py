@@ -1,3 +1,10 @@
+# noinspection PyBroadException
+try:
+	from typing import Optional
+except:
+	# don't care
+	pass
+
 import adafruit_rgbled
 import board
 import os
@@ -5,37 +12,71 @@ import os
 from nvram import NVRAMValues
 
 class BacklightColor:
-	def __init__(self, name: str, default_value):
+	def __init__(self, color: tuple[int, int, int]):
+		self.color = color
+
+	@staticmethod
+	def from_setting(name: str, default_value: tuple[int, int, int]):
 		value = os.getenv(name)
-		if value is None:
-			value = default_value
+		color = BacklightColor(BacklightColor.int_to_tuple(int(value))) if value else default_value
 
-		if not isinstance(value, int) and not isinstance(value, tuple):
-			raise TypeError(value)
+		return BacklightColor(color)
 
-		self.color = value
+	@staticmethod
+	def int_to_tuple(color: int) -> tuple[int, int, int]:
+		# adapted from https://github.com/todbot/circuitpython-tricks?tab=readme-ov-file#convert-rgb-tuples-to-int-and-back-again
+		return tuple[int, int, int](color.to_bytes(3, "big"))
 
 	def invert(self):
-		if isinstance(self.color, int):
-			return 0xFFFFFF - self.color
+		r, g, b = self.color
+		return 255 - r, 255 - g, 255 - b
 
-		if isinstance(self.color, tuple):
-			r, g, b = self.color
-			return 255 - r, 255 - g, 255 - b
+	def mask(self, level: float):
+		r, g, b = self.color
+		return int(r * level), int(g * level), int(b * level)
 
 	def __str__(self):
-		return str(self.color)
+		r, g, b = self.color
+		return f"({r}, {g}, {b})"
 
 class BacklightColors:
-	DEFAULT = BacklightColor("BACKLIGHT_COLOR_FULL", (255, 255, 255))
-	DIM = BacklightColor("BACKLIGHT_COLOR_DIM", (128, 128, 128))
-	IDLE_WARNING = BacklightColor("BACKLIGHT_COLOR_IDLE_WARNING", (255, 128, 128))
-	ERROR = BacklightColor("BACKLIGHT_COLOR_ERROR", (255, 0, 0))
-	SUCCESS = BacklightColor("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
+	DEFAULT = BacklightColor.from_setting("BACKLIGHT_COLOR_FULL", (255, 255, 255))
+	DIM = BacklightColor.from_setting("BACKLIGHT_COLOR_DIM", (128, 128, 128))
+	IDLE_WARNING = BacklightColor.from_setting("BACKLIGHT_COLOR_IDLE_WARNING", (255, 128, 128))
+	ERROR = BacklightColor.from_setting("BACKLIGHT_COLOR_ERROR", (255, 0, 0))
+	SUCCESS = BacklightColor.from_setting("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 
 class Backlight:
+	@staticmethod
+	def get_instance():
+		if hasattr(board, "DISPLAY"):
+			return BuiltInLCDBacklight()
+		else:
+			return CharacterLCDBacklight()
+
+	def set_color(self, color: BacklightColor) -> None:
+		pass # do nothing unless a child class overrides it
+
+	def set_level(self, level: float) -> None:
+		if level < 0 or level > 1:
+			raise ValueError(f"Backlight level must be >= 0 and <= 1 (0% to 100%), not {level}")
+		pass # do nothing unless a child class overrides it
+
+	def off(self) -> None:
+		pass # do nothing unless a child class overrides it
+
+class BuiltInLCDBacklight(Backlight):
+	def set_level(self, level: float) -> None:
+		super().set_level(level)
+		board.DISPLAY.brightness = level
+
+	def off(self):
+		self.set_level(0.01)
+
+class CharacterLCDBacklight(Backlight):
 	def __init__(self):
-		# noinspection PyUnresolvedReferences
+		self.color: Optional[BacklightColor] = None
+
 		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 
 		if NVRAMValues.OPTION_BACKLIGHT.get():
@@ -47,6 +88,11 @@ class Backlight:
 		if NVRAMValues.OPTION_BACKLIGHT.get():
 			self.backlight.color = color.invert()
 
-	def off(self) -> None:
+		self.color = color
+
+	def set_level(self, level: float) -> None:
+		self.set_color(BacklightColor(self.color.mask(level)))
+
+	def off(self):
 		print(f"Disabling backlight")
 		self.backlight.color = (255, 255, 255) # inverted

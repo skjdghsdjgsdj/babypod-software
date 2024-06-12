@@ -5,7 +5,7 @@ lib/backlight.mpy
 lib/battery_monitor.mpy
 lib/flow.mpy
 lib/piezo.mpy
-lib/rotary_encoder.mpy
+lib/user_input.mpy
 lib/ui_components.mpy
 lib/nvram.mpy
 /lib/devices.mpy

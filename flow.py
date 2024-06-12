@@ -9,7 +9,7 @@ from devices import Devices
 from lcd import LCD
 from nvram import NVRAMValues
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
-from rotary_encoder import ActivityListener, WaitTickListener
+from user_input import ActivityListener, WaitTickListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer
 
 # noinspection PyBroadException
@@ -80,11 +80,11 @@ class Flow:
 
 		self.suppress_idle_warning = False
 
-		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
-			on_activity = self.on_rotary_encoder_activity
+		self.devices.user_input.on_activity_listeners.append(ActivityListener(
+			on_activity = self.on_user_input
 		))
 
-		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
+		self.devices.user_input.on_wait_tick_listeners.extend([
 			WaitTickListener(
 				on_tick = self.on_backlight_dim_idle,
 				seconds = NVRAMValues.BACKLIGHT_DIM_TIMEOUT.get()
@@ -117,7 +117,7 @@ class Flow:
 				self.devices.backlight.set_color(BacklightColors.DEFAULT)
 				time.sleep(0.1)
 
-	def on_rotary_encoder_activity(self) -> None:
+	def on_user_input(self) -> None:
 		self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
 	def clear_and_show_battery(self) -> None:
@@ -146,7 +146,7 @@ class Flow:
 		if not child_id:
 			self.render_splash("Getting children...")
 			child_id = GetFirstChildIDAPIRequest().get_first_child_id()
-			NVRAMValues.CHILD_ID.write(child_id)
+			NVRAMValues.CHILD_ID.write(child_id, )
 			self.devices.lcd.clear()
 
 		self.child_id = child_id
@@ -279,8 +279,8 @@ class Flow:
 		).render_and_wait()
 
 		if responses is not None:
-			NVRAMValues.OPTION_PIEZO.write(responses[0])
-			NVRAMValues.OPTION_BACKLIGHT.write(responses[1])
+			NVRAMValues.OPTION_PIEZO.write(responses[0], )
+			NVRAMValues.OPTION_BACKLIGHT.write(responses[1], )
 
 			if NVRAMValues.OPTION_BACKLIGHT.get():
 				self.devices.backlight.set_color(BacklightColors.DEFAULT)

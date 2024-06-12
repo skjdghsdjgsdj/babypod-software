@@ -2,17 +2,17 @@ from backlight import Backlight
 from battery_monitor import BatteryMonitor
 from lcd import LCD
 from piezo import Piezo
-from rotary_encoder import RotaryEncoder
+from user_input import UserInput
 
 class Devices:
     def __init__(self,
-        rotary_encoder: RotaryEncoder,
-        piezo: Piezo,
-        lcd: LCD,
-        backlight: Backlight,
-        battery_monitor: BatteryMonitor
-    ):
-        self.rotary_encoder = rotary_encoder
+                 user_input: UserInput,
+                 piezo: Piezo,
+                 lcd: LCD,
+                 backlight: Backlight,
+                 battery_monitor: BatteryMonitor
+                 ):
+        self.user_input = user_input
         self.piezo = piezo
         self.lcd = lcd
         self.backlight = backlight
