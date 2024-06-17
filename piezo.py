@@ -34,12 +34,17 @@ class Piezo:
 			[660, 0.1],
 			[550, 0.1],
 			[440, 0.4]
+		],
+		"info": [
+			[660, 0.1],
+			[None, 0.3],
+			[660, 0.1]
 		]
 	}
 
 	@staticmethod
 	def tone(name: str) -> None:
-		if NVRAMValues.OPTION_PIEZO.get():
+		if NVRAMValues.PIEZO.get():
 			data = Piezo.TONES[name]
 			for i in range(0, len(data)):
 				frequency, duration = data[i]

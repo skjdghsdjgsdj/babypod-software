@@ -3,11 +3,14 @@ import traceback
 
 from adafruit_datetime import datetime
 
-from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest
+from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
+	PostFeedingAPIRequest
+from offline_event_queue import OfflineEventQueue
 from backlight import BacklightColors
 from devices import Devices
 from lcd import LCD
 from nvram import NVRAMValues
+from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from user_input import ActivityListener, WaitTickListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer
@@ -75,6 +78,7 @@ class Flow:
 	]
 
 	def __init__(self, devices: Devices):
+		self.requests = None
 		self.child_id = None
 		self.devices = devices
 
@@ -101,6 +105,9 @@ class Flow:
 			)
 		])
 
+		self.offline_state = OfflineState(self.devices.sdcard)
+		self.offline_queue: Optional[OfflineEventQueue] = None
+
 	def on_backlight_dim_idle(self, _: float) -> None:
 		print("Dimming backlight due to inactivity")
 		self.devices.backlight.set_color(BacklightColors.DIM)
@@ -124,12 +131,70 @@ class Flow:
 		self.devices.lcd.clear()
 		self.render_battery_percent()
 
-	def start(self):
-		self.devices.lcd.clear()
+	def refresh_rtc(self) -> None:
+		if NVRAMValues.OFFLINE:
+			print("Going online for next reboot")
+			NVRAMValues.OFFLINE.write(False)
+			raise ValueError("RTC must be set before going offline")
 
-		self.render_splash("Connecting...")
-		APIRequest.connect()
+		print("Syncing RTC")
+		self.render_splash("Setting clock...")
 
+		try:
+			old_now = self.devices.rtc.now()
+			self.devices.rtc.sync(self.requests)
+			print(f"RTC updated to {self.devices.rtc.now()}, drift = {old_now - self.devices.rtc.now()}")
+
+			self.offline_state.last_rtc_set = self.devices.rtc.now()
+			self.offline_state.to_sdcard()
+		except Exception as e:
+			print(f"{e} when syncing RTC; forcing sync on next online boot")
+			NVRAMValues.FORCE_RTC_UPDATE.write(True)
+			raise e
+
+	def auto_connect(self) -> None:
+		if not NVRAMValues.OFFLINE:
+			self.render_splash("Connecting...")
+			# noinspection PyBroadException
+			try:
+				self.requests = APIRequest.connect()
+			except Exception as e:
+				print(f"Got {e} when trying to connect; going offline")
+				self.render_splash("Going offline")
+				self.devices.piezo.tone("info")
+				time.sleep(1)
+				NVRAMValues.OFFLINE.write(True)
+		elif not self.devices.rtc:
+			raise ValueError("External RTC is required for offline support")
+		else:
+			print("Working offline")
+
+	def init_rtc(self) -> None:
+		if self.devices.rtc:
+			if NVRAMValues.FORCE_RTC_UPDATE:
+				print("RTC update forced")
+				NVRAMValues.FORCE_RTC_UPDATE.write(False)
+				self.refresh_rtc()
+			if not self.devices.rtc.now():
+				print("RTC not set or is implausible")
+				self.refresh_rtc()
+			elif self.offline_state.last_rtc_set is None:
+				print("Last RTC set date/time unknown; assuming now")
+				self.offline_state.last_rtc_set = self.devices.rtc.now()
+				self.offline_state.to_sdcard()
+			else:
+				last_rtc_set_delta = self.devices.rtc.now() - self.offline_state.last_rtc_set
+				if last_rtc_set_delta.seconds >= 60 * 60 * 24:
+					print("RTC last set more than a day ago")
+
+					if NVRAMValues.OFFLINE:
+						print("RTC will be updated next time device is online")
+					else:
+						self.refresh_rtc()
+				else:
+					print(f"RTC doesn't need updating: set to {self.devices.rtc.now()}, last refreshed {self.offline_state.last_rtc_set}")
+
+	def init_battery(self):
 		battery_percent = self.devices.battery_monitor.get_percent()
 		if battery_percent is not None and battery_percent <= 15:
 			self.devices.backlight.set_color(BacklightColors.ERROR)
@@ -139,6 +204,14 @@ class Flow:
 			time.sleep(1.5)
 
 			self.devices.backlight.set_color(BacklightColors.DEFAULT)
+
+	def start(self):
+		self.devices.lcd.clear()
+		self.offline_state = OfflineState.from_sdcard(self.devices.sdcard)
+
+		self.auto_connect()
+		self.init_rtc()
+		self.init_battery()
 
 		self.devices.lcd.clear()
 
@@ -150,8 +223,9 @@ class Flow:
 			self.devices.lcd.clear()
 
 		self.child_id = child_id
-
 		print(f"Using child ID {child_id}")
+
+		self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard)
 
 		while True:
 			try:
@@ -227,9 +301,13 @@ class Flow:
 		return f"{hour}:{minute:02}{meridian}"
 
 	def main_menu(self) -> None:
-		self.render_splash("Getting feeding...")
+		if NVRAMValues.OFFLINE:
+			last_feeding = self.offline_state.last_feeding
+			method = self.offline_state.last_feeding_method
+		else:
+			self.render_splash("Getting feeding...")
+			last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
 
-		last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
 		if last_feeding is not None:
 			last_feeding_str = "Feed " + Flow.datetime_to_time_str(last_feeding)
 
@@ -247,7 +325,11 @@ class Flow:
 			"Diaper change",
 			"Pumping",
 			"Tummy time"
-		], devices = self.devices, cancel_text = self.devices.lcd[LCD.LEFT] + "Opt").render_and_wait()
+		],
+			devices = self.devices,
+			cancel_text = self.devices.lcd[LCD.LEFT] +
+				(self.devices.lcd[LCD.UNCHECKED if NVRAMValues.OFFLINE else LCD.CHECKED])
+		).render_and_wait()
 
 		self.clear_and_show_battery() # preps for next menu
 
@@ -266,23 +348,31 @@ class Flow:
 
 	def settings(self) -> None:
 		options = [
-			"Play sounds",
-			"Use backlight"
+			"Offline",
+			"Sounds",
+			"Backlight"
 		]
 
 		responses = VerticalCheckboxes(
 			options = options,
 			initial_states = [
-				NVRAMValues.OPTION_PIEZO.get(),
-				NVRAMValues.OPTION_BACKLIGHT.get()
+				NVRAMValues.OFFLINE.get(),
+				NVRAMValues.PIEZO.get(),
+				NVRAMValues.BACKLIGHT.get()
 			], devices = self.devices, anchor = VerticalMenu.ANCHOR_TOP
 		).render_and_wait()
 
 		if responses is not None:
-			NVRAMValues.OPTION_PIEZO.write(responses[0], )
-			NVRAMValues.OPTION_BACKLIGHT.write(responses[1], )
+			if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
+				self.auto_connect()
+				self.render_splash("Syncing changes...")
+				self.offline_queue.replay_all()
 
-			if NVRAMValues.OPTION_BACKLIGHT.get():
+			NVRAMValues.OFFLINE.write(responses[0])
+			NVRAMValues.PIEZO.write(responses[1])
+			NVRAMValues.BACKLIGHT.write(responses[2])
+
+			if NVRAMValues.BACKLIGHT.get():
 				self.devices.backlight.set_color(BacklightColors.DEFAULT)
 			else:
 				self.devices.backlight.off()
@@ -329,13 +419,14 @@ class Flow:
 		timer_name: str,
 		periodic_chime: PeriodicChime = None,
 		subtext: str = None
-	) -> Optional[int]:
-		self.render_splash("Checking status...")
-		timer_id, elapsed = self.api.get_timer(timer_name)
-
-		if timer_id is None:
-			elapsed = Duration(0)
-			timer_id = self.api.start_timer(timer_name)
+	) -> Optional[Timer]:
+		if NVRAMValues.OFFLINE:
+			timer = Timer(name = timer_name, offline = True, rtc = self.devices.rtc)
+			timer.started_at = self.devices.rtc.now()
+		else:
+			self.render_splash("Checking status...")
+			timer = Timer(name = timer_name, offline = False)
+			timer.start_or_resume()
 
 		self.clear_and_show_battery()
 		self.render_header_text(header_text)
@@ -343,24 +434,28 @@ class Flow:
 		if subtext is not None:
 			self.devices.lcd.write(message = subtext, coords = (0, 2))
 
+		start_at = 0
+		if self.devices.rtc:
+			start_at = (self.devices.rtc.now() - timer.started_at).seconds
+
 		self.suppress_idle_warning = True
 		response = ActiveTimer(
 			devices = self.devices,
 			periodic_chime = periodic_chime,
-			start_at = elapsed.seconds
+			start_at = start_at
 		).render_and_wait()
 		self.suppress_idle_warning = False
 
 		if response is None:
-			self.api.stop_timer(timer_id)
+			timer.cancel()
 			return None # canceled
 
-		return timer_id
+		return timer
 
 	def feeding(self) -> None:
 		saved = False
 		while not saved:
-			timer_id = self.start_or_resume_timer(
+			timer = self.start_or_resume_timer(
 				header_text = "Feeding",
 				timer_name = "feeding",
 				periodic_chime = EscalatingIntervalPeriodicChime(
@@ -371,12 +466,12 @@ class Flow:
 				)
 			)
 
-			if timer_id is not None:
-				saved = self.save_feeding(timer_id)
+			if timer is not None:
+				saved = self.save_feeding(timer)
 			else:
 				return # canceled the timer
 
-	def save_feeding(self, timer_id: int) -> bool:
+	def save_feeding(self, timer: Timer) -> bool:
 		self.clear_and_show_battery()
 
 		def get_name(item):
@@ -437,7 +532,21 @@ class Flow:
 					break
 
 		self.render_splash("Saving...")
-		self.api.post_feeding(timer_id = timer_id, food_type = food_type, method = method)
+		request = PostFeedingAPIRequest(
+			child_id = self.child_id,
+			timer = timer,
+			food_type = food_type,
+			method = method
+		)
+		if NVRAMValues.OFFLINE:
+			self.offline_queue.add(request)
+		else:
+			request.invoke()
+
+		self.offline_state.last_feeding = timer.started_at
+		self.offline_state.last_feeding_method = method
+		self.offline_state.to_sdcard()
+
 		self.render_success_splash()
 
 		return True

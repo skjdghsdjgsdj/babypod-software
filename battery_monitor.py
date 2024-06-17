@@ -40,7 +40,7 @@ class BatteryMonitor:
 			self.last_percent = int(round(min(max(self.last_percent, 0), 100)))
 
 			if self.last_percent <= 0:
-				print(f"Battery percent {self.last_percent}% is implausible; hiding for now until it stabilizes")
+				#print(f"Battery percent {self.last_percent}% is implausible; hiding for now until it stabilizes")
 				self.last_percent = None
 
 		return self.last_percent
@@ -53,10 +53,10 @@ class BatteryMonitor:
 		i2c.unlock()
 
 		if 0x0b in i2c_address_list:
-			print("Detected LC709203F battery monitor")
+			#print("Detected LC709203F battery monitor")
 			return LC709203FBatteryMonitor(i2c)
 		elif 0x36 in i2c_address_list:
-			print("Detected MAX17048 battery monitor")
+			#print("Detected MAX17048 battery monitor")
 			return MAX17048BatteryMonitor(i2c)
 		else:
 			raise ValueError("Couldn't find a battery monitor on I2C bus")

@@ -1,4 +1,3 @@
-import json
 import adafruit_datetime
 import adafruit_requests
 import wifi
@@ -8,43 +7,14 @@ import os
 from adafruit_datetime import datetime
 import binascii
 
+from external_rtc import ExternalRTC
+
 # noinspection PyBroadException
 try:
 	from typing import Optional, List
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
-
-class Duration:
-	def __init__(self, seconds: float):
-		assert(seconds >= 0)
-		self.seconds = seconds
-
-	@staticmethod
-	def from_api(duration: str):
-		hours_str, minutes_str, seconds_str = duration.split(":")
-
-		hours = int(hours_str)
-		minutes = int(minutes_str)
-		seconds = float(seconds_str)
-
-		return Duration((hours * 60 * 60) + (minutes * 60) + seconds)
-
-	def to_hms(self):
-		return self.seconds // 3600, self.seconds // 60 % 60, self.seconds % 60
-
-	def to_short_format(self):
-		hours, minutes, seconds = self.to_hms()
-
-		parts = []
-		if hours > 0:
-			parts.append(f"{hours}h")
-		if minutes > 0:
-			parts.append(f"{minutes}m")
-		if seconds > 0:
-			parts.append("%ds" % seconds)
-
-		return "0s" if len(parts) == 0 else " ".join(parts)
 
 class APIRequest:
 	API_KEY = os.getenv("BABYBUDDY_AUTH_TOKEN")
@@ -86,6 +56,8 @@ class APIRequest:
 		if APIRequest.requests is None:
 			ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
 			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
+			timeout = os.getenv("CIRCUITPY_WIFI_TIMEOUT")
+			timeout = int(timeout) if timeout else 10
 
 			channel = os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL")
 			channel = int(channel) if channel else 0
@@ -94,7 +66,7 @@ class APIRequest:
 			wifi.radio.hostname = f"babypod-{APIRequest.mac_id}"
 
 			print(f"Connecting to {ssid}...")
-			wifi.radio.connect(ssid = ssid, password = password, channel = channel)
+			wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = timeout)
 			pool = socketpool.SocketPool(wifi.radio)
 			# noinspection PyTypeChecker
 			APIRequest.requests = adafruit_requests.Session(pool, ssl.create_default_context())
@@ -102,63 +74,21 @@ class APIRequest:
 
 		return APIRequest.requests
 
+	@staticmethod
+	def merge_timer(payload, timer):
+		if timer is not None:
+			payload.update(timer.as_payload())
+
+		return payload
+
 	def invoke(self):
 		raise NotImplementedError()
 
-class OfflineEventQueue:
-	JSON_PATH = "/sd/queue/"
-	INDEX = "index.json"
-
-	def __init__(self):
-		self.queue: List[APIRequest] = []
-
-		index_json_path = f"{OfflineEventQueue.JSON_PATH}/{OfflineEventQueue.INDEX}"
-		create_new_index = not os.path.exists(index_json_path)
-
-		self.index_fp = open(index_json_path, mode = "rw")
-		if create_new_index:
-			self.reset_index()
-
-	def __del__(self):
-		self.index_fp.close()
-
-	def reset_index(self):
-		self.index_fp.seek(0)
-		self.index_fp.write(json.dumps([]))
-
-	def load_index(self):
-		self.index_fp.seek(0)
-		return json.load(self.index_fp)
-
-	def append_to_index(self, payload):
-		index = self.load_index()
-		print(f"Appending {type(payload)} to index (now {len(index)} items)")
-		index.append(payload)
-		json.dump(index, self.index_fp)
-
-	def add(self, request: APIRequest):
-		payload = {
-			"type": type(request),
-			"payload": request.serialize_to_json()
-		}
-		self.append_to_index(payload)
-
-	def replay_all(self, empty_on_success = True):
-		index = self.load_index()
-		print(f"Replaying index ({len(index)} items)")
-		for item in index:
-			klass = locals().get(item["type"])
-			method = getattr(klass, "deserialize_from_json")
-			request: APIRequest = method(item["payload"])
-
-			print(f"Replaying {request}")
-
-			request.invoke()
-
-		if empty_on_success:
-			self.reset_index()
 
 class PostAPIRequest(APIRequest):
+	def __init__(self, uri: str, uri_args = None, payload = None):
+		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
+
 	def invoke(self):
 		full_url = self.build_full_url()
 		print(f"HTTP POST: {full_url} with data: {self.payload}")
@@ -176,6 +106,9 @@ class PostAPIRequest(APIRequest):
 		return response_json
 
 class GetAPIRequest(APIRequest):
+	def __init__(self, uri: str, uri_args = None, payload = None):
+		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
+
 	def invoke(self):
 		full_url = self.build_full_url()
 		print(f"HTTP GET: {full_url}")
@@ -194,6 +127,9 @@ class GetAPIRequest(APIRequest):
 		return json_response
 
 class DeleteAPIRequest(APIRequest):
+	def __init__(self, uri: str, uri_args = None, payload = None):
+		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
+
 	def invoke(self):
 		full_url = self.build_full_url()
 		print(f"HTTP GET: {full_url}")
@@ -207,17 +143,15 @@ class DeleteAPIRequest(APIRequest):
 		APIRequest.validate_response(response)
 
 class Timer:
-	def __init__(self, name: str, offline: bool):
+	def __init__(self, name: str, offline: bool, rtc: ExternalRTC = None):
 		self.offline = offline
 		self.started_at: Optional[datetime] = None
 		self.ended_at: Optional[datetime] = None
 		self.timer_id: Optional[int] = None
 		self.name = name
+		self.rtc = rtc
 
 	def start_or_resume(self):
-		if self.started_at is None:
-			self.started_at = datetime.now()
-
 		if not self.offline:
 			timers = GetTimerAPIRequest(self.name).invoke()
 			max_id = None
@@ -244,8 +178,8 @@ class Timer:
 			if self.started_at is None:
 				raise ValueError("Timer was never started or resumed")
 
-			if self.ended_at is None:
-				self.ended_at = datetime.now()
+			if self.ended_at is None and self.rtc is not None:
+				self.ended_at = self.rtc.now()
 
 			return {
 				"start": self.started_at.isoformat(),
@@ -315,16 +249,16 @@ class PostPumpingAPIRequest(PostAPIRequest):
 
 class PostTummyTimeAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, timer: Timer):
-		super().__init__(uri = "tummy-times", payload = {
+		super().__init__(uri = "tummy-times", payload = APIRequest.merge_timer({
 			"child": child_id
-		}.update(timer.as_payload()))
+		}, timer))
 
 		self.timer = timer
 
 	def serialize_to_json(self) -> object:
-		return {
+		return APIRequest.merge_timer({
 			"child_id": self.payload["child"]
-		}.update(self.timer.as_payload())
+		}, self.timer)
 
 	@classmethod
 	def deserialize_from_json(cls, json_object):
@@ -336,20 +270,20 @@ class PostTummyTimeAPIRequest(PostAPIRequest):
 
 class PostFeedingAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer):
-		super().__init__(uri = "feedings", payload = {
+		super().__init__(uri = "feedings", payload = APIRequest.merge_timer({
 			"child": child_id,
 			"type": food_type,
 			"method": method
-		}.update(timer.as_payload()))
+		}, timer))
 
 		self.timer = timer
 
 	def serialize_to_json(self) -> object:
-		return {
+		return APIRequest.merge_timer(payload = {
 			"child_id": self.payload["child"],
 			"food_type": self.payload["type"],
-			"method": self.payload["timer"]
-		}.update(self.timer.as_payload())
+			"method": self.payload["method"]
+		}, timer = self.timer)
 
 	@classmethod
 	def deserialize_from_json(cls, json_object):

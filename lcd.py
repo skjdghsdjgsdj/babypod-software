@@ -49,13 +49,9 @@ class LCD:
     @staticmethod
     def get_instance(i2c: I2C):
         if hasattr(board, "DISPLAY"):
-            return BuiltInLCD(i2c)
+            raise NotImplementedError()
         else:
             return CharacterLCD(i2c)
-    
-class BuiltInLCD(LCD):
-    def __init__(self, i2c: I2C):
-        super().__init__(i2c)
 
 class CharacterLCD(LCD):
     CHARS = {
@@ -69,11 +65,12 @@ class CharacterLCD(LCD):
 
     def __init__(self, i2c: I2C):
         super().__init__(i2c)
-        self.device = Character_LCD_I2C(board.I2C(), LCD.COLUMNS, LCD.LINES)
+        self.device = Character_LCD_I2C(i2c, LCD.COLUMNS, LCD.LINES)
         self.inited_chars = []
 
     def write(self, message: str, coords: tuple[int, int]):
-        x, y = LCD.validate_coords(coords)
+        LCD.validate_coords(coords)
+        x, y = coords
         self.device.cursor_position(x, y)
 
         self.device.message = message

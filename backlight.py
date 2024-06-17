@@ -79,13 +79,13 @@ class CharacterLCDBacklight(Backlight):
 
 		self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 
-		if NVRAMValues.OPTION_BACKLIGHT.get():
+		if NVRAMValues.BACKLIGHT.get():
 			self.set_color(BacklightColors.DEFAULT)
 		else:
 			self.off()
 
 	def set_color(self, color: BacklightColor) -> None:
-		if NVRAMValues.OPTION_BACKLIGHT.get():
+		if NVRAMValues.BACKLIGHT.get():
 			self.backlight.color = color.invert()
 
 		self.color = color
