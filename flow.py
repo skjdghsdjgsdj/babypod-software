@@ -4,7 +4,7 @@ import traceback
 from adafruit_datetime import datetime
 
 from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
-	PostFeedingAPIRequest
+	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest
 from offline_event_queue import OfflineEventQueue
 from backlight import BacklightColors
 from devices import Devices
@@ -307,6 +307,10 @@ class Flow:
 		else:
 			self.render_splash("Getting feeding...")
 			last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
+			if self.offline_state.last_feeding != last_feeding or self.offline_state.last_feeding_method != method:
+				self.offline_state.last_feeding = last_feeding
+				self.offline_state.last_feeding_method = method
+				self.offline_state.to_sdcard()
 
 		if last_feeding is not None:
 			last_feeding_str = "Feed " + Flow.datetime_to_time_str(last_feeding)
@@ -364,7 +368,6 @@ class Flow:
 
 		if responses is not None:
 			if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
-				self.auto_connect()
 				self.render_splash("Syncing changes...")
 				self.offline_queue.replay_all()
 
@@ -391,11 +394,15 @@ class Flow:
 			is_solid = selected_index == 1 or selected_index == 2
 
 			self.render_splash("Saving...")
-			PostChangeAPIRequest(
+			request = PostChangeAPIRequest(
 				child_id = self.child_id,
 				is_wet = is_wet,
 				is_solid = is_solid
-			).invoke()
+			)
+			if NVRAMValues.OFFLINE:
+				self.offline_queue.add(request)
+			else:
+				request.invoke()
 			self.render_success_splash()
 
 	def pumping(self):
@@ -410,7 +417,14 @@ class Flow:
 
 		if amount is not None:
 			self.render_splash("Saving...")
-			self.api.post_pumping(amount = amount)
+			request = PostPumpingAPIRequest(
+				child_id = self.child_id,
+				amount = amount
+			)
+			if NVRAMValues.OFFLINE:
+				self.offline_queue.add(request)
+			else:
+				request.invoke()
 			self.render_success_splash()
 
 
@@ -552,7 +566,7 @@ class Flow:
 		return True
 
 	def tummy_time(self) -> None:
-		timer_id = self.start_or_resume_timer(
+		timer = self.start_or_resume_timer(
 			header_text = "Tummy time",
 			timer_name = "tummy_time",
 			periodic_chime = ConsistentIntervalPeriodicChime(
@@ -561,7 +575,11 @@ class Flow:
 			)
 		)
 
-		if timer_id is not None:
+		if timer is not None:
 			self.render_splash("Saving...")
-			self.api.post_tummy_time(timer_id)
+			request = PostTummyTimeAPIRequest(child_id = self.child_id, timer = timer)
+			if NVRAMValues.OFFLINE:
+				self.offline_queue.add(request)
+			else:
+				request.invoke()
 			self.render_success_splash()

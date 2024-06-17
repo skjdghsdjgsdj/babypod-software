@@ -86,10 +86,20 @@ class OfflineEventQueue:
 		}
 		self.append_to_index(payload)
 
+	# TODO making this dynamic with reflection would be nice but I don't think CircuitPython can
 	def init_api_request(self, class_name: str, payload) -> APIRequest:
 		if class_name == "PostFeedingAPIRequest":
 			from api import PostFeedingAPIRequest
 			return PostFeedingAPIRequest.deserialize_from_json(payload)
+		elif class_name == "PostChangeAPIRequest":
+			from api import PostChangeAPIRequest
+			return PostChangeAPIRequest.deserialize_from_json(payload)
+		elif class_name == "PostPumpingAPIRequest":
+			from api import PostPumpingAPIRequest
+			return PostPumpingAPIRequest.deserialize_from_json(payload)
+		elif class_name == "PostTummyTimeAPIRequest":
+			from api import PostTummyTimeAPIRequest
+			return PostTummyTimeAPIRequest.deserialize_from_json(payload)
 		else:
 			raise NotImplementedError(f"Don't know how to deserialize a {class_name}")
 

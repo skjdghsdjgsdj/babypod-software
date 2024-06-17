@@ -55,7 +55,8 @@ class OfflineState:
             "last_rtc_set": self.last_rtc_set.isoformat() if self.last_rtc_set else None
         }
 
-        print("Persisting serialized state to SD card")
+        print("Persisting serialized state to SD card:")
+        print(serialized)
 
         with open(self.sdcard.get_absolute_path("state.json"), "w") as file:
             json.dump(serialized, file)
