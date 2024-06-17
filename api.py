@@ -224,7 +224,7 @@ class PostChangeAPIRequest(PostAPIRequest):
 		return PostChangeAPIRequest(
 			child_id = json_object["child_id"],
 			is_wet = json_object["is_wet"],
-			is_solid = json_object["is_dry"]
+			is_solid = json_object["is_solid"]
 		)
 
 class PostPumpingAPIRequest(PostAPIRequest):
