@@ -1,15 +1,2 @@
 .idea
 *.swp
-lib/api.mpy
-lib/backlight.mpy
-lib/battery_monitor.mpy
-lib/flow.mpy
-lib/piezo.mpy
-lib/user_input.mpy
-lib/ui_components.mpy
-lib/nvram.mpy
-/lib/devices.mpy
-/lib/lcd.mpy
-/lib/periodic_chime.mpy
-version.py
-/lib/version.mpy
