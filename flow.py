@@ -118,11 +118,7 @@ class Flow:
 	def idle_warning(self, _: float) -> None:
 		print("Idle; warning if not suppressed and is discharging")
 		if not self.suppress_idle_warning and not self.devices.battery_monitor.is_charging():
-			for i in range(0, 3):
-				self.devices.backlight.set_color(BacklightColors.IDLE_WARNING)
-				self.devices.piezo.tone("idle_warning")
-				self.devices.backlight.set_color(BacklightColors.DEFAULT)
-				time.sleep(0.1)
+			self.devices.piezo.tone("idle_warning")
 
 	def on_user_input(self) -> None:
 		self.devices.backlight.set_color(BacklightColors.DEFAULT)
@@ -184,6 +180,7 @@ class Flow:
 				self.offline_state.to_sdcard()
 			else:
 				last_rtc_set_delta = self.devices.rtc.now() - self.offline_state.last_rtc_set
+				# noinspection PyUnresolvedReferences
 				if last_rtc_set_delta.seconds >= 60 * 60 * 24:
 					print("RTC last set more than a day ago")
 
@@ -450,6 +447,7 @@ class Flow:
 
 		start_at = 0
 		if self.devices.rtc:
+			# noinspection PyUnresolvedReferences
 			start_at = (self.devices.rtc.now() - timer.started_at).seconds
 
 		self.suppress_idle_warning = True
