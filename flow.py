@@ -222,7 +222,7 @@ class Flow:
 		self.child_id = child_id
 		print(f"Using child ID {child_id}")
 
-		self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard)
+		self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
 		while True:
 			try:
