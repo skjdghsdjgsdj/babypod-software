@@ -14,7 +14,7 @@ class LCD:
     LINES = 4
     
     def __init__(self, i2c: I2C):
-        pass
+        self.i2c = i2c
 
     def write(self, message: str, coords: tuple[int, int]):
         raise NotImplementedError()

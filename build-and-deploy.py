@@ -57,7 +57,7 @@ def clean():
     shutil.rmtree(lib, ignore_errors = True)
     print("done")
 
-    print(f"Re-initing {lib}...", end = "", flush = True)
+    print(f"Repopulating {lib}...", end = "", flush = True)
     local_lib = get_base_path() + "/lib"
     shutil.copytree(local_lib, lib)
     print("done")

@@ -74,13 +74,13 @@ class MAX17048BatteryMonitor(BatteryMonitor):
 		return charge_rate > 0
 
 class LC709203FBatteryMonitor(BatteryMonitor):
-	def init_raw_device(self) -> LC709203F:
-		# pack size adjustment values: https://www.mouser.com/datasheet/2/308/LC709203F_D-1810548.pdf
-		BATTERY_LC709203F_AMA = 0x33
+	# pack size adjustment values: https://www.mouser.com/datasheet/2/308/LC709203F_D-1810548.pdf
+	BATTERY_LC709203F_AMA = 0x33
 
+	def init_raw_device(self) -> LC709203F:
 		device = LC709203F(self.i2c)
 		# noinspection PyProtectedMember
-		device._write_word(LC709203F_CMD_APA, BATTERY_LC709203F_AMA)
+		device._write_word(LC709203F_CMD_APA, LC709203FBatteryMonitor.BATTERY_LC709203F_AMA)
 
 		return device
 
