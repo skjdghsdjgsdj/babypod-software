@@ -109,7 +109,16 @@ class OfflineEventQueue:
 		for item in index:
 			request = self.init_api_request(item["type"], item["payload"])
 			print(f"Replaying {request}")
-			request.invoke()
+			retry_count = 0
+			try:
+				retry_count += 1
+				request.invoke()
+			except Exception as e:
+				if retry_count > 5:
+					print(f"{e} while trying to replay {request}, hard failing (retry count exceeded)")
+					raise e
+
+				print(f"{e} while trying to replay {request}; retrying (count = {retry_count})")
 
 		if empty_on_success:
 			self.reset_index()
