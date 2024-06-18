@@ -364,11 +364,6 @@ class Flow:
 		).render_and_wait()
 
 		if responses is not None:
-			if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
-				self.render_splash("Syncing changes...")
-				self.offline_queue.replay_all()
-
-			NVRAMValues.OFFLINE.write(responses[0])
 			NVRAMValues.PIEZO.write(responses[1])
 			NVRAMValues.BACKLIGHT.write(responses[2])
 
@@ -376,6 +371,12 @@ class Flow:
 				self.devices.backlight.set_color(BacklightColors.DEFAULT)
 			else:
 				self.devices.backlight.off()
+
+			if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
+				self.render_splash("Syncing changes...")
+				self.offline_queue.replay_all()
+
+			NVRAMValues.OFFLINE.write(responses[0])
 
 	def diaper(self) -> None:
 		self.render_header_text("How was diaper?")
