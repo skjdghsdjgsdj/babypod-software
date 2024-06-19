@@ -49,7 +49,7 @@ class APIRequest:
 	@staticmethod
 	def validate_response(response: adafruit_requests.Response) -> None:
 		if response.status_code < 200 or response.status_code >= 300:
-			raise Exception(f"Got HTTP {response.status_code} for request")
+			raise Exception(f"Got HTTP {response.status_code} for request: {response.text}")
 
 	@staticmethod
 	def connect() -> adafruit_requests.Session:
