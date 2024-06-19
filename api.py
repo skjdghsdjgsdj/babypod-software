@@ -132,7 +132,7 @@ class DeleteAPIRequest(APIRequest):
 
 	def invoke(self):
 		full_url = self.build_full_url()
-		print(f"HTTP GET: {full_url}")
+		print(f"HTTP DELETE: {full_url}")
 		response = APIRequest.connect().delete(
 			url = full_url,
 			headers = {
