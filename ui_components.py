@@ -142,6 +142,7 @@ class NumericSelector(UIComponent):
 
 	def render_and_wait(self) -> Optional[float]:
 		super().render_and_wait()
+		super().render_save(1)
 
 		self.devices.lcd.write(self.devices.lcd[LCD.UP_DOWN], (0, self.row))
 
@@ -168,7 +169,7 @@ class NumericSelector(UIComponent):
 				self.selected_value += self.step
 			elif button == UserInput.DOWN or button == UserInput.COUNTERCLOCKWISE:
 				self.selected_value -= self.step
-			elif button == UserInput.SELECT:
+			elif button == UserInput.SELECT or button == UserInput.RIGHT:
 				return self.selected_value
 
 			minimum, maximum = self.range
