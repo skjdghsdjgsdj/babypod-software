@@ -159,11 +159,14 @@ class Flow:
 			try:
 				self.requests = APIRequest.connect()
 			except Exception as e:
-				print(f"Got {e} when trying to connect; going offline")
-				self.render_splash("Going offline")
-				self.devices.piezo.tone("info")
-				time.sleep(1)
-				NVRAMValues.OFFLINE.write(True)
+				print(f"Got {e} when trying to connect")
+				if self.devices.rtc and self.devices.sdcard:
+					self.render_splash("Going offline")
+					self.devices.piezo.tone("info")
+					time.sleep(1)
+					NVRAMValues.OFFLINE.write(True)
+				else:
+					raise e # can't go offline automatically because there's no hardware support
 		elif not self.devices.rtc:
 			raise ValueError("External RTC is required for offline support")
 		else:
