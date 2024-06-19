@@ -9,7 +9,6 @@ except:
 	# don't care
 	pass
 
-import board
 from adafruit_seesaw import rotaryio, seesaw
 import digitalio
 from adafruit_seesaw.digitalio import DigitalIO
@@ -51,13 +50,10 @@ class UserInput:
 
 	@staticmethod
 	def get_instance(i2c: I2C):
-		try:
-			UserInput.seesaw_controller = seesaw.Seesaw(i2c, addr = 0x49)
-			product_id = (UserInput.seesaw_controller.get_version() >> 16) & 0xFFFF
-			assert product_id == 5740
-			return RotaryEncoder(i2c)
-		except ValueError:
-			return NavSwitch(i2c)
+		UserInput.seesaw_controller = seesaw.Seesaw(i2c, addr = 0x49)
+		product_id = (UserInput.seesaw_controller.get_version() >> 16) & 0xFFFF
+		assert product_id == 5740
+		return RotaryEncoder(i2c)
 
 	def wait(self,
 		listen_for_buttons: bool = True,
@@ -100,35 +96,6 @@ class UserInput:
 
 	def poll_for_input(self, listen_for_buttons: bool = True, listen_for_rotation: bool = True) -> int:
 		raise NotImplementedError()
-
-class NavSwitch(UserInput):
-	def __init__(self, i2c: I2C):
-		super().__init__(i2c)
-		self.switches = {}
-		self.last_pressed = None
-
-	def poll_for_input(self, listen_for_buttons: bool = True, listen_for_rotation: bool = True) -> int:
-		if not self.switches:
-			self.init_switches()
-
-		for input_direction, switch in self.switches.items():
-			if not switch.value:
-				self.last_pressed = input_direction
-			elif self.last_pressed == input_direction:
-				self.last_pressed = None
-				return input_direction
-
-	def init_switches(self):
-		for input_direction, pin in {
-			UserInput.SELECT: board.D10,  # keep SELECT as first
-			UserInput.RIGHT: board.D13,
-			UserInput.UP: board.D12,
-			UserInput.LEFT: board.D11,
-			UserInput.DOWN: board.D9
-		}.items():
-			switch = digitalio.DigitalInOut(pin)
-			switch.pull = digitalio.Pull.UP
-			self.switches[input_direction] = switch
 
 class RotaryEncoder(UserInput):
 	def __init__(self, i2c: I2C):
