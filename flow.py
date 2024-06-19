@@ -110,6 +110,8 @@ class Flow:
 			self.offline_queue = None
 		else:
 			self.offline_state = OfflineState.from_sdcard(self.devices.sdcard)
+			self.devices.rtc.offline_state = self.offline_state
+
 			self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
 	def on_backlight_dim_idle(self, _: float) -> None:
@@ -143,10 +145,9 @@ class Flow:
 		try:
 			old_now = self.devices.rtc.now()
 			self.devices.rtc.sync(self.requests)
-			print(f"RTC updated to {self.devices.rtc.now()}, drift = {old_now - self.devices.rtc.now()}")
-
-			self.offline_state.last_rtc_set = self.devices.rtc.now()
-			self.offline_state.to_sdcard()
+			print(f"RTC updated to {self.devices.rtc.now()}")
+			if old_now is not None:
+				print(f"RTC drift: {old_now - self.devices.rtc.now()}")
 		except Exception as e:
 			print(f"{e} when syncing RTC; forcing sync on next online boot")
 			NVRAMValues.FORCE_RTC_UPDATE.write(True)
@@ -176,15 +177,12 @@ class Flow:
 		if self.devices.rtc:
 			if NVRAMValues.FORCE_RTC_UPDATE:
 				print("RTC update forced")
-				NVRAMValues.FORCE_RTC_UPDATE.write(False)
 				self.refresh_rtc()
-			if not self.devices.rtc.now():
+			elif not self.devices.rtc.now():
 				print("RTC not set or is implausible")
 				self.refresh_rtc()
 			elif self.offline_state.last_rtc_set is None:
 				print("Last RTC set date/time unknown; assuming now")
-				self.offline_state.last_rtc_set = self.devices.rtc.now()
-				self.offline_state.to_sdcard()
 			else:
 				last_rtc_set_delta = self.devices.rtc.now() - self.offline_state.last_rtc_set
 				# noinspection PyUnresolvedReferences
@@ -194,6 +192,7 @@ class Flow:
 					if NVRAMValues.OFFLINE:
 						print("RTC will be updated next time device is online")
 					else:
+						print("RTC refresh interval expired")
 						self.refresh_rtc()
 				else:
 					print(f"RTC doesn't need updating: set to {self.devices.rtc.now()}, last refreshed {self.offline_state.last_rtc_set}")
@@ -448,13 +447,14 @@ class Flow:
 		periodic_chime: PeriodicChime = None,
 		subtext: str = None
 	) -> Optional[Timer]:
+		elapsed = 0
 		if NVRAMValues.OFFLINE:
 			timer = Timer(name = timer_name, offline = True, rtc = self.devices.rtc)
 			timer.started_at = self.devices.rtc.now()
 		else:
 			self.render_splash("Checking status...")
 			timer = Timer(name = timer_name, offline = False)
-			timer.start_or_resume()
+			elapsed = timer.start_or_resume()
 
 		self.clear_and_show_battery()
 		self.render_header_text(header_text)
@@ -462,20 +462,17 @@ class Flow:
 		if subtext is not None:
 			self.devices.lcd.write(message = subtext, coords = (0, 2))
 
-		start_at = 0
-		if self.devices.rtc:
-			# noinspection PyUnresolvedReferences
-			start_at = (self.devices.rtc.now() - timer.started_at).seconds
-
 		self.suppress_idle_warning = True
 		response = ActiveTimer(
 			devices = self.devices,
 			periodic_chime = periodic_chime,
-			start_at = start_at
+			start_at = elapsed
 		).render_and_wait()
 		self.suppress_idle_warning = False
 
 		if response is None:
+			if not NVRAMValues.OFFLINE:
+				self.render_splash("Canceling...")
 			timer.cancel()
 			return None # canceled
 

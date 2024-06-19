@@ -11,7 +11,7 @@ from external_rtc import ExternalRTC
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, List
+	from typing import Optional, List, Any
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -84,7 +84,6 @@ class APIRequest:
 	def invoke(self):
 		raise NotImplementedError()
 
-
 class PostAPIRequest(APIRequest):
 	def __init__(self, uri: str, uri_args = None, payload = None):
 		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
@@ -120,7 +119,6 @@ class GetAPIRequest(APIRequest):
 		)
 
 		APIRequest.validate_response(response)
-
 		json_response = response.json()
 		response.close()
 
@@ -151,7 +149,9 @@ class Timer:
 		self.name = name
 		self.rtc = rtc
 
-	def start_or_resume(self):
+	def start_or_resume(self) -> int:
+		elapsed = 0
+
 		if not self.offline:
 			timers = GetTimerAPIRequest(self.name).invoke()
 			max_id = None
@@ -165,15 +165,25 @@ class Timer:
 			if timer is not None:
 				self.timer_id = timer["id"]
 				self.started_at = datetime.fromisoformat(timer["start"])
+
+				duration_parts = timer["duration"].split(":")
+
+				hours = int(duration_parts[0])
+				minutes = int(duration_parts[1])
+				seconds = int(float(duration_parts[2]))
+
+				elapsed = (hours * 60 * 60) + (minutes * 60) + seconds
 			else:
 				response = CreateTimerAPIRequest(self.name).invoke()
 				self.timer_id = response["id"]
 
-	def cancel(self):
+		return elapsed
+
+	def cancel(self) -> None:
 		if not self.offline:
 			DeleteTimerAPIRequest(self.timer_id).invoke()
 
-	def as_payload(self):
+	def as_payload(self) -> dict[str, Any]:
 		if self.timer_id is None:
 			if self.started_at is None:
 				raise ValueError("Timer was never started or resumed")
@@ -191,7 +201,7 @@ class Timer:
 			}
 
 	@staticmethod
-	def from_payload(name: str, payload):
+	def from_payload(name: str, payload: dict[str, Any]):
 		if "timer" in payload:
 			timer = Timer(name = name, offline = False)
 			timer.timer_id = payload["timer"]
@@ -203,6 +213,24 @@ class Timer:
 			raise ValueError("Don't know how to create a timer from this payload")
 
 		return timer
+
+	def __str__(self) -> str:
+		value = "Timer"
+		if self.name:
+			value += f" \"{self.name}\""
+
+		if self.timer_id:
+			value += f" ID {self.timer_id}"
+
+		if self.started_at:
+			value += f"{self.started_at} ->"
+
+		if self.ended_at:
+			value += f" {self.ended_at}"
+		else:
+			value += " ongoing"
+
+		return value
 
 class PostChangeAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, is_wet: bool, is_solid: bool):

@@ -92,6 +92,7 @@ class OfflineEventQueue:
 				retry_count += 1
 				request.invoke()
 				print(f"Replay of {request} successful")
+				return
 			except Exception as e:
 				print(f"{e} while trying to replay {request}; retrying (count = {retry_count})")
 				if retry_count > 5:

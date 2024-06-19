@@ -31,11 +31,10 @@ battery_monitor = BatteryMonitor.get_instance(i2c)
 from user_input import UserInput
 user_input = UserInput.get_instance(i2c)
 
-from external_rtc import ExternalRTC
-rtc = ExternalRTC(i2c) if ExternalRTC.exists(i2c) else None
-
 sdcard = None
-if rtc is not None:
+rtc = None
+from external_rtc import ExternalRTC
+if ExternalRTC.exists(i2c):
 	from sdcard import SDCard
 	try:
 		sdcard = SDCard()
@@ -43,6 +42,8 @@ if rtc is not None:
 		print(f"Error while trying to mount SD card, assuming hardware is missing: {e}")
 		from nvram import NVRAMValues
 		NVRAMValues.OFFLINE.write(False)
+
+	rtc = ExternalRTC(i2c)
 
 from devices import Devices
 devices = Devices(
