@@ -404,7 +404,6 @@ class Flow:
 			is_wet = selected_index == 0 or selected_index == 2
 			is_solid = selected_index == 1 or selected_index == 2
 
-			self.render_splash("Saving...")
 			request = PostChangeAPIRequest(
 				child_id = self.child_id,
 				is_wet = is_wet,
@@ -413,6 +412,7 @@ class Flow:
 			if NVRAMValues.OFFLINE:
 				self.offline_queue.add(request)
 			else:
+				self.render_splash("Saving...")
 				request.invoke()
 			self.render_success_splash()
 
@@ -427,7 +427,6 @@ class Flow:
 		).render_and_wait()
 
 		if amount is not None:
-			self.render_splash("Saving...")
 			request = PostPumpingAPIRequest(
 				child_id = self.child_id,
 				amount = amount
@@ -435,6 +434,7 @@ class Flow:
 			if NVRAMValues.OFFLINE:
 				self.offline_queue.add(request)
 			else:
+				self.render_splash("Saving...")
 				request.invoke()
 			self.render_success_splash()
 
@@ -557,7 +557,6 @@ class Flow:
 					method = available_method["method"]
 					break
 
-		self.render_splash("Saving...")
 		request = PostFeedingAPIRequest(
 			child_id = self.child_id,
 			timer = timer,
@@ -567,6 +566,7 @@ class Flow:
 		if NVRAMValues.OFFLINE:
 			self.offline_queue.add(request)
 		else:
+			self.render_splash("Saving...")
 			request.invoke()
 
 		if self.offline_state is not None:
@@ -589,10 +589,10 @@ class Flow:
 		)
 
 		if timer is not None:
-			self.render_splash("Saving...")
 			request = PostTummyTimeAPIRequest(child_id = self.child_id, timer = timer)
 			if NVRAMValues.OFFLINE:
 				self.offline_queue.add(request)
 			else:
+				self.render_splash("Saving...")
 				request.invoke()
 			self.render_success_splash()
