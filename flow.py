@@ -109,7 +109,7 @@ class Flow:
 			self.offline_state = None
 			self.offline_queue = None
 		else:
-			self.offline_state = OfflineState(self.devices.sdcard)
+			self.offline_state = OfflineState.from_sdcard(self.devices.sdcard)
 			self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
 	def on_backlight_dim_idle(self, _: float) -> None:
