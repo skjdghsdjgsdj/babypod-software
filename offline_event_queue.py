@@ -85,16 +85,17 @@ class OfflineEventQueue:
 
 		request = self.init_api_request(item["type"], item["payload"])
 		print(f"Replaying {request}: {full_json_path}")
-		retry_count = 0
-		try:
-			retry_count += 1
-			request.invoke()
-		except Exception as e:
-			if retry_count > 5:
-				print(f"{e} while trying to replay {request}, hard failing (retry count exceeded)")
-				raise e
 
-			print(f"{e} while trying to replay {request}; retrying (count = {retry_count})")
+		retry_count = 0
+		while retry_count <= 5:
+			try:
+				retry_count += 1
+				request.invoke()
+				print(f"Replay of {request} successful")
+			except Exception as e:
+				print(f"{e} while trying to replay {request}; retrying (count = {retry_count})")
+				if retry_count > 5:
+					raise e
 
 	def replay_all(self, delete_on_success = True) -> None:
 		files = self.get_json_files()
@@ -105,4 +106,5 @@ class OfflineEventQueue:
 			self.replay(full_json_path)
 
 			if delete_on_success:
+				print(f"Deleting {full_json_path}")
 				os.unlink(full_json_path)
