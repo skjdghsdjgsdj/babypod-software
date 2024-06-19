@@ -356,34 +356,40 @@ class Flow:
 
 	def settings(self) -> None:
 		options = [
-			"Offline",
 			"Sounds",
 			"Backlight"
 		]
 
+		initial_states = [
+			NVRAMValues.PIEZO.get(),
+			NVRAMValues.BACKLIGHT.get()
+		]
+
+		has_offline_hardware = self.devices.rtc and self.devices.sdcard
+		if has_offline_hardware:
+			options.append("Offline")
+			initial_states.append(NVRAMValues.OFFLINE.get())
+
 		responses = VerticalCheckboxes(
 			options = options,
-			initial_states = [
-				NVRAMValues.OFFLINE.get(),
-				NVRAMValues.PIEZO.get(),
-				NVRAMValues.BACKLIGHT.get()
-			], devices = self.devices, anchor = VerticalMenu.ANCHOR_TOP
+			initial_states = initial_states, devices = self.devices, anchor = VerticalMenu.ANCHOR_TOP
 		).render_and_wait()
 
 		if responses is not None:
-			NVRAMValues.PIEZO.write(responses[1])
-			NVRAMValues.BACKLIGHT.write(responses[2])
+			NVRAMValues.PIEZO.write(responses[0])
+			NVRAMValues.BACKLIGHT.write(responses[1])
 
 			if NVRAMValues.BACKLIGHT.get():
 				self.devices.backlight.set_color(BacklightColors.DEFAULT)
 			else:
 				self.devices.backlight.off()
 
-			if NVRAMValues.OFFLINE and not responses[0]: # was offline, now back online
-				self.render_splash("Syncing changes...")
-				self.offline_queue.replay_all()
+			if has_offline_hardware:
+				if NVRAMValues.OFFLINE and not responses[2]: # was offline, now back online
+					self.render_splash("Syncing changes...")
+					self.offline_queue.replay_all()
 
-			NVRAMValues.OFFLINE.write(responses[0])
+				NVRAMValues.OFFLINE.write(responses[2])
 
 	def diaper(self) -> None:
 		self.render_header_text("How was diaper?")
