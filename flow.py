@@ -105,8 +105,12 @@ class Flow:
 			)
 		])
 
-		self.offline_state = OfflineState(self.devices.sdcard)
-		self.offline_queue: Optional[OfflineEventQueue] = None
+		if self.devices.rtc is None or self.devices.sdcard is None:
+			self.offline_state = None
+			self.offline_queue = None
+		else:
+			self.offline_state = OfflineState(self.devices.sdcard)
+			self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
 	def on_backlight_dim_idle(self, _: float) -> None:
 		print("Dimming backlight due to inactivity")
@@ -204,7 +208,6 @@ class Flow:
 
 	def start(self):
 		self.devices.lcd.clear()
-		self.offline_state = OfflineState.from_sdcard(self.devices.sdcard)
 
 		self.auto_connect()
 		self.init_rtc()
@@ -221,8 +224,6 @@ class Flow:
 
 		self.child_id = child_id
 		print(f"Using child ID {child_id}")
-
-		self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
 		while True:
 			try:
@@ -304,7 +305,9 @@ class Flow:
 		else:
 			self.render_splash("Getting feeding...")
 			last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
-			if self.offline_state.last_feeding != last_feeding or self.offline_state.last_feeding_method != method:
+			if self.offline_state is not None and \
+					(self.offline_state.last_feeding != last_feeding or
+					self.offline_state.last_feeding_method != method):
 				self.offline_state.last_feeding = last_feeding
 				self.offline_state.last_feeding_method = method
 				self.offline_state.to_sdcard()
@@ -560,9 +563,10 @@ class Flow:
 		else:
 			request.invoke()
 
-		self.offline_state.last_feeding = timer.started_at
-		self.offline_state.last_feeding_method = method
-		self.offline_state.to_sdcard()
+		if self.offline_state is not None:
+			self.offline_state.last_feeding = timer.started_at
+			self.offline_state.last_feeding_method = method
+			self.offline_state.to_sdcard()
 
 		self.render_success_splash()
 

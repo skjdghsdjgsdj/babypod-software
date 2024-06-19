@@ -32,7 +32,13 @@ from user_input import UserInput
 user_input = UserInput.get_instance(i2c)
 
 from sdcard import SDCard
-sdcard = SDCard()
+try:
+	sdcard = SDCard()
+except Exception as e:
+	print(f"Error while trying to mount SD card, assuming hardware is missing: {e}")
+	sdcard = None
+	from nvram import NVRAMValues
+	NVRAMValues.OFFLINE.write(False)
 
 from external_rtc import ExternalRTC
 rtc = ExternalRTC(i2c) if ExternalRTC.exists(i2c) else None

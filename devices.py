@@ -6,6 +6,13 @@ from piezo import Piezo
 from sdcard import SDCard
 from user_input import UserInput
 
+# noinspection PyBroadException
+try:
+	from typing import Optional
+except:
+	pass
+	# ignore, just for IDE's sake, not supported on board
+
 class Devices:
     def __init__(self,
                  user_input: UserInput,
@@ -13,8 +20,8 @@ class Devices:
                  lcd: LCD,
                  backlight: Backlight,
                  battery_monitor: BatteryMonitor,
-                 sdcard: SDCard,
-                 rtc: ExternalRTC):
+                 sdcard: Optional[SDCard],
+                 rtc: Optional[ExternalRTC]):
         self.user_input = user_input
         self.piezo = piezo
         self.lcd = lcd
