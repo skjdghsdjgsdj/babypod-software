@@ -372,7 +372,7 @@ class Flow:
 			else:
 				self.devices.backlight.off()
 
-			if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
+			if NVRAMValues.OFFLINE and not responses[0]: # was offline, now back online
 				self.render_splash("Syncing changes...")
 				self.offline_queue.replay_all()
 
