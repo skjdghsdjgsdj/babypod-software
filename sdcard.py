@@ -3,13 +3,12 @@ import sdcardio
 import storage
 
 class SDCard:
-    def __init__(self):
+    def __init__(self, cs_pin = board.D10):
         spi = board.SPI()
-        cs = board.D10
 
         self.mount_point = "/sd"
 
-        self.device = sdcardio.SDCard(spi, cs)
+        self.device = sdcardio.SDCard(spi, cs_pin)
         # noinspection PyTypeChecker
         self.vfs = storage.VfsFat(self.device)
         storage.mount(self.vfs, self.mount_point)
