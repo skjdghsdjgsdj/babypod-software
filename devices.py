@@ -8,10 +8,10 @@ from user_input import UserInput
 
 # noinspection PyBroadException
 try:
-	from typing import Optional
+    from typing import Optional
 except:
-	pass
-	# ignore, just for IDE's sake, not supported on board
+    pass
+    # ignore, just for IDE's sake, not supported on board
 
 class Devices:
     def __init__(self,
