@@ -47,7 +47,7 @@ class Piezo:
 	}
 
 	@staticmethod
-	def tone(name: str) -> None:
+	def tone(name: str, pin = board.A3) -> None:
 		if NVRAMValues.PIEZO.get():
 			data = Piezo.TONES[name]
 			for i in range(0, len(data)):
@@ -56,4 +56,4 @@ class Piezo:
 					time.sleep(duration)
 				else:
 					# noinspection PyUnresolvedReferences
-					simpleio.tone(board.A3, frequency, duration)
+					simpleio.tone(pin, frequency, duration)
