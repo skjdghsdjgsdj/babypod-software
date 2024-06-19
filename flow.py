@@ -417,7 +417,7 @@ class Flow:
 			self.render_success_splash()
 
 	def pumping(self):
-		self.render_header_text("How much pumped?")
+		self.render_header_text("How much?")
 
 		amount = NumericSelector(
 			devices = self.devices,
