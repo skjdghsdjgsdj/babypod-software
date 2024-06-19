@@ -316,6 +316,10 @@ class Flow:
 				last_feeding_str += " R"
 			elif method == "left breast":
 				last_feeding_str += " L"
+			elif method == "both breasts":
+				last_feeding_str += " RL"
+			elif method == "bottle":
+				last_feeding_str += " B"
 		else:
 			last_feeding_str = "Feeding"
 
