@@ -18,17 +18,18 @@ class BacklightColor:
 	@staticmethod
 	def from_setting(name: str, default_value: tuple[int, int, int]):
 		value = os.getenv(name)
-		color = BacklightColor(BacklightColor.int_to_tuple(int(value))) if value else default_value
+		color = BacklightColor.int_to_tuple(int(value)) if value else default_value
 
 		return BacklightColor(color)
 
 	@staticmethod
 	def int_to_tuple(color: int) -> tuple[int, int, int]:
 		# adapted from https://github.com/todbot/circuitpython-tricks?tab=readme-ov-file#convert-rgb-tuples-to-int-and-back-again
-		return tuple[int, int, int](color.to_bytes(3, "big"))
+		# noinspection PyTypeChecker
+		return tuple(color.to_bytes(3, "big"))
 
 	def invert(self):
-		r, g, b = self.color
+		(r, g, b) = self.color
 		return 255 - r, 255 - g, 255 - b
 
 	def mask(self, level: float):
