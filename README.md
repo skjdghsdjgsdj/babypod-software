@@ -29,6 +29,7 @@ When online, the RTC gets set automatically using `adafruit.io`'s `time` service
 - If the date/time is not plausible (year is older than 2024 or newer than 2040). If the device is offline when this happens, this is an error scenario as the RTC's date/time must be plausible for offline support to make sense.
 - If there is no record of when the RTC was last set, unless the device is offline in which case the RTC is assumed to be accurate for now.
 - If it's been more than 24 hours since the RTC was last set, unless the device is offline in which case the RTC is assumed to be accurate for now.
+- If `NVRAMValues.FORCE_RTC_UPDATE` is `True`, which if so, will be set to `False` immediately.
 
 The Adafruit service is used instead of NTP because the former will autodetect your timezone. It is important that your local timezone match Baby Buddy's timezone or all your offline events will be off by several hours. The RTC cannot be set through the user interface. Instead, all syncing happens through the Adafruit service.
 
