@@ -49,10 +49,7 @@ class BacklightColors:
 class Backlight:
 	@staticmethod
 	def get_instance():
-		if hasattr(board, "DISPLAY"):
-			return BuiltInLCDBacklight()
-		else:
-			return CharacterLCDBacklight()
+		return CharacterLCDBacklight()
 
 	def set_color(self, color: BacklightColor) -> None:
 		pass # do nothing unless a child class overrides it
@@ -64,14 +61,6 @@ class Backlight:
 
 	def off(self) -> None:
 		pass # do nothing unless a child class overrides it
-
-class BuiltInLCDBacklight(Backlight):
-	def set_level(self, level: float) -> None:
-		super().set_level(level)
-		board.DISPLAY.brightness = level
-
-	def off(self):
-		self.set_level(0.01)
 
 class CharacterLCDBacklight(Backlight):
 	def __init__(self):
