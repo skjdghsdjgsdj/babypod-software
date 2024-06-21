@@ -209,8 +209,8 @@ The values are:
 Calculate the bitmask of the options you want by adding the values. For example, to only show the two types of breast milk, use `0x1 + 0x2`, or to show just breast milk, use `0x1`. Then, in the REPL serial console, store the value in NVRAM like this:
 
 ```
-import microcontroller
-microcontroller.nvm[5] = value
+import nvram
+nvram.NVRAMValues.ENABLED_FOOD_TYPES_MASK.write(value)
 ```
 
 ...where `value` is the bitmask. There's no user interface to do this for now, but being in NVRAM, this will
