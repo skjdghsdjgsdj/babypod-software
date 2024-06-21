@@ -114,6 +114,8 @@ class Flow:
 
 			self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
+		self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
+
 	def on_backlight_dim_idle(self, _: float) -> None:
 		print("Dimming backlight due to inactivity")
 		self.devices.backlight.set_color(BacklightColors.DIM)
@@ -301,9 +303,12 @@ class Flow:
 		return f"{hour}:{minute:02}{meridian}"
 
 	def main_menu(self) -> None:
-		if NVRAMValues.OFFLINE:
+		if self.use_offline_feeding_stats:
 			last_feeding = self.offline_state.last_feeding
 			method = self.offline_state.last_feeding_method
+
+			# reapply the value which could have been changed by feeding saved just now
+			self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
 		else:
 			self.render_splash("Getting feeding...")
 			last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
@@ -593,6 +598,7 @@ class Flow:
 			self.offline_state.last_feeding = timer.started_at
 			self.offline_state.last_feeding_method = method
 			self.offline_state.to_sdcard()
+			self.use_offline_feeding_stats = True
 
 		self.render_success_splash()
 
