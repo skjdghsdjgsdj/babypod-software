@@ -8,7 +8,7 @@ You need to install [Baby Buddy](https://docs.baby-buddy.net/setup/deployment/) 
 
 ### General
 - Simple text-based interface that can be scrolled with the rotary encoder's wheel or the up/down buttons. Select and Right buttons are usually interchangeable, and Left usually means cancel or back. The design objective is you can give the BabyPod to someone with no experience using it and they can understand how it works easily.
-- Backlight color and piezo are used for  interface feedback, like successful saving of data back to Baby Buddy, reporting of errors, periodic chimes during timers, low battery warnings, etc.
+- Backlight color and piezo are used for interface feedback, like successful saving of data back to Baby Buddy, reporting of errors, periodic chimes during timers, low battery warnings, etc.
 - Some user-configurable options are exposed directly through the interface instead of messing with `settings.toml`, like turning off the piezo if it bothers your baby. The values are stored in NVRAM to persist across reboots. Protip: don't turn off the backlight on [backlight-negative LCDs](https://www.adafruit.com/product/498).
 - Battery percentage shown on most screens and updates periodically.
 - Backlight dims after inactivity to save power, although you should turn off the BabyPod when not using it anyway.
@@ -17,25 +17,26 @@ You need to install [Baby Buddy](https://docs.baby-buddy.net/setup/deployment/) 
 ### Offline support
 In scenarios where you're away from your predefined Wi-Fi location, you can go offline. When you go offline, actions get buffered to JSON files on a microSD card, and when you go online, they get replayed. You should only go offline when you're forced to; otherwise, in the event the microSD card gets corrupted or there's some other issue, you could lose all the buffered actions you took while offline.
 
+Successful events replays are deleted from the microSD card as each one is successfully replayed when going back online. If a specific event fails to play back, playback will stop at that point in history and subsequent events are kept on the microSD card, and the device stays offline.
+
 #### Hardware requirements
 For offline support to be available, the BabyPod must both have the following additional hardware. The easy way to get both these things is by using an [Adalogger FeatherWing](https://www.adafruit.com/product/2922). However, you can use other breakout boards if you want, so long as they meet the criteria.
 - A PCF8523-based real-time clock (RTC) at I2C address `0x68`.
 - An SPI-based microSD card reader with the `CS` pin wired to `D10` and a FAT32-formatted microSD card inserted. The capacity and speed are pretty much irrelevant because only a few hundred KB of JSON are likely to be written.
 
-If either the RTC isn't available or the microSD reader fails to initialize, offline support is disabled (the user cannot set the option) and the BabyPod is forced to be online.
+If either the RTC isn't available or the microSD reader fails to initialize, offline support is disabled (the user isn't shown the option) and the BabyPod is forced to be online.
 
 #### Real-time clock (RTC)
 When online, the RTC gets set automatically using `adafruit.io`'s `time` service in the following situations:
 - If the date/time is not plausible (year is older than 2024 or newer than 2040). If the device is offline when this happens, this is an error scenario as the RTC's date/time must be plausible for offline support to make sense.
-- If there is no record of when the RTC was last set, unless the device is offline in which case the RTC is assumed to be accurate for now.
-- If it's been more than 24 hours since the RTC was last set, unless the device is offline in which case the RTC is assumed to be accurate for now.
-- If `NVRAMValues.FORCE_RTC_UPDATE` is `True`, which if so, will be set to `False` immediately.
+- If there is no record of when the RTC was last set or it's been more than 24 hours since the RTC was last set, unless the device is offline in which case the RTC is assumed to be accurate for now.
+- If `NVRAMValues.FORCE_RTC_UPDATE` is `True`, mainly for debugging's sake and it should be set to `False` or entirely unset otherwise.
 
 The Adafruit service is used instead of NTP because the former will autodetect your timezone. It is important that your local timezone match Baby Buddy's timezone or all your offline events will be off by several hours. The RTC cannot be set through the user interface. Instead, all syncing happens through the Adafruit service.
 
 Remember that RTC devices need their own external power source, usually a button-cell battery like a CR1220 battery. Additionally, Adafruit warns users that the battery must be inserted into the breakout board *even if it's dead* or the device may behave unpredictably. However, the RTC battery will likely last for years.
 
-A BabyPod can't work 100% offline. As a strict minimum, it must be online at least once to sync the RTC. More realistically, it needs to be online periodically to sync changes back to Baby Buddy or the BabyPod will be a mostly useless device.
+A BabyPod can't work 100% offline in perpetuity. As a strict minimum, it must be online at least once to sync the RTC. More realistically, it needs to be online periodically to sync changes back to Baby Buddy or the BabyPod will be a mostly useless device.
 
 #### Offline activation
 Offline is activated:
@@ -43,7 +44,7 @@ Offline is activated:
 - If the Wi-Fi connection fails at startup
 
 Offline is deactivated (device goes back online):
-- By unchecking "Offline" in the user settings, which will then immediately replay events
+- By unchecking "Offline" in the user settings and once all buffered events replay successfully
 - If the RTC was never set. You'll need to reboot the BabyPod for it to try an RTC sync again.
 - If the required hardware for offline isn't found or fails to initialize
 
@@ -51,7 +52,7 @@ Offline is deactivated (device goes back online):
 The main differences between running online vs. offline are:
 - When offline, actions that would result in a `POST` instead get serialized to JSON. When flipping the offline option back to online, all the serialized requests get replayed back to the server in the order they were logged.
 - Most obviously, when offline the Wi-Fi connection is skipped when powering up. Of course, that means startup is faster too.
-- When offline, actions that would result in a `GET` usually have locally stored equivalents, For example, when online, the last feeding time is retrieved from the server and shown on the main menu. When offline, the last feeding time is pulled from a local state file.
+- When offline, actions that would result in a `GET` usually have locally stored equivalents, For example, when online, the last feeding time is retrieved from the server and shown on the main menu. When offline, it's pulled from a local state file.
 - Timers won't be synced back to the server. However, timed events (feedings, etc.) will have the start and end times captured via the RTC so times and durations will be correct once synced back to the server. That means if you have some automation set up to detect active timers, that automation won't see any timers running locally on an offline BabyPod.
 
 On the main menu, the bottom-right navigation shows a check if online and unchecked box if offline. That doesn't necessarily mean a positively confirmed connection to the server, just that the offline option is enabled or disabled.
@@ -94,7 +95,7 @@ Here are the possible keys for `settings.toml`. Strings must be quoted and `int`
 | `ADAFRUIT_AIO_USERNAME`          | Your `adafruit.io` [API user's username](https://io.adafruit.com/api/docs/#authentication) | Yes, if your device has an RTC |
 | `ADAFRUIT_AIO_KEY`               | Your `adafruit.io` [API user's key](https://io.adafruit.com/api/docs/#authentication)      | Yes, if your device has an RTC |
 
-Note the Wi-Fi related settings have a suffix of `_DEFER`. This is because you *don't* want CircuitPython connecting to Wi-Fi automatically. Don't use the default CircuitPython Wi-Fi setting names!
+Note the Wi-Fi related settings have a suffix of `_DEFER`. This is because you *don't* want CircuitPython connecting to Wi-Fi automatically as that precedes `code.py` starting and therefore the user doesn't get any startup feedback. Don't use the default CircuitPython Wi-Fi setting names!
 
 ### Requirements
 
@@ -125,11 +126,11 @@ If you update CircuitPython on the Feather, you will likely need to build a corr
 The build script supports several arguments:
 - `--no-compile`: instead of building files with `mpy-cross`, just copy the source `.py` files. This is useful for debugging so errors don't always show as line 1 of a file, but execution is slower. You should only use `--no-compile` when debugging. `code.py` doesn't get compiled regardless.
 - `--modules`: only builds or copies the given files. For example, use `--modules code` to just copy `code.py`, or `--modules code sdcard` to just copy `code.py` and build/copy `sdcard.py`.
-- `--clean`: deletes everything from `lib/` on the `CIRCUITPY` drive and repopulates it with the required Adafruit libraries. This is useful if using `--no-compile` after using compiled files, or vice versa, to ensure the `.py` or `.mpy` files are being used correctly without duplicates.
-- `--no-reboot`: don't reboot the Feather after copying files.
+- `--clean`: deletes everything from `lib/` on the `CIRCUITPY` drive and repopulates it with the required Adafruit libraries. This is useful if using `--no-compile` after using compiled files, or vice versa, to ensure the `.py` or `.mpy` files are being used correctly without duplicates. It can take a minute or two to finish.
+- `--no-reboot`: don't attempt to reboot the Feather after copying files.
 
 To set up a brand new BabyPod, all you should need to do is:
-1. Install CircuitPython.
+1. Erase the flash then re-flash CircuitPython.
 2. Create a valid `settings.toml`.
 3. Run `build-and-deploy.py --clean` to build all the BabyPod files and also copy the necessary Adafruit modules.
 
