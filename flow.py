@@ -13,7 +13,7 @@ from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from user_input import ActivityListener, WaitTickListener
-from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer
+from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar
 
 # noinspection PyBroadException
 try:
@@ -388,10 +388,30 @@ class Flow:
 
 			if has_offline_hardware:
 				if NVRAMValues.OFFLINE and not responses[2]: # was offline, now back online
-					self.render_splash("Syncing changes...")
-					self.offline_queue.replay_all()
+					self.back_online()
 
 				NVRAMValues.OFFLINE.write(responses[2])
+
+	def back_online(self):
+		files = self.offline_queue.get_json_files()
+		if len(files) == 0:
+			return # nothing to do
+
+
+		print(f"Replaying offline-serialized {len(files)} requests")
+
+		self.devices.lcd.clear()
+
+		progress_bar = ProgressBar(devices = self.devices, count = len(files), message = "Syncing changes...")
+		progress_bar.render_and_wait()
+
+		index = 0
+		for filename in files:
+			progress_bar.set_index(index)
+			self.offline_queue.replay(filename)
+			index += 1
+
+		self.render_success_splash("Change synced!" if len(files) == 1 else f"{len(files)} changes synced!")
 
 	def diaper(self) -> None:
 		self.render_header_text("How was diaper?")

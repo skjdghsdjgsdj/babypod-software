@@ -31,7 +31,7 @@ class OfflineEventQueue:
 	def get_json_files(self) -> List[str]:
 		files = os.listdir(self.json_path)
 		files.sort()
-		return files
+		return list(map(lambda filename: f"{self.json_path}/{filename}", files))
 
 	def build_json_filename(self) -> str:
 		now = self.rtc.now()
@@ -79,7 +79,7 @@ class OfflineEventQueue:
 		else:
 			raise NotImplementedError(f"Don't know how to deserialize a {class_name}")
 
-	def replay(self, full_json_path: str) -> None:
+	def replay(self, full_json_path: str, delete_on_success: bool = True) -> None:
 		with open(full_json_path, "r") as file:
 			item = json.load(file)
 
@@ -92,20 +92,11 @@ class OfflineEventQueue:
 				retry_count += 1
 				request.invoke()
 				print(f"Replay of {request} successful")
+				if delete_on_success:
+					print(f"Deleting {full_json_path}")
+					os.unlink(full_json_path)
 				return
 			except Exception as e:
 				print(f"{e} while trying to replay {request}; retrying (count = {retry_count})")
 				if retry_count > 5:
 					raise e
-
-	def replay_all(self, delete_on_success = True) -> None:
-		files = self.get_json_files()
-
-		print(f"Replaying offline-serialized {len(files)} requests")
-		for filename in files:
-			full_json_path = f"{self.json_path}/{filename}"
-			self.replay(full_json_path)
-
-			if delete_on_success:
-				print(f"Deleting {full_json_path}")
-				os.unlink(full_json_path)
