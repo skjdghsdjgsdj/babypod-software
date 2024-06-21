@@ -164,7 +164,6 @@ class Timer:
 
 			if timer is not None:
 				self.timer_id = timer["id"]
-				self.started_at = datetime.fromisoformat(timer["start"])
 
 				duration_parts = timer["duration"].split(":")
 
@@ -174,8 +173,10 @@ class Timer:
 
 				elapsed = (hours * 60 * 60) + (minutes * 60) + seconds
 			else:
-				response = CreateTimerAPIRequest(self.name).invoke()
-				self.timer_id = response["id"]
+				timer = CreateTimerAPIRequest(self.name).invoke()
+				self.timer_id = timer["id"]
+
+			self.started_at = datetime.fromisoformat(timer["start"])
 
 		return elapsed
 
