@@ -1,3 +1,5 @@
+import math
+
 from devices import Devices
 from lcd import LCD
 from periodic_chime import PeriodicChime
@@ -29,6 +31,55 @@ class UIComponent:
 	def render_save(self, y_delta: int = 0) -> None:
 		save_message = "Save" + self.devices.lcd[LCD.RIGHT]
 		self.devices.lcd.write(save_message, (LCD.COLUMNS - len(save_message), LCD.LINES - y_delta - 1))
+
+class ProgressBar(UIComponent):
+	def __init__(self, devices: Devices, count: int, message: str):
+		assert(count > 0)
+
+		super().__init__(
+			devices = devices,
+			allow_cancel = False
+		)
+
+		self.count = count
+		self.index = 0
+		self.last_block_count = -1
+		self.max_block_count = LCD.COLUMNS - len(str(self.count)) * 2 - 1
+		self.message = message
+
+	def set_index(self, index: int = 0):
+		if index < 0:
+			raise ValueError(f"Index must be >= 0, not {index}")
+
+		if index >= self.count:
+			raise ValueError(f"Index must be < {self.count}, not {index}")
+
+		self.index = index
+
+		self.render_progress()
+
+	def render_progress(self):
+		self.devices.lcd.write(
+			message = str(self.index + 1),
+			coords = (LCD.COLUMNS - len(str(self.count)) * 2 - 1, 2)
+		)
+
+		block_count = math.ceil(((self.index + 1) / self.count) * self.max_block_count) + 1
+
+		if self.last_block_count == -1:
+			self.devices.lcd.write("\xFF" * block_count, (0, 2))
+			self.last_block_count = block_count
+		elif block_count != self.last_block_count:
+			extra_blocks = block_count - self.last_block_count
+			self.devices.lcd.write("\xFF" * extra_blocks, (self.last_block_count - 1, 2))
+
+	def render_and_wait(self) -> None:
+		super().render_and_wait()
+
+		self.devices.lcd.write_centered(self.message)
+		self.devices.lcd.write_right_aligned("/" + str(self.count), 2)
+
+		self.render_progress()
 
 class ActiveTimer(UIComponent):
 	def __init__(self,
