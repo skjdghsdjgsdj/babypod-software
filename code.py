@@ -3,7 +3,6 @@ supervisor.runtime.autoreload = False
 
 from busio import I2C
 import board
-# noinspection PyUnresolvedReferences
 i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
 from lcd import LCD
@@ -20,7 +19,6 @@ backlight = Backlight.get_instance()
 from digitalio import DigitalInOut, Direction
 
 # turn off Neopixel
-# noinspection PyUnresolvedReferences
 neopixel = DigitalInOut(board.NEOPIXEL)
 neopixel.direction = Direction.OUTPUT
 neopixel.value = False

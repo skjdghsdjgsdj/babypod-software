@@ -185,7 +185,6 @@ class Flow:
 				print("Last RTC set date/time unknown; assuming now")
 			else:
 				last_rtc_set_delta = self.devices.rtc.now() - self.offline_state.last_rtc_set
-				# noinspection PyUnresolvedReferences
 				if last_rtc_set_delta.seconds >= 60 * 60 * 24:
 					print("RTC last set more than a day ago")
 

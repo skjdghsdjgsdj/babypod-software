@@ -55,5 +55,4 @@ class Piezo:
 				if frequency is None:
 					time.sleep(duration)
 				else:
-					# noinspection PyUnresolvedReferences
 					simpleio.tone(pin, frequency, duration)
