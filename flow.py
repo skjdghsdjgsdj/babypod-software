@@ -186,8 +186,10 @@ class Flow:
 			elif self.offline_state.last_rtc_set is None:
 				print("Last RTC set date/time unknown; assuming now")
 			else:
-				last_rtc_set_delta = self.devices.rtc.now() - self.offline_state.last_rtc_set
-				if last_rtc_set_delta.seconds >= 60 * 60 * 24:
+				now = self.devices.rtc.now()
+				last_rtc_set_delta = now - self.offline_state.last_rtc_set
+				print(f"RTC = {now}, last set = {self.offline_state.last_rtc_set} (delta = {last_rtc_set_delta.seconds} sec)")
+				if last_rtc_set_delta.seconds >= 60 * 60 * 24 or last_rtc_set_delta.days >= 1:
 					print("RTC last set more than a day ago")
 
 					if NVRAMValues.OFFLINE:
