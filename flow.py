@@ -306,7 +306,7 @@ class Flow:
 		return f"{hour}:{minute:02}{meridian}"
 
 	def main_menu(self) -> None:
-		if self.use_offline_feeding_stats:
+		if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
 			last_feeding = self.offline_state.last_feeding
 			method = self.offline_state.last_feeding_method
 
