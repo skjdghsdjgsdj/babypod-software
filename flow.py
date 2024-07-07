@@ -1,3 +1,4 @@
+import os
 import time
 import traceback
 
@@ -115,6 +116,7 @@ class Flow:
 			self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
 		self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
+		self.device_name = os.getenv("DEVICE_NAME") or "BabyPod"
 
 	def on_backlight_dim_idle(self, _: float) -> None:
 		print("Dimming backlight due to inactivity")
