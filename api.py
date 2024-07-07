@@ -7,6 +7,7 @@ import os
 from adafruit_datetime import datetime
 import binascii
 
+from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
 
 # noinspection PyBroadException
@@ -141,16 +142,25 @@ class DeleteAPIRequest(APIRequest):
 		APIRequest.validate_response(response)
 
 class Timer:
-	def __init__(self, name: str, offline: bool, rtc: ExternalRTC = None):
+	def __init__(self, name: str, offline: bool, rtc: ExternalRTC = None, battery: BatteryMonitor = None):
 		self.offline = offline
 		self.started_at: Optional[datetime] = None
 		self.ended_at: Optional[datetime] = None
 		self.timer_id: Optional[int] = None
 		self.name = name
 		self.rtc = rtc
+		self.battery = battery
+		self.starting_battery_percent = None
 
 	def start_or_resume(self) -> int:
 		elapsed = 0
+
+		self.starting_battery_percent = None
+		if self.battery is not None:
+			try:
+				self.starting_battery_percent = self.battery.get_percent()
+			except Exception as e:
+				print(f"Got {e} while checking starting battery percent; not tracking battery usage for this timer")
 
 		if not self.offline:
 			timers = GetTimerAPIRequest(self.name).invoke()
@@ -172,6 +182,9 @@ class Timer:
 				seconds = int(float(duration_parts[2]))
 
 				elapsed = (hours * 60 * 60) + (minutes * 60) + seconds
+
+				if elapsed > 0:
+					self.starting_battery_percent = None
 			else:
 				timer = CreateTimerAPIRequest(self.name).invoke()
 				self.timer_id = timer["id"]
@@ -298,11 +311,12 @@ class PostTummyTimeAPIRequest(PostAPIRequest):
 		)
 
 class PostFeedingAPIRequest(PostAPIRequest):
-	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer):
+	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer, notes: str):
 		super().__init__(uri = "feedings", payload = APIRequest.merge_timer({
 			"child": child_id,
 			"type": food_type,
-			"method": method
+			"method": method,
+			"notes": notes
 		}, timer))
 
 		self.timer = timer
@@ -311,7 +325,8 @@ class PostFeedingAPIRequest(PostAPIRequest):
 		return APIRequest.merge_timer(payload = {
 			"child_id": self.payload["child"],
 			"food_type": self.payload["type"],
-			"method": self.payload["method"]
+			"method": self.payload["method"],
+			"notes": self.payload["notes"]
 		}, timer = self.timer)
 
 	@classmethod
@@ -321,7 +336,8 @@ class PostFeedingAPIRequest(PostAPIRequest):
 			child_id = json_object["child_id"],
 			food_type = json_object["food_type"],
 			method = json_object["method"],
-			timer = timer
+			timer = timer,
+			notes = json_object["notes"]
 		)
 
 class GetLastFeedingAPIRequest(GetAPIRequest):
