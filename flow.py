@@ -475,7 +475,6 @@ class Flow:
 		periodic_chime: PeriodicChime = None,
 		subtext: str = None
 	) -> Optional[Timer]:
-		elapsed = 0
 		if NVRAMValues.OFFLINE:
 			timer = Timer(
 				name = timer_name,
@@ -484,6 +483,7 @@ class Flow:
 				battery = self.devices.battery_monitor
 			)
 			timer.started_at = self.devices.rtc.now()
+			elapsed = timer.start_or_resume()
 		else:
 			self.render_splash("Checking status...")
 			timer = Timer(
@@ -594,27 +594,11 @@ class Flow:
 					method = available_method["method"]
 					break
 
-		ending_battery_percent = None
-		if timer is not None and timer.starting_battery_percent is not None:
-			try:
-				ending_battery_percent = self.devices.battery_monitor.get_percent()
-			except Exception as e:
-				print(f"Got {e} while getting battery percent; not tracking for this timer")
-
-		notes = f"Recorded by {self.device_name}"
-		if ending_battery_percent is not None:
-			consumed_battery_percent = ending_battery_percent - timer.starting_battery_percent
-			if consumed_battery_percent < 0:
-				notes += f"\nBabyPod was charging: {timer.starting_battery_percent}% -> {ending_battery_percent}%, net gain {consumed_battery_percent}%"
-			else:
-				notes += f"\nUsed {consumed_battery_percent}% battery: {timer.starting_battery_percent}% -> {ending_battery_percent}%"
-
 		request = PostFeedingAPIRequest(
 			child_id = self.child_id,
 			timer = timer,
 			food_type = food_type,
-			method = method,
-			notes = notes
+			method = method
 		)
 		if NVRAMValues.OFFLINE:
 			self.offline_queue.add(request)

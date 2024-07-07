@@ -36,6 +36,12 @@ class APIRequest:
 	def deserialize_from_json(cls, json_object):
 		raise RuntimeError(f"{str(cls)} is not supported offline")
 
+	def merge_serialized_notes(self, json_object):
+		if "notes" in json_object and json_object["notes"] is not None:
+			self.payload["notes"] = json_object["notes"]
+
+		return self
+
 	def build_full_url(self) -> str:
 		full_url = APIRequest.BASE_URL + self.uri
 		if self.uri_args is not None:
@@ -76,11 +82,41 @@ class APIRequest:
 		return APIRequest.requests
 
 	@staticmethod
-	def merge_timer(payload, timer):
+	def merge(payload, timer = None, extra_notes: List[str] = None):
 		if timer is not None:
 			payload.update(timer.as_payload())
 
+		notes = os.getenv("DEVICE_NAME") or "BabyPod"
+
+		if extra_notes is None:
+			extra_notes = []
+
+		if timer is not None:
+			battery_notes = APIRequest.battery_delta_as_notes(timer)
+			if battery_notes is not None:
+				extra_notes.append(battery_notes)
+
+		if len(extra_notes) > 0:
+			notes += "\n" + "\n".join(extra_notes)
+
+		payload.update({"notes": notes})
+
 		return payload
+
+	@staticmethod
+	def battery_delta_as_notes(timer):
+		ending_battery_percent = None
+		if timer is not None and timer.starting_battery_percent is not None:
+			try:
+				ending_battery_percent = timer.battery.get_percent()
+			except Exception as e:
+				print(f"Got {e} while getting battery percent; not tracking for this timer")
+
+		if timer is not None and timer.starting_battery_percent is not None and ending_battery_percent is not None:
+			consumed = ending_battery_percent - timer.starting_battery_percent
+			return f"🔋 {timer.starting_battery_percent}% → {ending_battery_percent}%, Δ{-consumed}%"
+
+		return None
 
 	def invoke(self):
 		raise NotImplementedError()
@@ -248,26 +284,29 @@ class Timer:
 
 class PostChangeAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, is_wet: bool, is_solid: bool):
-		super().__init__(uri = "changes", payload = {
+		super().__init__(uri = "changes", payload = APIRequest.merge({
 			"child": child_id,
 			"wet": is_wet,
 			"solid": is_solid
-		})
+		}))
 
 	def serialize_to_json(self) -> object:
 		return {
 			"child_id": self.payload["child"],
 			"is_wet": self.payload["wet"],
-			"is_solid": self.payload["solid"]
+			"is_solid": self.payload["solid"],
+			"notes": self.payload["notes"]
 		}
 
 	@classmethod
 	def deserialize_from_json(cls, json_object):
-		return PostChangeAPIRequest(
+		request = PostChangeAPIRequest(
 			child_id = json_object["child_id"],
 			is_wet = json_object["is_wet"],
 			is_solid = json_object["is_solid"]
 		)
+
+		return request.merge_serialized_notes(json_object)
 
 class PostPumpingAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, amount: float):
@@ -284,61 +323,64 @@ class PostPumpingAPIRequest(PostAPIRequest):
 
 	@classmethod
 	def deserialize_from_json(cls, json_object):
-		return PostPumpingAPIRequest(
+		request = PostPumpingAPIRequest(
 			child_id = json_object["child_id"],
 			amount = json_object["amount"]
 		)
 
+		return request.merge_serialized_notes(json_object)
+
 class PostTummyTimeAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, timer: Timer):
-		super().__init__(uri = "tummy-times", payload = APIRequest.merge_timer({
+		super().__init__(uri = "tummy-times", payload = APIRequest.merge({
 			"child": child_id
 		}, timer))
 
 		self.timer = timer
 
 	def serialize_to_json(self) -> object:
-		return APIRequest.merge_timer({
+		return APIRequest.merge({
 			"child_id": self.payload["child"]
 		}, self.timer)
 
 	@classmethod
 	def deserialize_from_json(cls, json_object):
 		timer = Timer.from_payload(name = "tummy-time", payload = json_object)
-		return PostTummyTimeAPIRequest(
+		request = PostTummyTimeAPIRequest(
 			child_id = json_object["child_id"],
 			timer = timer
 		)
 
+		return request.merge_serialized_notes(json_object)
+
 class PostFeedingAPIRequest(PostAPIRequest):
-	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer, notes: str):
-		super().__init__(uri = "feedings", payload = APIRequest.merge_timer({
+	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer):
+		super().__init__(uri = "feedings", payload = APIRequest.merge({
 			"child": child_id,
 			"type": food_type,
-			"method": method,
-			"notes": notes
+			"method": method
 		}, timer))
 
 		self.timer = timer
 
 	def serialize_to_json(self) -> object:
-		return APIRequest.merge_timer(payload = {
+		return APIRequest.merge(payload = {
 			"child_id": self.payload["child"],
 			"food_type": self.payload["type"],
-			"method": self.payload["method"],
-			"notes": self.payload["notes"]
+			"method": self.payload["method"]
 		}, timer = self.timer)
 
 	@classmethod
 	def deserialize_from_json(cls, json_object):
 		timer = Timer.from_payload(name = "feeding", payload = json_object)
-		return PostFeedingAPIRequest(
+		request = PostFeedingAPIRequest(
 			child_id = json_object["child_id"],
 			food_type = json_object["food_type"],
 			method = json_object["method"],
-			timer = timer,
-			notes = json_object["notes"]
+			timer = timer
 		)
+
+		return request.merge_serialized_notes(json_object)
 
 class GetLastFeedingAPIRequest(GetAPIRequest):
 	def __init__(self, child_id: int):
