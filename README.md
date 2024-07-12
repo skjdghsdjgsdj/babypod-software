@@ -94,6 +94,7 @@ Here are the possible keys for `settings.toml`. Strings must be quoted and `int`
 | `BABYBUDDY_AUTH_TOKEN`           | Your API user's [authorization token](https://docs.baby-buddy.net/api/#authentication)     | Yes                            |
 | `ADAFRUIT_AIO_USERNAME`          | Your `adafruit.io` [API user's username](https://io.adafruit.com/api/docs/#authentication) | Yes, if your device has an RTC |
 | `ADAFRUIT_AIO_KEY`               | Your `adafruit.io` [API user's key](https://io.adafruit.com/api/docs/#authentication)      | Yes, if your device has an RTC |
+| `DEVICE_NAME`                    | Device name as it should appear in some notes posted to the API; defaults to "BabyPod"     | No                             |
 
 Note the Wi-Fi related settings have a suffix of `_DEFER`. This is because you *don't* want CircuitPython connecting to Wi-Fi automatically as that precedes `code.py` starting and therefore the user doesn't get any startup feedback. Don't use the default CircuitPython Wi-Fi setting names!
 
