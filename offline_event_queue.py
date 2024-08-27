@@ -76,6 +76,9 @@ class OfflineEventQueue:
 		elif class_name == "PostTummyTimeAPIRequest":
 			from api import PostTummyTimeAPIRequest
 			return PostTummyTimeAPIRequest.deserialize_from_json(payload)
+		elif class_name == "PostSleepAPIRequest":
+			from api import PostSleepAPIRequest
+			return PostSleepAPIRequest.deserialize_from_json(payload)
 		else:
 			raise NotImplementedError(f"Don't know how to deserialize a {class_name}")
 

@@ -330,6 +330,33 @@ class PostPumpingAPIRequest(PostAPIRequest):
 
 		return request.merge_serialized_notes(json_object)
 
+
+class PostSleepAPIRequest(PostAPIRequest):
+	def __init__(self, child_id: int, timer: Timer, nap: Optional[bool] = None):
+		super().__init__(uri = "sleep", payload = APIRequest.merge({
+			"child": child_id,
+			"nap": nap
+		}, timer))
+
+		self.timer = timer
+
+	def serialize_to_json(self) -> object:
+		return APIRequest.merge({
+			"child_id": self.payload["child"],
+			"nap": self.payload["nap"]
+		}, self.timer)
+
+	@classmethod
+	def deserialize_from_json(cls, json_object):
+		timer = Timer.from_payload(name = "sleep", payload = json_object)
+		request = PostSleepAPIRequest(
+			child_id = json_object["child_id"],
+			timer = timer,
+			nap = json_object["nap"]
+		)
+
+		return request.merge_serialized_notes(json_object)
+
 class PostTummyTimeAPIRequest(PostAPIRequest):
 	def __init__(self, child_id: int, timer: Timer):
 		super().__init__(uri = "tummy-times", payload = APIRequest.merge({

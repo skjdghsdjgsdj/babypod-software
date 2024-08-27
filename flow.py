@@ -5,7 +5,7 @@ import traceback
 from adafruit_datetime import datetime
 
 from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
-	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest
+	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest
 from offline_event_queue import OfflineEventQueue
 from backlight import BacklightColors
 from devices import Devices
@@ -14,7 +14,7 @@ from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from user_input import ActivityListener, WaitTickListener
-from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar
+from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, BooleanPrompt
 
 # noinspection PyBroadException
 try:
@@ -341,8 +341,8 @@ class Flow:
 		selected_index = VerticalMenu(options = [
 			last_feeding_str,
 			"Diaper change",
+			"Sleep",
 			"Pumping",
-			"Tummy time"
 		],
 			devices = self.devices,
 			cancel_text = self.devices.lcd[LCD.LEFT] +
@@ -358,9 +358,9 @@ class Flow:
 		elif selected_index == 1:
 			self.diaper()
 		elif selected_index == 2:
-			self.pumping()
+			self.sleep()
 		elif selected_index == 3:
-			self.tummy_time()
+			self.pumping()
 
 		self.clear_and_show_battery()
 
@@ -615,6 +615,27 @@ class Flow:
 		self.render_success_splash()
 
 		return True
+
+	def sleep(self) -> None:
+		timer = self.start_or_resume_timer(
+			header_text = "Sleep",
+			timer_name = "sleep"
+		)
+
+		if timer is not None:
+			self.clear_and_show_battery()
+			self.render_header_text("Was a nap?")
+
+			response = BooleanPrompt(devices = self.devices).render_and_wait()
+			if response is not None:
+				request = PostSleepAPIRequest(child_id = self.child_id, timer = timer, nap = response)
+				if NVRAMValues.OFFLINE:
+					self.offline_queue.add(request)
+				else:
+					self.render_splash("Saving...")
+					request.invoke()
+
+				self.render_success_splash()
 
 	def tummy_time(self) -> None:
 		timer = self.start_or_resume_timer(
