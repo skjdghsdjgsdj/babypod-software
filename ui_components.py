@@ -115,6 +115,7 @@ class ActiveTimer(UIComponent):
 				self.devices = devices
 				self.periodic_chime = periodic_chime
 				super().__init__(seconds = 1, on_tick = self.render_elapsed_time, recurring = True)
+				self.render_elapsed_time(start)
 
 			@staticmethod
 			def format_elapsed_time(elapsed: float) -> str:
