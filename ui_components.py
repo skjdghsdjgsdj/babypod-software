@@ -120,8 +120,10 @@ class ActiveTimer(UIComponent):
 			def format_elapsed_time(elapsed: float) -> str:
 				if elapsed < 60:
 					return f"{elapsed:.0f} sec"
-
-				return f"{(elapsed // 60):.0f} min {(int(elapsed) % 60):.0f} sec"
+				elif elapsed < 60 * 60:
+					return f"{(elapsed // 60):.0f} min {(int(elapsed) % 60):.0f} sec"
+				else:
+					return f"{(elapsed // 60 // 60):.0f} hr {(elapsed // 60 % 60):.0f} min {(int(elapsed) % 60):.0f} sec"
 
 			def render_elapsed_time(self, _: float) -> None:
 				message = ActiveTimerWaitTickListener.format_elapsed_time(time.monotonic() - self.start)
