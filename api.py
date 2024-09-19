@@ -79,7 +79,7 @@ class APIRequest:
 			pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
 			print("Getting session...")
 			APIRequest.requests = adafruit_requests.Session(pool, ssl_context)
-			print("Connected!")
+			print(f"Connected: RSSI {wifi.radio.ap_info.rssi} on channel {wifi.radio.ap_info.channel}, tx power {wifi.radio.tx_power} dBm")
 
 		return APIRequest.requests
 
