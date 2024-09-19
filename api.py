@@ -1,11 +1,10 @@
 import adafruit_datetime
 import adafruit_requests
 import wifi
-import socketpool
-import ssl
 import os
 from adafruit_datetime import datetime
 import binascii
+import adafruit_connection_manager
 
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
@@ -74,9 +73,12 @@ class APIRequest:
 
 			print(f"Connecting to {ssid}...")
 			wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = timeout)
-			pool = socketpool.SocketPool(wifi.radio)
-			# noinspection PyTypeChecker
-			APIRequest.requests = adafruit_requests.Session(pool, ssl.create_default_context())
+			print("Getting SSL context...")
+			ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
+			print("Getting socket pool...")
+			pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
+			print("Getting session...")
+			APIRequest.requests = adafruit_requests.Session(pool, ssl_context)
 			print("Connected!")
 
 		return APIRequest.requests
