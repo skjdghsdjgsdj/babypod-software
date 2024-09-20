@@ -74,8 +74,13 @@ class MAX17048BatteryMonitor(BatteryMonitor):
 
 	def is_charging(self):
 		self.init_device()
-		charge_rate = self.device.charge_rate
-		return charge_rate > 0
+
+		is_charging = super().is_charging()
+		if not is_charging:
+			charge_rate = self.device.charge_rate
+			is_charging = charge_rate > 0
+
+		return is_charging
 
 class LC709203FBatteryMonitor(BatteryMonitor):
 	# pack size adjustment values: https://www.mouser.com/datasheet/2/308/LC709203F_D-1810548.pdf
