@@ -3,6 +3,7 @@ import digitalio
 from busio import I2C
 from adafruit_max1704x import MAX17048
 from adafruit_lc709203f import LC709203F, LC709203F_CMD_APA
+import supervisor
 
 class BatteryMonitor:
 	def __init__(self, i2c: I2C):
@@ -24,7 +25,10 @@ class BatteryMonitor:
 		raise NotImplementedError()
 
 	def is_charging(self) -> bool:
-		return None if self.charging_pin is None else self.charging_pin.value
+		if self.charging_pin is not None:
+			return self.charging_pin.value
+
+		return supervisor.runtime.usb_connected
 
 	def get_current_percent(self) -> float:
 		raise NotImplementedError()
