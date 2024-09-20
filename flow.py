@@ -5,7 +5,8 @@ import traceback
 from adafruit_datetime import datetime
 
 from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
-	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest
+	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
+	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest
 from offline_event_queue import OfflineEventQueue
 from backlight import BacklightColors
 from devices import Devices
@@ -19,7 +20,7 @@ from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, Act
 
 # noinspection PyBroadException
 try:
-	from typing import Optional
+	from typing import Optional, cast
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -229,8 +230,13 @@ class Flow:
 		child_id = NVRAMValues.CHILD_ID.get()
 		if not child_id:
 			self.render_splash("Getting children...")
-			child_id = GetFirstChildIDAPIRequest().get_first_child_id()
-			NVRAMValues.CHILD_ID.write(child_id, )
+			try:
+				child_id = GetFirstChildIDAPIRequest().get_first_child_id()
+			except Exception as e:
+				self.on_error(e)
+				print("Child discovery failed so just guessing ID 1")
+				child_id = 1
+			NVRAMValues.CHILD_ID.write(child_id)
 			self.devices.lcd.clear()
 
 		self.child_id = child_id
@@ -240,18 +246,36 @@ class Flow:
 			try:
 				self.main_menu()
 			except Exception as e:
-				traceback.print_exception(e)
-				self.devices.backlight.set_color(BacklightColors.ERROR)
-				self.devices.piezo.tone("error")
-
-				self.clear_and_show_battery()
-				self.suppress_dim_timeout = True
-				Modal(devices = self.devices, message = "Error!").render_and_wait()
-
-				self.devices.backlight.set_color(BacklightColors.DEFAULT)
-				self.suppress_dim_timeout = False
+				self.on_error(e)
 			finally:
 				self.clear_and_show_battery()
+
+	def on_error(self, e: Exception) -> None:
+		traceback.print_exception(e)
+		message = f"Got {type(e).__name__}!"
+		if isinstance(e, APIRequestFailedException):
+			request = e.request
+
+			if isinstance(request, GetAPIRequest):
+				message = "GET"
+			elif isinstance(request, PostAPIRequest):
+				message = "POST"
+			elif isinstance(request, DeleteAPIRequest):
+				message = "DELETE"
+			else:
+				message = "Request"
+
+			message += " failed"
+			if e.http_status_code != 0:
+				message += f" ({e.http_status_code})"
+
+		self.devices.backlight.set_color(BacklightColors.ERROR)
+		self.devices.piezo.tone("error")
+		self.clear_and_show_battery()
+		self.suppress_dim_timeout = True
+		Modal(devices = self.devices, message = message).render_and_wait()
+		self.devices.backlight.set_color(BacklightColors.DEFAULT)
+		self.suppress_dim_timeout = False
 
 	def render_header_text(self, text: str) -> None:
 		self.devices.lcd.write(text, (0, 0))
