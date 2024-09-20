@@ -28,9 +28,28 @@ class UIComponent:
 			col = 0 if self.cancel_align == UIComponent.LEFT else LCD.COLUMNS - len(self.cancel_text)
 			self.devices.lcd.write(self.cancel_text, (col, LCD.LINES - 1))
 
-	def render_save(self, y_delta: int = 0) -> None:
-		save_message = "Save" + self.devices.lcd[LCD.RIGHT]
+	def render_save(self, y_delta: int = 0, message: str = "Save") -> None:
+		save_message = message + self.devices.lcd[LCD.RIGHT]
 		self.devices.lcd.write(save_message, (LCD.COLUMNS - len(save_message), LCD.LINES - y_delta - 1))
+
+class Modal(UIComponent):
+	def __init__(self, devices: Devices, message: str, dismiss_text: str = "Dismiss"):
+		super().__init__(devices = devices, allow_cancel = False)
+
+		self.message = message
+		self.dismiss_text = dismiss_text
+
+	def render_and_wait(self) -> None:
+		super().render_and_wait()
+
+		self.devices.lcd.write_centered(self.message)
+
+		self.render_save(message = self.dismiss_text)
+
+		while True:
+			button = self.devices.user_input.wait(listen_for_rotation = False)
+			if button == UserInput.SELECT or button == UserInput.RIGHT:
+				return
 
 class ProgressBar(UIComponent):
 	def __init__(self, devices: Devices, count: int, message: str):
