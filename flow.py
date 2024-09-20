@@ -14,7 +14,8 @@ from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from user_input import ActivityListener, WaitTickListener
-from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, BooleanPrompt
+from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, BooleanPrompt, \
+	Modal
 
 # noinspection PyBroadException
 try:
@@ -240,11 +241,15 @@ class Flow:
 				self.main_menu()
 			except Exception as e:
 				traceback.print_exception(e)
-				self.render_splash("Error!")
 				self.devices.backlight.set_color(BacklightColors.ERROR)
 				self.devices.piezo.tone("error")
-				time.sleep(2)
+
+				self.clear_and_show_battery()
+				self.suppress_dim_timeout = True
+				Modal(devices = self.devices, message = "Error!").render_and_wait()
+
 				self.devices.backlight.set_color(BacklightColors.DEFAULT)
+				self.suppress_dim_timeout = False
 			finally:
 				self.clear_and_show_battery()
 
