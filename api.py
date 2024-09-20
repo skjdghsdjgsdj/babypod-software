@@ -42,7 +42,7 @@ class APIRequest:
 		return self
 
 	def build_full_url(self) -> str:
-		full_url = APIRequest.BASE_URL + self.uri
+		full_url = APIRequest.BASE_URL + self.uri + "/"
 		if self.uri_args is not None:
 			is_first = True
 			for key, value in self.uri_args.items():
