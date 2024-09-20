@@ -84,6 +84,7 @@ class Flow:
 		self.devices = devices
 
 		self.suppress_idle_warning = False
+		self.suppress_dim_timeout = False
 
 		self.devices.user_input.on_activity_listeners.append(ActivityListener(
 			on_activity = self.on_user_input
@@ -119,8 +120,9 @@ class Flow:
 		self.device_name = os.getenv("DEVICE_NAME") or "BabyPod"
 
 	def on_backlight_dim_idle(self, _: float) -> None:
-		print("Dimming backlight due to inactivity")
-		self.devices.backlight.set_color(BacklightColors.DIM)
+		if not self.suppress_dim_timeout:
+			print("Dimming backlight due to inactivity")
+			self.devices.backlight.set_color(BacklightColors.DIM)
 
 	def on_idle(self, _: float) -> None:
 		self.render_battery_percent(only_if_changed = True)
@@ -131,7 +133,8 @@ class Flow:
 			self.devices.piezo.tone("idle_warning")
 
 	def on_user_input(self) -> None:
-		self.devices.backlight.set_color(BacklightColors.DEFAULT)
+		if not self.suppress_dim_timeout:
+			self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
 	def clear_and_show_battery(self) -> None:
 		self.devices.lcd.clear()
