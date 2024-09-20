@@ -52,10 +52,9 @@ class APIRequest:
 
 		return full_url
 
-	@staticmethod
-	def validate_response(response: adafruit_requests.Response) -> None:
+	def validate_response(self, response: adafruit_requests.Response) -> None:
 		if response.status_code < 200 or response.status_code >= 300:
-			raise Exception(f"Got HTTP {response.status_code} for request: {response.text}")
+			raise APIRequestFailedException(self, response.status_code)
 
 	@staticmethod
 	def connect() -> adafruit_requests.Session:
@@ -123,6 +122,11 @@ class APIRequest:
 	def invoke(self):
 		raise NotImplementedError()
 
+class APIRequestFailedException(Exception):
+	def __init__(self, request: APIRequest, http_status_code: int = 0):
+		self.request = request
+		self.http_status_code = http_status_code
+
 class PostAPIRequest(APIRequest):
 	def __init__(self, uri: str, uri_args = None, payload = None):
 		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
@@ -137,7 +141,7 @@ class PostAPIRequest(APIRequest):
 				"Authorization": f"Token {APIRequest.API_KEY}"
 			}
 		)
-		APIRequest.validate_response(response)
+		self.validate_response(response)
 		response_json = response.json()
 		response.close()
 
@@ -157,7 +161,7 @@ class GetAPIRequest(APIRequest):
 			}
 		)
 
-		APIRequest.validate_response(response)
+		self.validate_response(response)
 		json_response = response.json()
 		response.close()
 
@@ -177,7 +181,7 @@ class DeleteAPIRequest(APIRequest):
 			}
 		)
 
-		APIRequest.validate_response(response)
+		self.validate_response(response)
 
 class Timer:
 	def __init__(self, name: str, offline: bool, rtc: ExternalRTC = None, battery: BatteryMonitor = None):
