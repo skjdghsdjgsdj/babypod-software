@@ -655,19 +655,14 @@ class Flow:
 		)
 
 		if timer is not None:
-			self.clear_and_show_battery()
-			self.render_header_text("Was a nap?")
+			request = PostSleepAPIRequest(child_id = self.child_id, timer = timer)
+			if NVRAMValues.OFFLINE:
+				self.offline_queue.add(request)
+			else:
+				self.render_splash("Saving...")
+				request.invoke()
 
-			response = BooleanPrompt(devices = self.devices).render_and_wait()
-			if response is not None:
-				request = PostSleepAPIRequest(child_id = self.child_id, timer = timer, nap = response)
-				if NVRAMValues.OFFLINE:
-					self.offline_queue.add(request)
-				else:
-					self.render_splash("Saving...")
-					request.invoke()
-
-				self.render_success_splash()
+			self.render_success_splash()
 
 	def tummy_time(self) -> None:
 		timer = self.start_or_resume_timer(
