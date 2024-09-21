@@ -131,7 +131,7 @@ class Flow:
 
 	def idle_warning(self, _: float) -> None:
 		print("Idle; warning if not suppressed and is discharging")
-		if not self.suppress_idle_warning and not self.devices.battery_monitor.is_charging():
+		if not self.suppress_idle_warning and self.devices.battery_monitor and not self.devices.battery_monitor.is_charging():
 			self.devices.piezo.tone("idle_warning")
 
 	def on_user_input(self) -> None:
@@ -208,15 +208,16 @@ class Flow:
 					print(f"RTC doesn't need updating: set to {self.devices.rtc.now()}, last refreshed {self.offline_state.last_rtc_set}")
 
 	def init_battery(self):
-		battery_percent = self.devices.battery_monitor.get_percent()
-		if battery_percent is not None and battery_percent <= 15:
-			self.devices.backlight.set_color(BacklightColors.ERROR)
-			self.render_splash(f"Low battery!")
-			self.devices.piezo.tone("low_battery")
+		if self.devices.battery_monitor:
+			battery_percent = self.devices.battery_monitor.get_percent()
+			if battery_percent is not None and battery_percent <= 15:
+				self.devices.backlight.set_color(BacklightColors.ERROR)
+				self.render_splash(f"Low battery!")
+				self.devices.piezo.tone("low_battery")
 
-			time.sleep(1.5)
+				time.sleep(1.5)
 
-			self.devices.backlight.set_color(BacklightColors.DEFAULT)
+				self.devices.backlight.set_color(BacklightColors.DEFAULT)
 
 	def start(self):
 		self.devices.lcd.clear()
@@ -285,6 +286,9 @@ class Flow:
 		return f"{percent}%"
 
 	def render_battery_percent(self, only_if_changed: bool = False) -> None:
+		if self.devices.battery_monitor is None:
+			return
+
 		last_percent = self.devices.battery_monitor.last_percent
 
 		try:

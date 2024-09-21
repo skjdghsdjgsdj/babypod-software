@@ -1,3 +1,5 @@
+import time
+
 import board
 import digitalio
 from busio import I2C
@@ -56,14 +58,22 @@ class BatteryMonitor:
 		i2c_address_list = i2c.scan()
 		i2c.unlock()
 
-		if 0x0b in i2c_address_list:
-			#print("Detected LC709203F battery monitor")
-			return LC709203FBatteryMonitor(i2c)
-		elif 0x36 in i2c_address_list:
-			#print("Detected MAX17048 battery monitor")
-			return MAX17048BatteryMonitor(i2c)
-		else:
-			raise ValueError("Couldn't find a battery monitor on I2C bus")
+		attempts = 0
+		while attempts <= 5:
+			attempts += 1
+
+			if 0x0b in i2c_address_list:
+				#print("Detected LC709203F battery monitor")
+				return LC709203FBatteryMonitor(i2c)
+			elif 0x36 in i2c_address_list:
+				#print("Detected MAX17048 battery monitor")
+				return MAX17048BatteryMonitor(i2c)
+
+			print("Battery monitor I2C device detection found nothing, retrying")
+			time.sleep(0.2)
+
+		print("Couldn't find a battery monitor on I2C bus")
+		return None
 
 class MAX17048BatteryMonitor(BatteryMonitor):
 	def init_raw_device(self) -> MAX17048:
