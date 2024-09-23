@@ -53,13 +53,14 @@ The main differences between running online vs. offline are:
 - When offline, actions that would result in a `POST` instead get serialized to JSON. When flipping the offline option back to online, all the serialized requests get replayed back to the server in the order they were logged.
 - Most obviously, when offline the Wi-Fi connection is skipped when powering up. Of course, that means startup is faster too.
 - When offline, actions that would result in a `GET` usually have locally stored equivalents, For example, when online, the last feeding time is retrieved from the server and shown on the main menu. When offline, it's pulled from a local state file.
-- Timers won't be synced back to the server. However, timed events (feedings, etc.) will have the start and end times captured via the RTC so times and durations will be correct once synced back to the server. That means if you have some automation set up to detect active timers, that automation won't see any timers running locally on an offline BabyPod.
+- Timers won't be synced back to the server. However, timed events (feedings, etc.) will have the start and end times captured via the RTC so times and durations will be correct once synced back to the server. That means if you have some automation set up to detect active timers, that automation won't see any timers running locally on an offline BabyPod. It also means if you power off the BabyPod while a timer is running, it will only resume if you were online when the timer was started and when you powered back on.
 
 On the main menu, the bottom-right navigation shows a check if online and unchecked box if offline. That doesn't necessarily mean a positively confirmed connection to the server, just that the offline option is enabled or disabled.
 
 ### Feedings
 - Record feedings, including start and end times, food types, which breasts(s) were used for feeding, etc.
 - A live timer that runs to keep track of how long the current feeding session has been, with chimes at every 15 minutes as a reminder to switch breasts, then every minute once 30 minutes have elapsed in case you forgot to stop the timer.
+- Last feeding is shown on the main menu for quick reference.
 
 ### Diaper changes
 - Record diaper changes, including if they were wet, solid or both.
@@ -69,6 +70,9 @@ On the main menu, the bottom-right navigation shows a check if online and unchec
 
 ### Tummy Time
 - Record tummy time sessions, including durations.
+
+### Sleep
+- Record sleep (naps and night sleep). Baby Buddy's settings are authoritative on whether the sleep counts as a nap or not.
 
 ### Options
 User-configurability that persists across power cycles of:
