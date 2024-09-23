@@ -195,7 +195,7 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 | `VerticalCheckboxes` | Like `VerticalMenu`, but each item is preceded with a checkbox                                 |
 | `BooleanPrompt`      | Like `VerticalMenu`, but allows for one selection of exactly two options and returns a boolean |
 | `ProgressBar`        | Shows a progress bar; unlike the other components, `render_and_wait()` doesn't block           |
-| `ModalDialog`        | Shows a message and a Dismiss button                                                           |
+| `Modal`              | Shows a message and a Dismiss button                                                           |
 
 ## Tips and Tricks
 
