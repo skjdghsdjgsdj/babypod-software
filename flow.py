@@ -6,7 +6,7 @@ from adafruit_datetime import datetime
 
 from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
-	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest
+	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest
 from offline_event_queue import OfflineEventQueue
 from backlight import BacklightColors
 from devices import Devices
@@ -15,8 +15,7 @@ from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from user_input import ActivityListener, WaitTickListener
-from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, BooleanPrompt, \
-	Modal
+from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal
 
 # noinspection PyBroadException
 try:
@@ -130,8 +129,8 @@ class Flow:
 		self.render_battery_percent(only_if_changed = True)
 
 	def idle_warning(self, _: float) -> None:
-		print("Idle; warning if not suppressed and is discharging")
 		if not self.suppress_idle_warning and self.devices.battery_monitor and not self.devices.battery_monitor.is_charging():
+			print("Idle; warning not suppressed and is discharging")
 			self.devices.piezo.tone("idle_warning")
 
 	def on_user_input(self) -> None:
@@ -242,6 +241,32 @@ class Flow:
 
 		self.child_id = child_id
 		print(f"Using child ID {child_id}")
+
+		timer = None
+		if not NVRAMValues.OFFLINE:
+			print("Checking for active timers to skip main menu...")
+			try:
+				self.render_splash("Checking timers...")
+				timers = list(GetAllTimersAPIRequest(limit = 1).get_active_timers())
+				if timers:
+					timer = timers[0]
+			except Exception as e:
+				print(f"Failed getting active timers; continuing to main menu: {e}")
+			finally:
+				self.clear_and_show_battery()
+
+		if timer is not None:
+			try:
+				if timer.name == TimerAPIRequest.get_timer_name("feeding"):
+					self.feeding(timer)
+				elif timer.name == TimerAPIRequest.get_timer_name("sleep"):
+					self.sleep(timer)
+				elif timer.name == TimerAPIRequest.get_timer_name("tummy_time"):
+					self.tummy_time(timer)
+			except Exception as e:
+				self.on_error(e)
+			finally:
+				self.clear_and_show_battery()
 
 		while True:
 			try:
@@ -504,14 +529,16 @@ class Flow:
 				request.invoke()
 			self.render_success_splash()
 
-
 	def start_or_resume_timer(self,
 		header_text: str,
 		timer_name: str,
 		periodic_chime: PeriodicChime = None,
-		subtext: str = None
+		subtext: str = None,
+		existing_timer: Optional[Timer] = None,
 	) -> Optional[Timer]:
-		if NVRAMValues.OFFLINE:
+		if existing_timer is not None:
+			timer = existing_timer
+		elif NVRAMValues.OFFLINE:
 			timer = Timer(
 				name = timer_name,
 				offline = True,
@@ -519,7 +546,7 @@ class Flow:
 				battery = self.devices.battery_monitor
 			)
 			timer.started_at = self.devices.rtc.now()
-			elapsed = timer.start_or_resume()
+			timer.start_or_resume()
 		else:
 			self.render_splash("Checking status...")
 			timer = Timer(
@@ -527,7 +554,7 @@ class Flow:
 				offline = False,
 				battery = self.devices.battery_monitor
 			)
-			elapsed = timer.start_or_resume()
+			timer.start_or_resume()
 
 		self.clear_and_show_battery()
 		self.render_header_text(header_text)
@@ -539,7 +566,7 @@ class Flow:
 		response = ActiveTimer(
 			devices = self.devices,
 			periodic_chime = periodic_chime,
-			start_at = elapsed
+			start_at = timer.resume_from_duration
 		).render_and_wait()
 		self.suppress_idle_warning = False
 
@@ -551,10 +578,11 @@ class Flow:
 
 		return timer
 
-	def feeding(self) -> None:
+	def feeding(self, existing_timer: Optional[Timer] = None) -> None:
 		saved = False
 		while not saved:
 			timer = self.start_or_resume_timer(
+				existing_timer = existing_timer,
 				header_text = "Feeding",
 				timer_name = "feeding",
 				periodic_chime = EscalatingIntervalPeriodicChime(
@@ -652,8 +680,9 @@ class Flow:
 
 		return True
 
-	def sleep(self) -> None:
+	def sleep(self, existing_timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
+			existing_timer = existing_timer,
 			header_text = "Sleep",
 			timer_name = "sleep"
 		)
@@ -668,8 +697,9 @@ class Flow:
 
 			self.render_success_splash()
 
-	def tummy_time(self) -> None:
+	def tummy_time(self, existing_timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
+			existing_timer = existing_timer,
 			header_text = "Tummy time",
 			timer_name = "tummy_time",
 			periodic_chime = ConsistentIntervalPeriodicChime(

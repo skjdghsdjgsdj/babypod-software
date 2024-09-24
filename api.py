@@ -11,7 +11,7 @@ from external_rtc import ExternalRTC
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, List, Any
+	from typing import Optional, List, Any, Generator
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -193,8 +193,19 @@ class Timer:
 		self.rtc = rtc
 		self.battery = battery
 		self.starting_battery_percent = None
+		self.resume_from_duration = None
 
-	def start_or_resume(self) -> int:
+	@staticmethod
+	def duration_to_seconds(duration: str) -> int:
+		duration_parts = duration.split(":")
+
+		hours = int(duration_parts[0])
+		minutes = int(duration_parts[1])
+		seconds = int(float(duration_parts[2]))
+
+		return (hours * 60 * 60) + (minutes * 60) + seconds
+
+	def start_or_resume(self) -> None:
 		elapsed = 0
 
 		self.starting_battery_percent = None
@@ -205,7 +216,7 @@ class Timer:
 				print(f"Got {e} while checking starting battery percent; not tracking battery usage for this timer")
 
 		if not self.offline:
-			timers = GetTimerAPIRequest(self.name).invoke()
+			timers = GetNamedTimerAPIRequest(self.name).invoke()
 			max_id = None
 			timer = None
 
@@ -216,14 +227,7 @@ class Timer:
 
 			if timer is not None:
 				self.timer_id = timer["id"]
-
-				duration_parts = timer["duration"].split(":")
-
-				hours = int(duration_parts[0])
-				minutes = int(duration_parts[1])
-				seconds = int(float(duration_parts[2]))
-
-				elapsed = (hours * 60 * 60) + (minutes * 60) + seconds
+				elapsed = Timer.duration_to_seconds(timer["duration"])
 
 				if elapsed > 0:
 					self.starting_battery_percent = None
@@ -233,7 +237,7 @@ class Timer:
 
 			self.started_at = datetime.fromisoformat(timer["start"])
 
-		return elapsed
+		self.resume_from_duration = elapsed
 
 	def cancel(self) -> None:
 		if not self.offline:
@@ -446,8 +450,12 @@ class GetFirstChildIDAPIRequest(GetAPIRequest):
 
 class TimerAPIRequest:
 	@staticmethod
+	def get_timer_basename():
+		return "babypod-"
+
+	@staticmethod
 	def get_timer_name(name: str):
-		return f"babypod-{name}"
+		return TimerAPIRequest.get_timer_basename() + name
 
 class CreateTimerAPIRequest(PostAPIRequest, TimerAPIRequest):
 	def __init__(self, name: str):
@@ -455,11 +463,36 @@ class CreateTimerAPIRequest(PostAPIRequest, TimerAPIRequest):
 			"name": self.get_timer_name(name)
 		})
 
-class GetTimerAPIRequest(GetAPIRequest, TimerAPIRequest):
+class GetNamedTimerAPIRequest(GetAPIRequest, TimerAPIRequest):
 	def __init__(self, name: str):
 		super().__init__(uri = "timers", uri_args = {
 			"name": self.get_timer_name(name)
 		})
+
+class GetAllTimersAPIRequest(GetAPIRequest, TimerAPIRequest):
+	def __init__(self, limit: Optional[int] = None):
+		uri_args = {}
+		if limit is not None:
+			if limit < 1:
+				raise ValueError(f"Limit {limit} must be >= 1 or None")
+			uri_args["limit"] = limit
+		super().__init__(uri = "timers", uri_args = uri_args)
+
+	def get_active_timers(self) -> Generator[Timer]:
+		response = self.invoke()
+		prefix = TimerAPIRequest.get_timer_basename()
+		for result in response["results"]:
+			name: str = result["name"]
+			if name is not None and name.startswith(prefix):
+				timer = Timer(
+					name = name,
+					offline = False
+				)
+				timer.started_at = adafruit_datetime.datetime.fromisoformat(result["start"])
+				timer.timer_id = result["id"]
+				timer.resume_from_duration = Timer.duration_to_seconds(result["duration"])
+
+				yield timer
 
 class DeleteTimerAPIRequest(DeleteAPIRequest):
 	def __init__(self, timer_id: int):
