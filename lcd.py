@@ -1,4 +1,11 @@
 import time
+
+# noinspection PyBroadException
+try:
+    from typing import List
+except:
+    pass
+
 from busio import I2C
 
 class LCD:
@@ -14,7 +21,8 @@ class LCD:
     
     def __init__(self, i2c: I2C):
         self.i2c = i2c
-        self.inited_chars = []
+        for key, value in LCD.CHARS.items():
+            self.create_special_char(key, value)
 
     def write(self, message: str, coords: tuple[int, int]) -> None:
         LCD.validate_coords(coords)
@@ -46,12 +54,9 @@ class LCD:
         raise NotImplementedError()
 
     def __getitem__(self, special_char: int) -> str:
-        if special_char not in self.inited_chars:
-            self.inited_chars.append(self.create_special_char(special_char))
-
         return chr(special_char)
 
-    def create_special_char(self, special_char: int) -> None:
+    def create_special_char(self, special_char: int, data: List[int]) -> None:
         raise NotImplementedError()
 
     @staticmethod
@@ -65,13 +70,14 @@ class LCD:
 
     @staticmethod
     def get_instance(i2c: I2C):
-        while not i2c.try_lock():
-            pass
-        i2c_address_list = i2c.scan()
-        i2c.unlock()
-
         attempts = 0
+        i2c_address_list = None
         while attempts <= 20:
+            while not i2c.try_lock():
+                pass
+            i2c_address_list = i2c.scan()
+            i2c.unlock()
+
             attempts += 1
 
             if 0x20 in i2c_address_list:
@@ -100,8 +106,8 @@ LCD.CHARS = {
 class SparkfunSerLCD(LCD):
     def __init__(self, i2c: I2C):
         from sparkfun_serlcd import Sparkfun_SerLCD_I2C
-        super().__init__(i2c)
         self.device = Sparkfun_SerLCD_I2C(i2c)
+        super().__init__(i2c)
         self.device.command(0x2F) # turn off command messages
         self.device.command(0x31) # disable splash screen
 
@@ -113,8 +119,8 @@ class SparkfunSerLCD(LCD):
     def clear(self) -> None:
         self.device.clear()
 
-    def create_special_char(self, special_char: int) -> None:
-        self.device.create_character(special_char, LCD.CHARS[special_char])
+    def create_special_char(self, special_char: int, data: List[int]) -> None:
+        self.device.create_character(special_char, data)
 
 class AdafruitCharacterLCDBackpack(LCD):
     def __init__(self, i2c: I2C):
@@ -122,8 +128,8 @@ class AdafruitCharacterLCDBackpack(LCD):
         super().__init__(i2c)
         self.device = Character_LCD_I2C(i2c, LCD.COLUMNS, LCD.LINES)
 
-    def create_special_char(self, special_char: int):
-        self.device.create_char(special_char, LCD.CHARS[special_char])
+    def create_special_char(self, special_char: int, data: List[int]) -> None:
+        self.device.create_char(special_char, data)
 
     def write_impl(self, message: str, coords: tuple[int, int]):
         x, y = coords
