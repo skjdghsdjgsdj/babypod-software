@@ -27,10 +27,13 @@ class BatteryMonitor:
 		raise NotImplementedError()
 
 	def is_charging(self) -> bool:
+		if supervisor.runtime.usb_connected:
+			return True
+
 		if self.charging_pin is not None:
 			return self.charging_pin.value
 
-		return supervisor.runtime.usb_connected
+		return False
 
 	def get_current_percent(self) -> float:
 		raise NotImplementedError()
