@@ -1,9 +1,8 @@
 from lcd import LCD, AdafruitCharacterLCDBackpack, SparkfunSerLCD
-from sparkfun_serlcd import Sparkfun_SerLCD
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, cast
+	from typing import Optional
 except:
 	# don't care
 	pass
@@ -82,11 +81,12 @@ class SparkfunSerLCDBacklight(Backlight):
 		super().__init__(lcd)
 
 	def init_device(self):
+		# noinspection PyUnresolvedReferences
 		return self.lcd.device
 
 	def set_color_impl(self, color: BacklightColor):
 		r, g, b = color.color
-		self.device.set_backlight_rgb(r, g, b)
+		self.device.set_fast_backlight_rgb(r, g, b)
 
 class AdafruitCharacterLCDBackpackBacklight(Backlight):
 	def __init__(self, lcd: AdafruitCharacterLCDBackpack):
