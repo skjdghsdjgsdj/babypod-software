@@ -103,7 +103,6 @@ class NVRAMIntegerValue(NVRAMValue):
 
 class NVRAMValues:
     PIEZO = NVRAMBooleanValue(0, True, "PIEZO")
-    BACKLIGHT = NVRAMBooleanValue(1, True, "BACKLIGHT")
     CHILD_ID = NVRAMIntegerValue(2, 0, "CHILD_ID")
     BACKLIGHT_DIM_TIMEOUT = NVRAMIntegerValue(3, 30, "BACKLIGHT_DIM_TIMEOUT")
     IDLE_WARNING = NVRAMIntegerValue(4, 60 * 2, "IDLE_WARNING")

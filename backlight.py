@@ -1,6 +1,9 @@
+from lcd import LCD, AdafruitCharacterLCDBackpack, SparkfunSerLCD
+from sparkfun_serlcd import Sparkfun_SerLCD
+
 # noinspection PyBroadException
 try:
-	from typing import Optional
+	from typing import Optional, cast
 except:
 	# don't care
 	pass
@@ -8,8 +11,6 @@ except:
 import adafruit_rgbled
 import board
 import os
-
-from nvram import NVRAMValues
 
 class BacklightColor:
 	def __init__(self, color: tuple[int, int, int]):
@@ -48,46 +49,55 @@ class BacklightColors:
 	SUCCESS = BacklightColor.from_setting("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 
 class Backlight:
+	def __init__(self, lcd: LCD):
+		self.lcd = lcd
+		self.color: Optional[BacklightColor] = None
+		self.device = self.init_device()
+		self.set_color(BacklightColors.DEFAULT)
+
 	@staticmethod
-	def get_instance():
-		return CharacterLCDBacklight()
+	def get_instance(lcd: LCD):
+		if isinstance(lcd, AdafruitCharacterLCDBackpack):
+			return AdafruitCharacterLCDBackpackBacklight(lcd)
+		elif isinstance(lcd, SparkfunSerLCD):
+			return SparkfunSerLCDBacklight(lcd)
+
+		raise NotImplementedError(f"Don't know how to get backlight for {type(lcd).__name__}")
 
 	def set_color(self, color: BacklightColor) -> None:
-		pass # do nothing unless a child class overrides it
+		self.set_color_impl(color)
+		self.color = color
 
-	def set_level(self, level: float) -> None:
-		if level < 0 or level > 1:
-			raise ValueError(f"Backlight level must be >= 0 and <= 1 (0% to 100%), not {level}")
-		pass # do nothing unless a child class overrides it
+	def set_color_impl(self, color: BacklightColor):
+		pass
 
 	def off(self) -> None:
 		pass # do nothing unless a child class overrides it
 
-class CharacterLCDBacklight(Backlight):
-	def __init__(self):
-		self.color: Optional[BacklightColor] = None
-		self.backlight = None
+	def init_device(self):
+		raise NotImplementedError()
 
-		if NVRAMValues.BACKLIGHT.get():
-			self.set_color(BacklightColors.DEFAULT)
-		else:
-			self.off()
+class SparkfunSerLCDBacklight(Backlight):
+	def __init__(self, lcd: SparkfunSerLCD):
+		super().__init__(lcd)
 
-	def init_backlight(self):
-		if self.backlight is None:
-			self.backlight = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
+	def init_device(self):
+		return self.lcd.device
 
-		return self.backlight
+	def set_color_impl(self, color: BacklightColor):
+		r, g, b = color.color
+		self.device.set_backlight_rgb(r, g, b)
 
-	def set_color(self, color: BacklightColor) -> None:
-		if NVRAMValues.BACKLIGHT.get():
-			self.init_backlight().color = color.invert()
+class AdafruitCharacterLCDBackpackBacklight(Backlight):
+	def __init__(self, lcd: AdafruitCharacterLCDBackpack):
+		super().__init__(lcd)
 
-		self.color = color
+	def init_device(self):
+		return adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 
-	def set_level(self, level: float) -> None:
-		self.set_color(BacklightColor(self.color.mask(level)))
+	def set_color_impl(self, color: BacklightColor) -> None:
+		self.device.color = color.invert()
 
 	def off(self):
 		print(f"Disabling backlight")
-		self.init_backlight().color = (255, 255, 255) # inverted
+		self.init_device().color = (255, 255, 255) # inverted

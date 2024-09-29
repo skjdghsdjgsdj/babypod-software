@@ -5,16 +5,16 @@ from busio import I2C
 import board
 i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
-from lcd import LCD
-lcd = LCD.get_instance(i2c)
-lcd.write("Starting up...", (0, 0))
-
 from piezo import Piezo
 piezo = Piezo()
 piezo.tone("startup")
 
+from lcd import LCD
+lcd = LCD.get_instance(i2c)
+lcd.write("Starting up...", (0, 0))
+
 from backlight import Backlight
-backlight = Backlight.get_instance()
+backlight = Backlight.get_instance(lcd)
 
 from digitalio import DigitalInOut, Direction
 

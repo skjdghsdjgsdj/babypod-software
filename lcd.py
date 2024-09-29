@@ -71,7 +71,7 @@ class LCD:
         i2c.unlock()
 
         attempts = 0
-        while attempts <= 5:
+        while attempts <= 20:
             attempts += 1
 
             if 0x20 in i2c_address_list:
@@ -82,7 +82,10 @@ class LCD:
             print("Couldn't find LCD on I2C, retrying")
             time.sleep(0.2)
 
-        raise RuntimeError("Couldn't find LCD on I2C at 0x20 (Adafruit LCD backpack) or 0x72 (Sparkfun SerLCD)")
+        found_count = len(i2c_address_list)
+        found_addresses = ", ".join([hex(device_address) for device_address in i2c_address_list])
+        raise RuntimeError(f"Couldn't find LCD on I2C at 0x20 (Adafruit LCD backpack) or 0x72 (Sparkfun SerLCD): " +
+                           f"only found {found_count} I2C devices at addresses: {found_addresses}")
 
 # https://www.quinapalus.com/hd44780udg.html
 LCD.CHARS = {
@@ -99,6 +102,8 @@ class SparkfunSerLCD(LCD):
         from sparkfun_serlcd import Sparkfun_SerLCD_I2C
         super().__init__(i2c)
         self.device = Sparkfun_SerLCD_I2C(i2c)
+        self.device.command(0x2F) # turn off command messages
+        self.device.command(0x31) # disable splash screen
 
     def write_impl(self, message: str, coords: tuple[int, int]) -> None:
         x, y = coords

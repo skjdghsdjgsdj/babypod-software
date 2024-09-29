@@ -427,13 +427,11 @@ class Flow:
 
 	def settings(self) -> None:
 		options = [
-			"Sounds",
-			"Backlight"
+			"Sounds"
 		]
 
 		initial_states = [
-			NVRAMValues.PIEZO.get(),
-			NVRAMValues.BACKLIGHT.get()
+			NVRAMValues.PIEZO.get()
 		]
 
 		has_offline_hardware = self.devices.rtc and self.devices.sdcard
@@ -448,18 +446,12 @@ class Flow:
 
 		if responses is not None:
 			NVRAMValues.PIEZO.write(responses[0])
-			NVRAMValues.BACKLIGHT.write(responses[1])
-
-			if NVRAMValues.BACKLIGHT.get():
-				self.devices.backlight.set_color(BacklightColors.DEFAULT)
-			else:
-				self.devices.backlight.off()
 
 			if has_offline_hardware:
-				if NVRAMValues.OFFLINE and not responses[2]: # was offline, now back online
+				if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
 					self.back_online()
 
-				NVRAMValues.OFFLINE.write(responses[2])
+				NVRAMValues.OFFLINE.write(responses[1])
 
 	def back_online(self):
 		files = self.offline_queue.get_json_files()
