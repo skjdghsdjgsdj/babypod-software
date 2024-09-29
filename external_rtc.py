@@ -8,6 +8,7 @@ from adafruit_datetime import datetime
 from busio import I2C
 
 from offline_state import OfflineState
+from util import Util
 
 # noinspection PyBroadException
 try:
@@ -33,7 +34,7 @@ class ExternalRTC:
             raise ValueError("adafruit.io username or key not defined in settings.toml")
 
         response = requests.get(f"https://io.adafruit.com/api/v2/{username}/integrations/time/clock?x-aio-key={api_key}")
-        now = datetime.fromisoformat(response.text)
+        now = Util.to_datetime(response.text)
         self.offline_state.rtc_utc_offset = (now.utcoffset().seconds / 60 / 60) - 24
 
         print(f"Setting RTC to {now}")

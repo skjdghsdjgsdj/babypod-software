@@ -1,7 +1,9 @@
 import json
 import os
 from adafruit_datetime import datetime
+
 from sdcard import SDCard
+from util import Util
 
 # noinspection PyBroadException
 try:
@@ -36,13 +38,13 @@ class OfflineState:
                 print(serialized)
 
             if "last_feeding" in serialized and serialized["last_feeding"]:
-                state.last_feeding = datetime.fromisoformat(serialized["last_feeding"])
+                state.last_feeding = Util.to_datetime(serialized["last_feeding"])
 
             if "last_feeding_method" in serialized:
                 state.last_feeding_method = serialized["last_feeding_method"]
 
             if "last_rtc_set" in serialized and serialized["last_rtc_set"]:
-                state.last_rtc_set = datetime.fromisoformat(serialized["last_rtc_set"])
+                state.last_rtc_set = Util.to_datetime(serialized["last_rtc_set"])
 
             if "rtc_utc_offset" in serialized and serialized["rtc_utc_offset"]:
                 state.rtc_utc_offset = float(serialized["rtc_utc_offset"])

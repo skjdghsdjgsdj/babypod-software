@@ -8,6 +8,7 @@ import adafruit_connection_manager
 
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
+from util import Util
 
 # noinspection PyBroadException
 try:
@@ -235,7 +236,7 @@ class Timer:
 				timer = CreateTimerAPIRequest(self.name).invoke()
 				self.timer_id = timer["id"]
 
-			self.started_at = datetime.fromisoformat(timer["start"])
+			self.started_at = Util.to_datetime(timer["start"])
 
 		self.resume_from_duration = elapsed
 
@@ -267,8 +268,8 @@ class Timer:
 			timer.timer_id = payload["timer"]
 		elif "start" in payload and "end" in payload:
 			timer = Timer(name = name, offline = True)
-			timer.started_at = datetime.fromisoformat(payload["start"])
-			timer.ended_at = datetime.fromisoformat(payload["end"])
+			timer.started_at = Util.to_datetime(payload["start"])
+			timer.ended_at = Util.to_datetime(payload["end"])
 		else:
 			raise ValueError("Don't know how to create a timer from this payload")
 
@@ -432,7 +433,7 @@ class GetLastFeedingAPIRequest(GetAPIRequest):
 		if response["count"] <= 0:
 			return None
 
-		return datetime.fromisoformat(response["results"][0]["start"]), response["results"][0]["method"]
+		return Util.to_datetime(response["results"][0]["start"]), response["results"][0]["method"]
 
 class GetFirstChildIDAPIRequest(GetAPIRequest):
 	def __init__(self):
@@ -488,7 +489,7 @@ class GetAllTimersAPIRequest(GetAPIRequest, TimerAPIRequest):
 					name = name,
 					offline = False
 				)
-				timer.started_at = adafruit_datetime.datetime.fromisoformat(result["start"])
+				timer.started_at = Util.to_datetime(result["start"])
 				timer.timer_id = result["id"]
 				timer.resume_from_duration = Timer.duration_to_seconds(result["duration"])
 
