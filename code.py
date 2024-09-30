@@ -9,12 +9,10 @@ from piezo import Piezo
 piezo = Piezo()
 piezo.tone("startup")
 
-from lcd import LCD
+from lcd import LCD, BacklightColors
 lcd = LCD.get_instance(i2c)
+lcd.backlight.set_color(BacklightColors.DEFAULT)
 lcd.write("Starting up...", (0, 0))
-
-from backlight import Backlight
-backlight = Backlight.get_instance(lcd)
 
 from digitalio import DigitalInOut, Direction
 
@@ -26,8 +24,11 @@ neopixel.value = False
 from battery_monitor import BatteryMonitor
 battery_monitor = BatteryMonitor.get_instance(i2c)
 
-from user_input import UserInput
-user_input = UserInput.get_instance(i2c)
+from user_input import RotaryEncoder
+rotary_encoder = RotaryEncoder(i2c)
+
+from power_control import PowerControl
+power_control = PowerControl(lcd, rotary_encoder)
 
 sdcard = None
 rtc = None
@@ -45,13 +46,13 @@ if ExternalRTC.exists(i2c):
 
 from devices import Devices
 devices = Devices(
-	user_input = user_input,
+	rotary_encoder = rotary_encoder,
 	piezo = piezo,
 	lcd = lcd,
-	backlight = backlight,
 	battery_monitor = battery_monitor,
 	sdcard = sdcard,
-	rtc = rtc
+	rtc = rtc,
+	power_control = power_control
 )
 
 from flow import Flow

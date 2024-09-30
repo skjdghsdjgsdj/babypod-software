@@ -4,12 +4,12 @@ from busio import I2C
 
 # noinspection PyBroadException
 try:
-	from typing import List
+	from typing import List, Optional
 except:
 	# don't care
 	pass
 
-from adafruit_seesaw import rotaryio, seesaw
+from adafruit_seesaw import seesaw, rotaryio
 import digitalio
 from adafruit_seesaw.digitalio import DigitalIO
 
@@ -31,7 +31,7 @@ class ActivityListener:
 	def trigger(self) -> None:
 		self.on_activity()
 
-class UserInput:
+class RotaryEncoder:
 	SELECT = 1
 	UP = 3
 	LEFT = 4
@@ -40,20 +40,53 @@ class UserInput:
 	CLOCKWISE = 10
 	COUNTERCLOCKWISE = 11
 
-	seesaw_controller = None
-
 	def __init__(self, i2c: I2C):
-		self.on_activity_listeners = []
-		self.on_wait_tick_listeners = []
-		self.seesaw_controller = None
 		self.i2c = i2c
 
-	@staticmethod
-	def get_instance(i2c: I2C):
-		UserInput.seesaw_controller = seesaw.Seesaw(i2c, addr = 0x49)
-		product_id = (UserInput.seesaw_controller.get_version() >> 16) & 0xFFFF
+		self.on_activity_listeners = []
+		self.on_wait_tick_listeners = []
+
+		self.last_position = None
+		self.buttons = {}
+		self.last_button_down = None
+
+		self.seesaw = self.init_seesaw()
+		self.encoder = self.init_rotary_encoder()
+
+	def init_seesaw(self) -> seesaw.Seesaw:
+		seesaw_controller = seesaw.Seesaw(self.i2c, addr = 0x49)
+		product_id = (seesaw_controller.get_version() >> 16) & 0xFFFF
 		assert product_id == 5740
-		return RotaryEncoder(i2c)
+		return seesaw_controller
+
+	def init_rotary_encoder(self) -> rotaryio.IncrementalEncoder:
+		# it's physically rotated 90 CW so adjust accordingly
+		buttons = [
+			RotaryEncoder.SELECT,
+			RotaryEncoder.UP,
+			RotaryEncoder.LEFT,
+			RotaryEncoder.DOWN,
+			RotaryEncoder.RIGHT
+		]
+
+		for index in range(0, len(buttons)):
+			value = buttons[index]
+
+			success = False
+			while not success:
+				try:
+					self.buttons[value] = DigitalIO(self.seesaw, value)
+					self.buttons[value].direction = digitalio.Direction.INPUT
+					self.buttons[value].pull = digitalio.Pull.UP
+
+					success = True
+				except OSError as e:
+					print(f"Failed to set up rotary encoder button, trying again: {e}")
+					time.sleep(0.2)
+
+		encoder = rotaryio.IncrementalEncoder(self.seesaw)
+		self.last_position = encoder.position
+		return encoder
 
 	def wait(self,
 		listen_for_buttons: bool = True,
@@ -95,22 +128,7 @@ class UserInput:
 					listener.last_triggered = now
 
 	def poll_for_input(self, listen_for_buttons: bool = True, listen_for_rotation: bool = True) -> int:
-		raise NotImplementedError()
-
-class RotaryEncoder(UserInput):
-	def __init__(self, i2c: I2C):
-		super().__init__(i2c)
-
-		self.last_position = None
-		self.buttons = {}
-		self.last_button_down = None
-		self.encoder = None
-
-	def poll_for_input(self, listen_for_buttons: bool = True, listen_for_rotation: bool = True) -> int:
 		response = None
-
-		if self.encoder is None:
-			self.init_rotary_encoder()
 
 		if listen_for_buttons:
 			for key, button in self.buttons.items():
@@ -127,36 +145,8 @@ class RotaryEncoder(UserInput):
 			self.last_position = current_position
 
 			if current_position > last_position:
-				response = UserInput.CLOCKWISE
+				response = RotaryEncoder.CLOCKWISE
 			elif current_position < last_position:
-				response = UserInput.COUNTERCLOCKWISE
+				response = RotaryEncoder.COUNTERCLOCKWISE
 
 		return response
-
-	def init_rotary_encoder(self) -> None:
-		# it's physically rotated 90 CW so adjust accordingly
-		buttons = [
-			UserInput.SELECT,
-			UserInput.UP,
-			UserInput.LEFT,
-			UserInput.DOWN,
-			UserInput.RIGHT
-		]
-
-		for index in range(0, len(buttons)):
-			value = buttons[index]
-
-			success = False
-			while not success:
-				try:
-					self.buttons[value] = DigitalIO(UserInput.seesaw_controller, value)
-					self.buttons[value].direction = digitalio.Direction.INPUT
-					self.buttons[value].pull = digitalio.Pull.UP
-
-					success = True
-				except OSError as e:
-					print(f"Failed to set up rotary encoder button, trying again: {e}")
-					time.sleep(0.2)
-
-		self.encoder = rotaryio.IncrementalEncoder(UserInput.seesaw_controller)
-		self.last_position = self.encoder.position

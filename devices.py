@@ -1,10 +1,10 @@
-from backlight import Backlight
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
 from lcd import LCD
 from piezo import Piezo
+from power_control import PowerControl
 from sdcard import SDCard
-from user_input import UserInput
+from user_input import RotaryEncoder
 
 # noinspection PyBroadException
 try:
@@ -15,17 +15,17 @@ except:
 
 class Devices:
     def __init__(self,
-                 user_input: UserInput,
+                 rotary_encoder: RotaryEncoder,
                  piezo: Piezo,
                  lcd: LCD,
-                 backlight: Backlight,
                  battery_monitor: BatteryMonitor,
                  sdcard: Optional[SDCard],
-                 rtc: Optional[ExternalRTC]):
-        self.user_input = user_input
+                 rtc: Optional[ExternalRTC],
+                 power_control: PowerControl):
+        self.rotary_encoder = rotary_encoder
         self.piezo = piezo
         self.lcd = lcd
-        self.backlight = backlight
         self.battery_monitor = battery_monitor
         self.sdcard = sdcard
         self.rtc = rtc
+        self.power_control = power_control

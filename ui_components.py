@@ -3,7 +3,7 @@ import math
 from devices import Devices
 from lcd import LCD
 from periodic_chime import PeriodicChime
-from user_input import UserInput, WaitTickListener
+from user_input import RotaryEncoder, WaitTickListener
 import time
 
 # noinspection PyBroadException
@@ -47,8 +47,8 @@ class Modal(UIComponent):
 		self.render_save(message = self.dismiss_text)
 
 		while True:
-			button = self.devices.user_input.wait(listen_for_rotation = False)
-			if button == UserInput.SELECT or button == UserInput.RIGHT:
+			button = self.devices.rotary_encoder.wait(listen_for_rotation = False)
+			if button == RotaryEncoder.SELECT or button == RotaryEncoder.RIGHT:
 				return
 
 class ProgressBar(UIComponent):
@@ -163,13 +163,13 @@ class ActiveTimer(UIComponent):
 		)
 
 		while True:
-			button = self.devices.user_input.wait(
+			button = self.devices.rotary_encoder.wait(
 				listen_for_rotation = False,
 				extra_wait_tick_listeners = [wait_tick_listener]
 			)
-			if button == UserInput.LEFT and self.allow_cancel:
+			if button == RotaryEncoder.LEFT and self.allow_cancel:
 				return None
-			elif button == UserInput.SELECT or button == UserInput.RIGHT:
+			elif button == RotaryEncoder.SELECT or button == RotaryEncoder.RIGHT:
 				return True
 
 class NumericSelector(UIComponent):
@@ -235,14 +235,14 @@ class NumericSelector(UIComponent):
 
 				last_value = self.selected_value
 
-			button = self.devices.user_input.wait()
-			if button == UserInput.LEFT and self.allow_cancel:
+			button = self.devices.rotary_encoder.wait()
+			if button == RotaryEncoder.LEFT and self.allow_cancel:
 				return None
-			if button == UserInput.UP or button == UserInput.CLOCKWISE:
+			if button == RotaryEncoder.UP or button == RotaryEncoder.CLOCKWISE:
 				self.selected_value += self.step
-			elif button == UserInput.DOWN or button == UserInput.COUNTERCLOCKWISE:
+			elif button == RotaryEncoder.DOWN or button == RotaryEncoder.COUNTERCLOCKWISE:
 				self.selected_value -= self.step
-			elif button == UserInput.SELECT or button == UserInput.RIGHT:
+			elif button == RotaryEncoder.SELECT or button == RotaryEncoder.RIGHT:
 				return self.selected_value
 
 			minimum, maximum = self.range
@@ -270,11 +270,11 @@ class VerticalMenu(UIComponent):
 		return row
 
 	def move_selection(self, button: int) -> bool:
-		if button == UserInput.UP or button == UserInput.COUNTERCLOCKWISE:
-			self.move_selection_up(wrap = button == UserInput.UP)
+		if button == RotaryEncoder.UP or button == RotaryEncoder.COUNTERCLOCKWISE:
+			self.move_selection_up(wrap = button == RotaryEncoder.UP)
 			return True
-		elif button == UserInput.DOWN or button == UserInput.CLOCKWISE:
-			self.move_selection_down(wrap = button == UserInput.DOWN)
+		elif button == RotaryEncoder.DOWN or button == RotaryEncoder.CLOCKWISE:
+			self.move_selection_down(wrap = button == RotaryEncoder.DOWN)
 			return True
 
 		return False
@@ -306,15 +306,15 @@ class VerticalMenu(UIComponent):
 		self.init_extra_ui()
 
 		while True:
-			button = self.devices.user_input.wait()
+			button = self.devices.rotary_encoder.wait()
 			if not self.move_selection(button):
-				if button == UserInput.LEFT and self.allow_cancel:
+				if button == RotaryEncoder.LEFT and self.allow_cancel:
 					return None
-				elif button == UserInput.RIGHT:
+				elif button == RotaryEncoder.RIGHT:
 					result = self.on_right_pressed()
 					if result is not None:
 						return result
-				elif button == UserInput.SELECT:
+				elif button == RotaryEncoder.SELECT:
 					result = self.on_select_pressed()
 					if result is not None:
 						return result

@@ -8,9 +8,8 @@ from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest,
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
 	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest
 from offline_event_queue import OfflineEventQueue
-from backlight import BacklightColors
 from devices import Devices
-from lcd import LCD
+from lcd import LCD, BacklightColors
 from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
@@ -87,11 +86,11 @@ class Flow:
 		self.suppress_idle_warning = False
 		self.suppress_dim_timeout = False
 
-		self.devices.user_input.on_activity_listeners.append(ActivityListener(
+		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
 			on_activity = self.on_user_input
 		))
 
-		self.devices.user_input.on_wait_tick_listeners.extend([
+		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
 				on_tick = self.on_backlight_dim_idle,
 				seconds = NVRAMValues.BACKLIGHT_DIM_TIMEOUT.get()
@@ -123,7 +122,7 @@ class Flow:
 	def on_backlight_dim_idle(self, _: float) -> None:
 		if not self.suppress_dim_timeout:
 			print("Dimming backlight due to inactivity")
-			self.devices.backlight.set_color(BacklightColors.DIM)
+			self.devices.lcd.backlight.set_color(BacklightColors.DIM)
 
 	def on_idle(self, _: float) -> None:
 		self.render_battery_percent(only_if_changed = True)
@@ -135,7 +134,7 @@ class Flow:
 
 	def on_user_input(self) -> None:
 		if not self.suppress_dim_timeout:
-			self.devices.backlight.set_color(BacklightColors.DEFAULT)
+			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 	def clear_and_show_battery(self) -> None:
 		self.devices.lcd.clear()
@@ -210,13 +209,13 @@ class Flow:
 		if self.devices.battery_monitor:
 			battery_percent = self.devices.battery_monitor.get_percent()
 			if battery_percent is not None and battery_percent <= 15:
-				self.devices.backlight.set_color(BacklightColors.ERROR)
+				self.devices.lcd.backlight.set_color(BacklightColors.ERROR)
 				self.render_splash(f"Low battery!")
 				self.devices.piezo.tone("low_battery")
 
 				time.sleep(1.5)
 
-				self.devices.backlight.set_color(BacklightColors.DEFAULT)
+				self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 	def start(self):
 		self.devices.lcd.clear()
@@ -295,12 +294,12 @@ class Flow:
 			if e.http_status_code != 0:
 				message += f" ({e.http_status_code})"
 
-		self.devices.backlight.set_color(BacklightColors.ERROR)
+		self.devices.lcd.backlight.set_color(BacklightColors.ERROR)
 		self.devices.piezo.tone("error")
 		self.clear_and_show_battery()
 		self.suppress_dim_timeout = True
 		Modal(devices = self.devices, message = message).render_and_wait()
-		self.devices.backlight.set_color(BacklightColors.DEFAULT)
+		self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 		self.suppress_dim_timeout = False
 
 	def render_header_text(self, text: str) -> None:
@@ -345,10 +344,10 @@ class Flow:
 
 	def render_success_splash(self, text: str = "Saved!", hold_seconds: int = 1) -> None:
 		self.render_splash(text)
-		self.devices.backlight.set_color(BacklightColors.SUCCESS)
+		self.devices.lcd.backlight.set_color(BacklightColors.SUCCESS)
 		self.devices.piezo.tone("success")
 		time.sleep(hold_seconds)
-		self.devices.backlight.set_color(BacklightColors.DEFAULT)
+		self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 	@staticmethod
 	def datetime_to_time_str(datetime_obj: datetime) -> str:
