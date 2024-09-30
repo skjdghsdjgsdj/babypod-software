@@ -17,12 +17,40 @@ except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
 
+class ConnectionManager:
+	requests: adafruit_requests.Session = None
+	timeout: int
+
+	@staticmethod
+	def connect() -> adafruit_requests.Session:
+		if ConnectionManager.requests is None:
+			ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
+			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
+
+			channel = os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL")
+			channel = int(channel) if channel else 0
+
+			ConnectionManager.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
+			wifi.radio.hostname = f"babypod-{ConnectionManager.mac_id}"
+
+			print(f"Connecting to {ssid}...")
+			wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = ConnectionManager.timeout)
+			print("Getting SSL context...")
+			ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
+			print("Getting socket pool...")
+			pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
+			print("Getting session...")
+			ConnectionManager.requests = adafruit_requests.Session(pool, ssl_context)
+			print(f"Connected: RSSI {wifi.radio.ap_info.rssi} on channel {wifi.radio.ap_info.channel}, tx power {wifi.radio.tx_power} dBm")
+
+		return ConnectionManager.requests
+
+timeout = os.getenv("CIRCUITPY_WIFI_TIMEOUT")
+ConnectionManager.timeout = 10 if (timeout is None or not timeout) else int(timeout)
+
 class APIRequest:
 	API_KEY = os.getenv("BABYBUDDY_AUTH_TOKEN")
 	BASE_URL = os.getenv("BABYBUDDY_BASE_URL")
-
-	requests = None
-	mac_id = None
 
 	def __init__(self, uri: str, uri_args = None, payload = None):
 		self.uri = uri
@@ -56,32 +84,6 @@ class APIRequest:
 	def validate_response(self, response: adafruit_requests.Response) -> None:
 		if response.status_code < 200 or response.status_code >= 300:
 			raise APIRequestFailedException(self, response.status_code)
-
-	@staticmethod
-	def connect() -> adafruit_requests.Session:
-		if APIRequest.requests is None:
-			ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
-			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
-			timeout = os.getenv("CIRCUITPY_WIFI_TIMEOUT")
-			timeout = int(timeout) if timeout else 10
-
-			channel = os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL")
-			channel = int(channel) if channel else 0
-
-			APIRequest.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
-			wifi.radio.hostname = f"babypod-{APIRequest.mac_id}"
-
-			print(f"Connecting to {ssid}...")
-			wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = timeout)
-			print("Getting SSL context...")
-			ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
-			print("Getting socket pool...")
-			pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
-			print("Getting session...")
-			APIRequest.requests = adafruit_requests.Session(pool, ssl_context)
-			print(f"Connected: RSSI {wifi.radio.ap_info.rssi} on channel {wifi.radio.ap_info.channel}, tx power {wifi.radio.tx_power} dBm")
-
-		return APIRequest.requests
 
 	@staticmethod
 	def merge(payload, timer = None, extra_notes: List[str] = None):
@@ -135,12 +137,13 @@ class PostAPIRequest(APIRequest):
 	def invoke(self):
 		full_url = self.build_full_url()
 		print(f"HTTP POST: {full_url} with data: {self.payload}")
-		response = APIRequest.connect().post(
+		response = ConnectionManager.connect().post(
 			url = full_url,
 			json = self.payload,
 			headers = {
 				"Authorization": f"Token {APIRequest.API_KEY}"
-			}
+			},
+			timeout = ConnectionManager.timeout
 		)
 		self.validate_response(response)
 		response_json = response.json()
@@ -155,11 +158,12 @@ class GetAPIRequest(APIRequest):
 	def invoke(self):
 		full_url = self.build_full_url()
 		print(f"HTTP GET: {full_url}")
-		response = APIRequest.connect().get(
+		response = ConnectionManager.connect().get(
 			url = full_url,
 			headers = {
 				"Authorization": f"Token {APIRequest.API_KEY}"
-			}
+			},
+			timeout = ConnectionManager.timeout
 		)
 
 		self.validate_response(response)
@@ -175,11 +179,12 @@ class DeleteAPIRequest(APIRequest):
 	def invoke(self):
 		full_url = self.build_full_url()
 		print(f"HTTP DELETE: {full_url}")
-		response = APIRequest.connect().delete(
+		response = ConnectionManager.connect().delete(
 			url = full_url,
 			headers = {
 				"Authorization": f"Token {APIRequest.API_KEY}"
-			}
+			},
+			timeout = ConnectionManager.timeout
 		)
 
 		self.validate_response(response)

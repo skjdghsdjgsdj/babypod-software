@@ -4,7 +4,7 @@ from busio import I2C
 
 # noinspection PyBroadException
 try:
-	from typing import List, Optional
+	from typing import List, Optional, Callable, Any
 except:
 	# don't care
 	pass
@@ -14,7 +14,7 @@ import digitalio
 from adafruit_seesaw.digitalio import DigitalIO
 
 class WaitTickListener:
-	def __init__(self, seconds: int, on_tick, recurring = False):
+	def __init__(self, seconds: int, on_tick: Callable[[float], None], recurring = False):
 		self.seconds = seconds
 		self.on_tick = on_tick
 		self.last_triggered = None
@@ -24,12 +24,52 @@ class WaitTickListener:
 		self.last_triggered = elapsed
 		self.on_tick(elapsed)
 
+class ShutdownRequestListener:
+	def __init__(self, on_shutdown_requested: Callable[[], None]):
+		self.on_shutdown_requested = on_shutdown_requested
+
+	def trigger(self) -> None:
+		self.on_shutdown_requested()
+
 class ActivityListener:
 	def __init__(self, on_activity):
 		self.on_activity = on_activity
 
 	def trigger(self) -> None:
 		self.on_activity()
+
+class Button(DigitalIO):
+	def __init__(self, seesaw: seesaw.Seesaw, pin: int):
+		self.pin = pin
+		success = False
+		while not success:
+			try:
+				super().__init__(seesaw, pin)
+				self.direction = digitalio.Direction.INPUT
+				self.pull = digitalio.Pull.UP
+
+				success = True
+			except OSError as e:
+				print(f"Failed to set up rotary encoder button, trying again: {e}")
+				time.sleep(0.2)
+
+		self.press_start: float = 0
+		self.is_pressed = False
+
+	# a click (down then up), not just down
+	def was_pressed(self) -> tuple[bool, float]:
+		if not self.value:
+			if not self.is_pressed:
+				self.press_start = time.monotonic()
+			self.is_pressed = True
+
+			return False, 0
+
+		if self.value and self.is_pressed:
+			self.is_pressed = False
+			return True, time.monotonic() - self.press_start
+
+		return False, 0
 
 class RotaryEncoder:
 	SELECT = 1
@@ -40,15 +80,19 @@ class RotaryEncoder:
 	CLOCKWISE = 10
 	COUNTERCLOCKWISE = 11
 
+	HOLD_FOR_SHUTDOWN_SECONDS = 3
+
 	def __init__(self, i2c: I2C):
 		self.i2c = i2c
 
-		self.on_activity_listeners = []
-		self.on_wait_tick_listeners = []
+		self.on_activity_listeners: List[ActivityListener] = []
+		self.on_wait_tick_listeners: List[WaitTickListener] = []
+		self.on_shutdown_requested_listeners: List[ShutdownRequestListener] = []
 
 		self.last_position = None
 		self.buttons = {}
 		self.last_button_down = None
+		self.last_button_down_times = {}
 
 		self.seesaw = self.init_seesaw()
 		self.encoder = self.init_rotary_encoder()
@@ -69,20 +113,8 @@ class RotaryEncoder:
 			RotaryEncoder.RIGHT
 		]
 
-		for index in range(0, len(buttons)):
-			value = buttons[index]
-
-			success = False
-			while not success:
-				try:
-					self.buttons[value] = DigitalIO(self.seesaw, value)
-					self.buttons[value].direction = digitalio.Direction.INPUT
-					self.buttons[value].pull = digitalio.Pull.UP
-
-					success = True
-				except OSError as e:
-					print(f"Failed to set up rotary encoder button, trying again: {e}")
-					time.sleep(0.2)
+		for pin in buttons:
+			self.buttons[pin] = Button(self.seesaw, pin)
 
 		encoder = rotaryio.IncrementalEncoder(self.seesaw)
 		self.last_position = encoder.position
@@ -130,13 +162,17 @@ class RotaryEncoder:
 	def poll_for_input(self, listen_for_buttons: bool = True, listen_for_rotation: bool = True) -> int:
 		response = None
 
-		if listen_for_buttons:
-			for key, button in self.buttons.items():
-				if not button.value:
-					self.last_button_down = key
-				elif key == self.last_button_down:
-					self.last_button_down = None
+		for key, button in self.buttons.items():
+			was_pressed, hold_time = button.was_pressed()
+			if was_pressed:
+				if button.pin == RotaryEncoder.SELECT and hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
+					print("Informing listeners of shutdown request")
+					for listener in self.on_shutdown_requested_listeners:
+						listener.on_shutdown_requested()
+					raise RuntimeError("No listeners initiated shutdown!")
+				elif listen_for_buttons:
 					response = key
+					break
 
 		if listen_for_rotation:
 			current_position = self.encoder.position

@@ -6,14 +6,15 @@ from adafruit_datetime import datetime
 
 from api import APIRequest, GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
-	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest
+	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest, \
+	ConnectionManager
 from offline_event_queue import OfflineEventQueue
 from devices import Devices
 from lcd import LCD, BacklightColors
 from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
-from user_input import ActivityListener, WaitTickListener
+from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal
 
 # noinspection PyBroadException
@@ -90,6 +91,10 @@ class Flow:
 			on_activity = self.on_user_input
 		))
 
+		self.devices.rotary_encoder.on_shutdown_requested_listeners.append(ShutdownRequestListener(
+			on_shutdown_requested = self.on_shutdown_requested
+		))
+
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
 				on_tick = self.on_backlight_dim_idle,
@@ -119,6 +124,12 @@ class Flow:
 		self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
 		self.device_name = os.getenv("DEVICE_NAME") or "BabyPod"
 
+		self.is_shutting_down = False
+
+	def on_shutdown_requested(self):
+		self.is_shutting_down = True
+		self.devices.power_control.shutdown()
+
 	def on_backlight_dim_idle(self, _: float) -> None:
 		if not self.suppress_dim_timeout:
 			print("Dimming backlight due to inactivity")
@@ -137,8 +148,9 @@ class Flow:
 			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 	def clear_and_show_battery(self) -> None:
-		self.devices.lcd.clear()
-		self.render_battery_percent()
+		if not self.is_shutting_down:
+			self.devices.lcd.clear()
+			self.render_battery_percent()
 
 	def refresh_rtc(self) -> None:
 		if NVRAMValues.OFFLINE:
@@ -165,9 +177,10 @@ class Flow:
 			self.render_splash("Connecting...")
 			# noinspection PyBroadException
 			try:
-				self.requests = APIRequest.connect()
+				self.requests = ConnectionManager.connect()
 			except Exception as e:
-				print(f"Got {e} when trying to connect")
+				import traceback
+				traceback.print_exception(e)
 				if self.devices.rtc and self.devices.sdcard:
 					self.render_splash("Going offline")
 					self.devices.piezo.tone("info")
@@ -293,6 +306,8 @@ class Flow:
 			message += " failed"
 			if e.http_status_code != 0:
 				message += f" ({e.http_status_code})"
+		elif "ETIMEDOUT" in str(e):
+				message = "Request timeout!"
 
 		self.devices.lcd.backlight.set_color(BacklightColors.ERROR)
 		self.devices.piezo.tone("error")

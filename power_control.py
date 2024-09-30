@@ -49,7 +49,7 @@ class PowerControl:
 		raise RuntimeError("Deep sleep failed")
 
 	def shutdown(self) -> None:
-		self.lcd_shutdown()
 		self.wifi_shutdown()
 		self.init_center_button_interrupt()
+		self.lcd_shutdown()
 		self.enter_deep_sleep()

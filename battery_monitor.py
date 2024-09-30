@@ -56,20 +56,19 @@ class BatteryMonitor:
 
 	@staticmethod
 	def get_instance(i2c: I2C):
-		while not i2c.try_lock():
-			pass
-		i2c_address_list = i2c.scan()
-		i2c.unlock()
 
 		attempts = 0
-		while attempts <= 5:
+		while attempts <= 20:
+			while not i2c.try_lock():
+				pass
+			i2c_address_list = i2c.scan()
+			i2c.unlock()
+
 			attempts += 1
 
 			if 0x0b in i2c_address_list:
-				#print("Detected LC709203F battery monitor")
 				return LC709203FBatteryMonitor(i2c)
 			elif 0x36 in i2c_address_list:
-				#print("Detected MAX17048 battery monitor")
 				return MAX17048BatteryMonitor(i2c)
 
 			print("Battery monitor I2C device detection found nothing, retrying")
