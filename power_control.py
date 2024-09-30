@@ -14,7 +14,6 @@ class PowerControl:
 	def __init__(self, piezo: Piezo, lcd: LCD, encoder: RotaryEncoder, interrupt_pin: microcontroller.Pin = board.D11, seesaw_pin: int = 1):
 		self.encoder = encoder
 		self.lcd = lcd
-		self.wifi_radio = wifi.radio
 		self.interrupt_pin = interrupt_pin
 		self.seesaw_pin = seesaw_pin
 		self.spi = board.SPI()
@@ -50,6 +49,7 @@ class PowerControl:
 
 	def shutdown(self) -> None:
 		self.piezo.tone("shutdown")
+		self.sd_shutdown()
 		self.lcd_shutdown()
 		self.init_center_button_interrupt()
 
