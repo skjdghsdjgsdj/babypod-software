@@ -8,7 +8,6 @@ from adafruit_seesaw import seesaw
 from lcd import LCD
 from piezo import Piezo
 from user_input import RotaryEncoder
-import wifi
 
 class PowerControl:
 	def __init__(self, piezo: Piezo, lcd: LCD, encoder: RotaryEncoder, interrupt_pin: microcontroller.Pin = board.D11, seesaw_pin: int = 1):
