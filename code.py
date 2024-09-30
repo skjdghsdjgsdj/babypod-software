@@ -21,11 +21,11 @@ neopixel = DigitalInOut(board.NEOPIXEL)
 neopixel.direction = Direction.OUTPUT
 neopixel.value = False
 
-from user_input import RotaryEncoder, ShutdownRequestListener
+from user_input import RotaryEncoder
 rotary_encoder = RotaryEncoder(i2c)
 
 from power_control import PowerControl
-power_control = PowerControl(lcd, rotary_encoder)
+power_control = PowerControl(piezo, lcd, rotary_encoder)
 
 from battery_monitor import BatteryMonitor
 battery_monitor = BatteryMonitor.get_instance(i2c)

@@ -1,20 +1,24 @@
+import time
+
 import alarm
 import board
 import microcontroller
 from adafruit_seesaw import seesaw
 
 from lcd import LCD
+from piezo import Piezo
 from user_input import RotaryEncoder
 import wifi
 
 class PowerControl:
-	def __init__(self, lcd: LCD, encoder: RotaryEncoder, interrupt_pin: microcontroller.Pin = board.D11, seesaw_pin: int = 1):
+	def __init__(self, piezo: Piezo, lcd: LCD, encoder: RotaryEncoder, interrupt_pin: microcontroller.Pin = board.D11, seesaw_pin: int = 1):
 		self.encoder = encoder
 		self.lcd = lcd
 		self.wifi_radio = wifi.radio
 		self.interrupt_pin = interrupt_pin
 		self.seesaw_pin = seesaw_pin
 		self.spi = board.SPI()
+		self.piezo = piezo
 
 	def init_center_button_interrupt(self) -> None:
 		mask = 1 << self.seesaw_pin
@@ -29,10 +33,6 @@ class PowerControl:
 		self.lcd.clear()
 		self.lcd.write("Press center button", (0, 1))
 		self.lcd.write("to turn on BabyPod.", (0, 2))
-
-	def wifi_shutdown(self) -> None:
-		self.wifi_radio.enabled = False
-		print("WiFi disabled")
 
 	def sd_shutdown(self) -> None:
 		self.spi.deinit()
@@ -49,7 +49,9 @@ class PowerControl:
 		raise RuntimeError("Deep sleep failed")
 
 	def shutdown(self) -> None:
-		self.wifi_shutdown()
-		self.init_center_button_interrupt()
+		self.piezo.tone("shutdown")
 		self.lcd_shutdown()
+		self.init_center_button_interrupt()
+
+		time.sleep(3) # give the user time to let go of the button, or it'll just wake immediately
 		self.enter_deep_sleep()

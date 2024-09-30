@@ -148,9 +148,8 @@ class Flow:
 			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 	def clear_and_show_battery(self) -> None:
-		if not self.is_shutting_down:
-			self.devices.lcd.clear()
-			self.render_battery_percent()
+		self.devices.lcd.clear()
+		self.render_battery_percent()
 
 	def refresh_rtc(self) -> None:
 		if NVRAMValues.OFFLINE:
@@ -286,7 +285,8 @@ class Flow:
 			except Exception as e:
 				self.on_error(e)
 			finally:
-				self.clear_and_show_battery()
+				if not self.is_shutting_down:
+					self.clear_and_show_battery()
 
 	def on_error(self, e: Exception) -> None:
 		traceback.print_exception(e)

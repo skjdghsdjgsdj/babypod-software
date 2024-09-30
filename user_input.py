@@ -63,7 +63,7 @@ class Button(DigitalIO):
 				self.press_start = time.monotonic()
 			self.is_pressed = True
 
-			return False, 0
+			return False, time.monotonic() - self.press_start
 
 		if self.value and self.is_pressed:
 			self.is_pressed = False
@@ -164,15 +164,14 @@ class RotaryEncoder:
 
 		for key, button in self.buttons.items():
 			was_pressed, hold_time = button.was_pressed()
-			if was_pressed:
-				if button.pin == RotaryEncoder.SELECT and hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
-					print("Informing listeners of shutdown request")
-					for listener in self.on_shutdown_requested_listeners:
-						listener.on_shutdown_requested()
-					raise RuntimeError("No listeners initiated shutdown!")
-				elif listen_for_buttons:
-					response = key
-					break
+			if button.pin == RotaryEncoder.SELECT and hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
+				print("Informing listeners of shutdown request")
+				for listener in self.on_shutdown_requested_listeners:
+					listener.on_shutdown_requested()
+				raise RuntimeError("No listeners initiated shutdown!")
+			if was_pressed and listen_for_buttons:
+				response = key
+				break
 
 		if listen_for_rotation:
 			current_position = self.encoder.position

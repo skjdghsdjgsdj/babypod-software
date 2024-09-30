@@ -56,7 +56,6 @@ class BatteryMonitor:
 
 	@staticmethod
 	def get_instance(i2c: I2C):
-
 		attempts = 0
 		while attempts <= 20:
 			while not i2c.try_lock():
