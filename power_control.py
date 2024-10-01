@@ -30,8 +30,7 @@ class PowerControl:
 	def lcd_shutdown(self) -> None:
 		self.lcd.backlight.off()
 		self.lcd.clear()
-		self.lcd.write("Press center button", (0, 1))
-		self.lcd.write("to turn on BabyPod.", (0, 2))
+		self.lcd.write_bottom_left_aligned(self.lcd[LCD.CENTER] + " Power")
 
 	def sd_shutdown(self) -> None:
 		self.spi.deinit()
