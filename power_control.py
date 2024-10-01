@@ -2,6 +2,7 @@ import time
 
 import alarm
 import board
+import digitalio
 import microcontroller
 from adafruit_seesaw import seesaw
 
@@ -40,9 +41,14 @@ class PowerControl:
 		from alarm.pin import PinAlarm
 		pin_alarm = PinAlarm(self.interrupt_pin, value = False, pull = False)
 
+		# clear any interrupt so the next one wakes up D11
 		self.encoder.seesaw.digital_read_bulk(1 << self.seesaw_pin)
+
+		# keep I2C_PWR on during deep sleep so the rotary encoder can still generate interrupts
+		i2c_power = digitalio.DigitalInOut(board.I2C_POWER)
+		i2c_power.switch_to_output(True)
 		print("Entering deep sleep")
-		alarm.exit_and_deep_sleep_until_alarms(pin_alarm)
+		alarm.exit_and_deep_sleep_until_alarms(pin_alarm, preserve_dios = [i2c_power])
 
 		raise RuntimeError("Deep sleep failed")
 
