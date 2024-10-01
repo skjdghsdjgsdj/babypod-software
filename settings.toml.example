@@ -1,0 +1,49 @@
+# Example settings.toml; modify it as needed for your specific BabyPod, then save it directly
+# to the CIRCUITPY drive as settings.toml.
+
+# This file contains secrets so never put it in version control.
+# Keep strings in double quotes and ints unquoted.
+
+# Generic documentation for settings.toml:
+# https://docs.circuitpython.org/en/latest/docs/environment.html
+
+# Do NOT define CIRCUITPY_WIFI_SSID nor CIRCUITPY_WIFI_PASSWORD, but instead use the settings
+# below. You do not want the BabyPod to connect automatically to Wi-Fi, and CIRCUITPY_WIFI_SSID and
+# CIRCUITPY_WIFI_PASSWORD will do so before code.py starts.
+
+# Required settings in all cases
+
+# Your Wi-Fi's SSID (network name)
+CIRCUITPY_WIFI_SSID_DEFER=""
+# Your Wi-Fi's password
+CIRCUITPY_WIFI_PASSWORD_DEFER=""
+# Baby Buddy's API endpoint URL including trailing slash, like http://10.1.2.3/api/
+BABYBUDDY_BASE_URL="https://.../api/"
+# Baby Buddy's API user's authorization token: https://docs.baby-buddy.net/api/#authentication
+BABYBUDDY_AUTH_TOKEN=""
+
+# Required settings if your BabyPod has an RTC
+
+# Your adafruit.io API user's username: https://io.adafruit.com/api/docs/#authentication
+ADAFRUIT_AIO_USERNAME=""
+# Your adafruit.io API user's key
+ADAFRUIT_AIO_KEY=""
+
+# Optional settings
+
+# The channel number of your Wi-Fi access point. If you only have one and you set the
+# channel number here, Wi-Fi connections are faster. If you have multiple Wi-Fi access points on
+# different channels, or you're just not sure, leave this at 0 and the strongest channel will be
+# autoselected at the expense of a slower startup.
+CIRCUITPY_WIFI_INITIAL_CHANNEL=0 # defaults to 0
+# Wi-Fi connection timeout in seconds, both for connecting to the access point and for
+# HTTP requests in general.
+CIRCUITPY_WIFI_TIMEOUT=10 # defaults to 10
+# Device name as it should appear in some notes posted to the API; defaults to "BabyPod"
+DEVICE_NAME="" # defaults to "BabyPod"
+# Whether or not this BabyPod uses the rotary encoder to turn on and off the BabyPod.
+# If true (1), then pressing the center button wakes up the BabyPod and holding it for several
+# seconds until a message appears shuts it down. If false (0), the rotary encoder will not control
+# power, and instead you should wire a switch across the Feather's EN and GND pins to act as a
+# power switch.
+USE_SOFT_POWER_CONTROL=1 # defaults to 0
