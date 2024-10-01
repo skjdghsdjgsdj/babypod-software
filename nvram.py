@@ -120,7 +120,7 @@ class NVRAMValues:
     # True to force the RTC to update at next boot; use only for debugging
     FORCE_RTC_UPDATE = NVRAMBooleanValue(7, False, "FORCE_RTC_UPDATE")
     # For soft power control, wake up every N seconds to refresh the battery display, then go back to sleep
-    SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL = NVRAMIntegerValue(8, 30, "SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL")
+    SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL = NVRAMIntegerValue(8, 60 * 10, "SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL")
     # False (default) means this BabyPod doesn't use the Sparkfun LCD or hasn't configured some of its flags yet, or
     # True if flags are configured and don't need to be reconfigured. No effect for the Adafruit LCD.
     HAS_CONFIGURED_SPARKFUN_LCD = NVRAMBooleanValue(9, False, "HAS_CONFIGURED_SPARKFUN_LCD")
