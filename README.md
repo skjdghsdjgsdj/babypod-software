@@ -9,7 +9,7 @@ You need to install [Baby Buddy](https://docs.baby-buddy.net/setup/deployment/) 
 ### General
 - Simple text-based interface that can be scrolled with the rotary encoder's wheel or the up/down buttons. Select and Right buttons are usually interchangeable, and Left usually means cancel or back. The design objective is you can give the BabyPod to someone with no experience using it and they can understand how it works easily.
 - Backlight color and piezo are used for interface feedback, like successful saving of data back to Baby Buddy, reporting of errors, periodic chimes during timers, low battery warnings, etc.
-- Some user-configurable options are exposed directly through the interface instead of messing with `settings.toml`, like turning off the piezo if it bothers your baby. The values are stored in NVRAM to persist across reboots. Protip: don't turn off the backlight on [backlight-negative LCDs](https://www.adafruit.com/product/498).
+- Some user-configurable options are exposed directly through the interface instead of messing with `settings.toml`, like turning off the piezo if it bothers your baby. The values are stored in NVRAM to persist across reboots.
 - Battery percentage shown on most screens and updates periodically.
 - Backlight dims after inactivity to save power, although you should turn off the BabyPod when not using it anyway.
 - Information is contextual and non-relevant information isn't shown. For example, when feeding solid food, no bottle options are shown.
@@ -81,7 +81,6 @@ User-configurability that persists across power cycles of:
 
 - Switching between online and offline (online by default)
 - Enabling or disabling the piezo (on by default)
-- LCD backlight at max brightness then dimming after timeout (default), or dim by default
 
 ## Building and Deploying
 
