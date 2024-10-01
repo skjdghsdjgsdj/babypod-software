@@ -101,6 +101,9 @@ class NVRAMIntegerValue(NVRAMValue):
     def __int__(self):
         return self.get()
 
+    def __float__(self):
+        return float(int(self))
+
 class NVRAMValues:
     # True to play piezo sounds, False to not
     PIEZO = NVRAMBooleanValue(0, True, "PIEZO")
