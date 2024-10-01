@@ -2,6 +2,7 @@ import time
 
 from adafruit_character_lcd.character_lcd import Character_LCD
 
+from nvram import NVRAMValues
 from sparkfun_serlcd import Sparkfun_SerLCD, Sparkfun_SerLCD_I2C
 
 # noinspection PyBroadException
@@ -197,8 +198,10 @@ class SparkfunSerLCD(LCD):
 	def __init__(self, lcd: Sparkfun_SerLCD, backlight: Backlight):
 		self.device = lcd
 		super().__init__(backlight)
-		self.device.command(0x2F) # turn off command messages
-		self.device.command(0x31) # disable splash screen
+		if not NVRAMValues.HAS_CONFIGURED_SPARKFUN_LCD:
+			self.device.command(0x2F) # turn off command messages
+			self.device.command(0x31) # disable splash screen
+			NVRAMValues.HAS_CONFIGURED_SPARKFUN_LCD.write(True)
 
 	def write_impl(self, message: str, coords: tuple[int, int]) -> None:
 		x, y = coords

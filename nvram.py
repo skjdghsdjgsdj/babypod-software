@@ -102,10 +102,22 @@ class NVRAMIntegerValue(NVRAMValue):
         return self.get()
 
 class NVRAMValues:
+    # True to play piezo sounds, False to not
     PIEZO = NVRAMBooleanValue(0, True, "PIEZO")
+    # Baby Buddy child ID; 0 to autodiscover
     CHILD_ID = NVRAMIntegerValue(2, 0, "CHILD_ID")
+    # How many seconds until backlight dims from user inactivity on most screens
     BACKLIGHT_DIM_TIMEOUT = NVRAMIntegerValue(3, 30, "BACKLIGHT_DIM_TIMEOUT")
+    # If battery is not charging, how many seconds until the piezo makes a warning tone
     IDLE_WARNING = NVRAMIntegerValue(4, 60 * 2, "IDLE_WARNING")
+    # Bitmask of food types to enable in the feeding menu for flow.py; default is all
     ENABLED_FOOD_TYPES_MASK = NVRAMIntegerValue(5, 0x1 + 0x2 + 0x4 + 0x8, "ENABLED_FOOD_TYPES_MASK")
+    # True to work offline; requires an RTC and SD card hardware
     OFFLINE = NVRAMBooleanValue(6, False, "OFFLINE")
+    # True to force the RTC to update at next boot; use only for debugging
     FORCE_RTC_UPDATE = NVRAMBooleanValue(7, False, "FORCE_RTC_UPDATE")
+    # For soft power control, wake up every N seconds to refresh the battery display, then go back to sleep
+    SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL = NVRAMIntegerValue(8, 30, "SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL")
+    # False (default) means this BabyPod doesn't use the Sparkfun LCD or hasn't configured some of its flags yet, or
+    # True if flags are configured and don't need to be reconfigured. No effect for the Adafruit LCD.
+    HAS_CONFIGURED_SPARKFUN_LCD = NVRAMBooleanValue(9, False, "HAS_CONFIGURED_SPARKFUN_LCD")
