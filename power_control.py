@@ -72,7 +72,8 @@ class PowerControl:
 		time_alarm = None
 		if self.battery_monitor is not None:
 			from alarm.time import TimeAlarm
-			time_alarm = TimeAlarm(monotonic_time = time.monotonic() + NVRAMValues.SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL)
+			interval = 60 if self.battery_monitor.is_charging() else NVRAMValues.SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL
+			time_alarm = TimeAlarm(monotonic_time = time.monotonic() + interval)
 
 		# clear any interrupt so the next one wakes up D11
 		self.encoder.seesaw.digital_read_bulk(1 << self.seesaw_pin)
@@ -80,10 +81,11 @@ class PowerControl:
 		# keep I2C_PWR on during deep sleep so the rotary encoder can still generate interrupts
 		i2c_power = digitalio.DigitalInOut(board.I2C_POWER)
 		i2c_power.switch_to_output(True)
-		print("Entering deep sleep")
 		if time_alarm is not None:
+			print(f"Entering deep sleep; will wake up from PinAlarm or automatically in {int(time_alarm.monotonic_time - time.monotonic())} seconds")
 			alarm.exit_and_deep_sleep_until_alarms(pin_alarm, time_alarm, preserve_dios = [i2c_power])
 		else:
+			print("Entering deep sleep; only wakeup source will be PinAlarm")
 			alarm.exit_and_deep_sleep_until_alarms(pin_alarm, preserve_dios = [i2c_power])
 
 		raise RuntimeError("Deep sleep failed")
