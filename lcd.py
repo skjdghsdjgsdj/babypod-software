@@ -132,7 +132,7 @@ class LCD:
 		self.write_right_aligned(text, LCD.LINES - 1 - y_delta)
 
 	def write_bottom_left_aligned(self, text: str, y_delta: int = 0) -> None:
-		self.write(text, (0, y_delta))
+		self.write(text, (0, LCD.LINES - 1 - y_delta))
 
 	def clear(self) -> None:
 		raise NotImplementedError()
