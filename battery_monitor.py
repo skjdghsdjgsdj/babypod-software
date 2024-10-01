@@ -49,7 +49,6 @@ class BatteryMonitor:
 			self.last_percent = int(round(min(max(self.last_percent, 0), 100)))
 
 			if self.last_percent <= 0:
-				#print(f"Battery percent {self.last_percent}% is implausible; hiding for now until it stabilizes")
 				self.last_percent = None
 
 		return self.last_percent
@@ -89,7 +88,7 @@ class MAX17048BatteryMonitor(BatteryMonitor):
 		is_charging = super().is_charging()
 		if not is_charging:
 			charge_rate = self.device.charge_rate
-			is_charging = charge_rate > 0
+			is_charging = charge_rate > 0.05
 
 		return is_charging
 
