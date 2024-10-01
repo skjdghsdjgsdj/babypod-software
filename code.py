@@ -24,8 +24,12 @@ neopixel.value = False
 from user_input import RotaryEncoder
 rotary_encoder = RotaryEncoder(i2c)
 
-from power_control import PowerControl
-power_control = PowerControl(piezo, lcd, rotary_encoder)
+import os
+if os.getenv("USE_SOFT_POWER_CONTROL"):
+	from power_control import PowerControl
+	power_control = PowerControl(piezo, lcd, rotary_encoder)
+else:
+	power_control = None
 
 from battery_monitor import BatteryMonitor
 battery_monitor = BatteryMonitor.get_instance(i2c)

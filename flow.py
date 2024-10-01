@@ -91,9 +91,10 @@ class Flow:
 			on_activity = self.on_user_input
 		))
 
-		self.devices.rotary_encoder.on_shutdown_requested_listeners.append(ShutdownRequestListener(
-			on_shutdown_requested = self.on_shutdown_requested
-		))
+		if self.devices.power_control is not None:
+			self.devices.rotary_encoder.on_shutdown_requested_listeners.append(ShutdownRequestListener(
+				on_shutdown_requested = self.on_shutdown_requested
+			))
 
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
