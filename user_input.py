@@ -164,7 +164,7 @@ class RotaryEncoder:
 
 		for key, button in self.buttons.items():
 			was_pressed, hold_time = button.was_pressed()
-			if button.pin == RotaryEncoder.SELECT and hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
+			if button.pin == RotaryEncoder.SELECT and hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS and len(self.on_shutdown_requested_listeners) > 0:
 				print("Informing listeners of shutdown request")
 				for listener in self.on_shutdown_requested_listeners:
 					listener.on_shutdown_requested()
