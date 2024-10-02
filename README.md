@@ -135,6 +135,7 @@ The build script supports several arguments:
 - `--modules`: only builds or copies the given files. For example, use `--modules code` to just copy `code.py`, or `--modules code sdcard` to just copy `code.py` and build/copy `sdcard.py`.
 - `--clean`: deletes everything from `lib/` on the `CIRCUITPY` drive and repopulates it with the required Adafruit libraries. This is useful if using `--no-compile` after using compiled files, or vice versa, to ensure the `.py` or `.mpy` files are being used correctly without duplicates. It can take a minute or two to finish.
 - `--no-reboot`: don't attempt to reboot the Feather after copying files.
+- `--output`: use the specified path instead of the `CIRCUITPY` drive; useful for building zip releases
 
 To set up a brand new BabyPod, all you should need to do is:
 1. Erase the flash then re-flash CircuitPython.

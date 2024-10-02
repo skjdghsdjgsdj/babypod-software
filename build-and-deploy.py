@@ -36,6 +36,13 @@ parser.add_argument(
     help = "Recreate the board's lib/ directory with just the Adafruit modules"
 )
 
+parser.add_argument(
+    "--output",
+    action = "store",
+    default = None,
+    help = f"Output to this directory instead of {CIRCUITPY_PATH}"
+)
+
 def get_base_path():
     return os.path.abspath(os.path.dirname(__file__))
 
@@ -52,8 +59,8 @@ def reboot():
     subprocess.Popen(f"expect -c \"send \003;\" > {tty}", shell = True).communicate()
     subprocess.Popen(f"expect -c \"send \004;\" > {tty}", shell = True).communicate()
 
-def clean():
-    lib = f"{CIRCUITPY_PATH}/lib"
+def clean(output_path: str):
+    lib = f"{output_path}/lib"
     print(f"Purging everything from {lib}...", end = "", flush = True)
     shutil.rmtree(lib, ignore_errors = True)
     print("done")
@@ -63,10 +70,10 @@ def clean():
     shutil.copytree(local_lib, lib)
     print("done")
 
-def build_and_deploy(source_module: str, compile_to_mpy: bool = True) -> str:
+def build_and_deploy(source_module: str, output_path: str, compile_to_mpy: bool = True) -> str:
     if source_module == "code":
         print("Copying code.py...", end = "", flush = True)
-        dst = f"{CIRCUITPY_PATH}/code.py"
+        dst = f"{output_path}/code.py"
         shutil.copyfile(get_base_path() + "/code.py", dst)
         print("done")
     else:
@@ -81,13 +88,13 @@ def build_and_deploy(source_module: str, compile_to_mpy: bool = True) -> str:
             if result.returncode != 0:
                 raise ValueError(f"mpy-cross failed with status {result.returncode}")
 
-            dst = f"{CIRCUITPY_PATH}/lib/{source_module}.mpy"
+            dst = f"{output_path}/lib/{source_module}.mpy"
 
             print("deploying...", end = "", flush = True)
             shutil.move(temp_mpy.name, dst)
             print("done")
         else:
-            dst = f"{CIRCUITPY_PATH}/lib/{source_module}.py"
+            dst = f"{output_path}/lib/{source_module}.py"
             print(f"Copying {source_module}.py (not compiling)...", end = "", flush = True)
             shutil.copyfile(full_src, dst)
             print("done")
@@ -96,18 +103,20 @@ def build_and_deploy(source_module: str, compile_to_mpy: bool = True) -> str:
 
 args = parser.parse_args()
 
+output_path = args.output or CIRCUITPY_PATH
+
 if args.clean:
-    clean()
+    clean(output_path)
 
 if args.modules:
     for module in args.modules:
-        build_and_deploy(module, compile_to_mpy = not args.no_compile)
+        build_and_deploy(module, output_path, compile_to_mpy = not args.no_compile)
 else:
     py_files = glob.glob("*.py", root_dir = get_base_path())
     for py_file in py_files:
         py_file = pathlib.Path(py_file).with_suffix("").name
         if py_file != "build-and-deploy" and not py_file.startswith("._"):
-            build_and_deploy(py_file, compile_to_mpy = not args.no_compile)
+            build_and_deploy(py_file, output_path, compile_to_mpy = not args.no_compile)
 
 if not args.no_reboot:
     print("Rebooting")
