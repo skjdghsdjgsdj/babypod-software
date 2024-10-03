@@ -125,3 +125,5 @@ class NVRAMValues:
     # False (default) means this BabyPod doesn't use the Sparkfun LCD or hasn't configured some of its flags yet, or
     # True if flags are configured and don't need to be reconfigured. No effect for the Adafruit LCD.
     HAS_CONFIGURED_SPARKFUN_LCD = NVRAMBooleanValue(9, False, "HAS_CONFIGURED_SPARKFUN_LCD")
+    # How frequently in seconds to check for a MOTD
+    MOTD_CHECK_INTERVAL = NVRAMIntegerValue(10, 60 * 60 * 4, "MOTD_CHECK_INTERVAL")
