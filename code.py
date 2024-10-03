@@ -34,7 +34,7 @@ from lcd import LCD, BacklightColors
 lcd = LCD.get_instance(i2c)
 if not just_refresh_shutdown_screen:
 	lcd.backlight.set_color(BacklightColors.DEFAULT)
-	lcd.write("Starting up...", (0, 0))
+	lcd.write_centered("Starting up...")
 
 # turn off Neopixel
 from digitalio import DigitalInOut, Direction
