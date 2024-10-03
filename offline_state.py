@@ -17,6 +17,7 @@ class OfflineState:
         self.last_feeding_method: Optional[str] = None
         self.last_rtc_set: Optional[datetime] = None
         self.rtc_utc_offset: Optional[float] = None
+        self.last_motd_check: Optional[datetime] = None
         self.sdcard = sdcard
 
     @staticmethod
@@ -46,6 +47,9 @@ class OfflineState:
             if "last_rtc_set" in serialized and serialized["last_rtc_set"]:
                 state.last_rtc_set = Util.to_datetime(serialized["last_rtc_set"])
 
+            if "last_motd_check" in serialized and serialized["last_motd_check"]:
+                state.last_motd_check = Util.to_datetime(serialized["last_motd_check"])
+
             if "rtc_utc_offset" in serialized and serialized["rtc_utc_offset"]:
                 state.rtc_utc_offset = float(serialized["rtc_utc_offset"])
         else:
@@ -59,6 +63,7 @@ class OfflineState:
             "last_feeding": self.last_feeding.isoformat() if self.last_feeding else None,
             "last_feeding_method": self.last_feeding_method,
             "last_rtc_set": self.last_rtc_set.isoformat() if self.last_rtc_set else None,
+            "last_motd_check": self.last_motd_check.isoformat() if self.last_motd_check else None,
             "rtc_utc_offset": self.rtc_utc_offset,
         }
 
