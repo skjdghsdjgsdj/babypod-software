@@ -8,7 +8,7 @@ import time
 
 # noinspection PyBroadException
 try:
-	from typing import Optional
+	from typing import Optional, Callable
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -17,11 +17,18 @@ class UIComponent:
 	RIGHT = 0
 	LEFT = 1
 
-	def __init__(self, devices: Devices, allow_cancel: bool = True, cancel_text: str = None, cancel_align: int = None):
+	def __init__(self,
+		devices: Devices,
+		allow_cancel: bool = True,
+		cancel_text: str = None,
+		cancel_align: int = None,
+		before_wait_loop: Optional[Callable[[], None]] = None
+	):
 		self.devices = devices
 		self.allow_cancel = allow_cancel
 		self.cancel_align = cancel_align
 		self.cancel_text = (self.devices.lcd[LCD.LEFT] + "Cancel") if cancel_text is None else cancel_text
+		self.before_wait_loop = before_wait_loop
 
 	def render_and_wait(self) -> None:
 		if self.allow_cancel:
@@ -33,8 +40,8 @@ class UIComponent:
 		self.devices.lcd.write(save_message, (LCD.COLUMNS - len(save_message), LCD.LINES - y_delta - 1))
 
 class Modal(UIComponent):
-	def __init__(self, devices: Devices, message: str, dismiss_text: str = "Dismiss"):
-		super().__init__(devices = devices, allow_cancel = False)
+	def __init__(self, devices: Devices, message: str, dismiss_text: str = "Dismiss", before_wait_loop: Optional[Callable[[], None]] = None):
+		super().__init__(devices = devices, allow_cancel = False, before_wait_loop = before_wait_loop)
 
 		self.message = message
 		self.dismiss_text = dismiss_text
@@ -45,6 +52,9 @@ class Modal(UIComponent):
 		self.devices.lcd.write_centered(self.message)
 
 		self.render_save(message = self.dismiss_text)
+
+		if self.before_wait_loop is not None:
+			self.before_wait_loop()
 
 		while True:
 			button = self.devices.rotary_encoder.wait(listen_for_rotation = False)
@@ -106,13 +116,15 @@ class ActiveTimer(UIComponent):
 		allow_cancel: bool = True,
 		cancel_text: str = None,
 		periodic_chime: PeriodicChime = None,
-		start_at: float = 0
+		start_at: float = 0,
+		before_wait_loop: Optional[Callable[[], None]] = None
 	):
 		super().__init__(
 			devices = devices,
 			allow_cancel = allow_cancel,
 			cancel_text = cancel_text,
-			cancel_align = UIComponent.LEFT
+			cancel_align = UIComponent.LEFT,
+			before_wait_loop = before_wait_loop
 		)
 		self.start = None
 		self.periodic_chime = periodic_chime
@@ -162,6 +174,9 @@ class ActiveTimer(UIComponent):
 			periodic_chime = self.periodic_chime
 		)
 
+		if self.before_wait_loop is not None:
+			self.before_wait_loop()
+
 		while True:
 			button = self.devices.rotary_encoder.wait(
 				listen_for_rotation = False,
@@ -182,9 +197,10 @@ class NumericSelector(UIComponent):
 		allow_cancel: bool = True,
 		cancel_text: str = None,
 		row: int = 2,
-		format_str: str = "%d"
+		format_str: str = "%d",
+		before_wait_loop: Optional[Callable[[], None]] = None
 	):
-		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text)
+		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text, before_wait_loop = before_wait_loop)
 
 		assert(0 <= row < LCD.LINES)
 		assert(minimum is None or isinstance(minimum, (int, float)))
@@ -218,6 +234,9 @@ class NumericSelector(UIComponent):
 		super().render_save(1)
 
 		self.devices.lcd.write(self.devices.lcd[LCD.UP_DOWN], (0, self.row))
+
+		if self.before_wait_loop is not None:
+			self.before_wait_loop()
 
 		last_value = None
 		while True:
@@ -255,8 +274,14 @@ class VerticalMenu(UIComponent):
 	ANCHOR_TOP = 0
 	ANCHOR_BOTTOM = 1
 
-	def __init__(self, devices: Devices, options: list[str], allow_cancel: bool = True, cancel_text: str = None, anchor: int = ANCHOR_BOTTOM):
-		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text)
+	def __init__(self,
+				 devices: Devices,
+				 options: list[str],
+				 allow_cancel: bool = True,
+				 cancel_text: str = None,
+				 anchor: int = ANCHOR_BOTTOM,
+				 before_wait_loop: Optional[Callable[[], None]] = None):
+		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text, before_wait_loop = before_wait_loop)
 
 		self.options = options
 		self.selected_row_index = None
@@ -304,6 +329,9 @@ class VerticalMenu(UIComponent):
 		self.move_arrow(0)
 
 		self.init_extra_ui()
+
+		if self.before_wait_loop is not None:
+			self.before_wait_loop()
 
 		while True:
 			button = self.devices.rotary_encoder.wait()
@@ -354,14 +382,16 @@ class VerticalCheckboxes(VerticalMenu):
 		initial_states: list[bool],
 		allow_cancel: bool = True,
 		cancel_text: str = None,
-		anchor: int = 1
+		anchor: int = 1,
+		before_wait_loop: Optional[Callable[[], None]] = None
 	):
 		super().__init__(
 			devices = devices,
 			options = options,
 			allow_cancel = allow_cancel,
 			cancel_text = cancel_text,
-			anchor = anchor
+			anchor = anchor,
+			before_wait_loop = before_wait_loop
 		)
 
 		assert(len(options) == len(initial_states))
@@ -400,7 +430,8 @@ class BooleanPrompt(VerticalMenu):
 		cancel_text: str = None,
 		anchor: int = VerticalMenu.ANCHOR_BOTTOM,
 		yes_text: str = "Yes",
-		no_text: str = "No"
+		no_text: str = "No",
+		before_wait_loop: Optional[Callable[[], None]] = None
 	):
 		if cancel_text is not None:
 			print("cancel_text is not supported for boolean prompts; it will be ignored")
@@ -410,7 +441,8 @@ class BooleanPrompt(VerticalMenu):
 			options = [yes_text, no_text],
 			allow_cancel = allow_cancel,
 			cancel_text = None,
-			anchor = anchor
+			anchor = anchor,
+			before_wait_loop = before_wait_loop
 		)
 
 	def render_and_wait(self) -> Optional[bool]:
