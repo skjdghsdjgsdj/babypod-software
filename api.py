@@ -5,6 +5,7 @@ import os
 from adafruit_datetime import datetime
 import binascii
 import adafruit_connection_manager
+import re
 
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
@@ -70,12 +71,21 @@ class APIRequest:
 
 		return self
 
+	@staticmethod
+	def escape_uri_value(value: str) -> str:
+		safe_chars = re.compile(r"[A-Za-z0-9]")
+		escaped = ""
+		for char in str(value):
+			escaped += f"%{ord(char):x}" if safe_chars.match(char) is None else char
+
+		return escaped
+
 	def build_full_url(self) -> str:
 		full_url = APIRequest.BASE_URL + self.uri + "/"
-		if self.uri_args is not None:
+		if self.uri_args:
 			is_first = True
 			for key, value in self.uri_args.items():
-				# not escaped! urllib not available for this board
+				value = APIRequest.escape_uri_value(value)
 				full_url += ("?" if is_first else "&") + f"{key}={value}"
 				is_first = False
 
@@ -151,6 +161,10 @@ class PostAPIRequest(APIRequest):
 
 		return response_json
 
+class PostTagAPIRequest(PostAPIRequest):
+	def __init__(self, tag_name: str):
+		super().__init__(uri = "tags", payload = {"name": tag_name})
+
 class GetAPIRequest(APIRequest):
 	def __init__(self, uri: str, uri_args = None, payload = None):
 		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
@@ -172,6 +186,56 @@ class GetAPIRequest(APIRequest):
 
 		return json_response
 
+	def has_results(self) -> bool:
+		return len(self.invoke()["results"]) > 0
+
+class TaggableLimitableGetAPIRequest(GetAPIRequest):
+	def __init__(self, uri: str, tag_name: Optional[str] = None, limit: Optional[int] = None, uri_args = None, payload = None):
+		self.tag_name = tag_name
+		self.limit = limit
+		self.uri_args = uri_args or {}
+
+		self.merge_limit()
+		self.merge_tag()
+
+		super().__init__(uri, self.uri_args, payload)
+
+	def merge_limit(self) -> None:
+		if self.limit is not None:
+			if self.limit <= 0:
+				raise ValueError(f"Limit must be >= 1, not {self.limit}")
+			self.uri_args["limit"] = self.limit
+
+	def merge_tag(self) -> None:
+		if self.tag_name is not None:
+			self.uri_args["tags"] = self.tag_name
+
+class GetNotesAPIRequest(TaggableLimitableGetAPIRequest):
+	def __init__(self, tag_name: Optional[str] = None, limit: Optional[int] = None):
+		super().__init__(uri = "notes", tag_name = tag_name, limit = limit)
+
+class ConsumeMOTDAPIRequest:
+	TAG_NAME = "BabyPod MOTD"
+
+	def __init__(self, tag_name: str = TAG_NAME):
+		self.tag_name = tag_name
+
+	def get_motd(self) -> Optional[str]:
+		response = GetNotesAPIRequest(tag_name = self.tag_name, limit = 1).invoke()
+		if len(response["results"]) <= 0:
+			return None
+
+		note_id = response["results"][0]["id"]
+		motd = response["results"][0]["note"]
+
+		DeleteNotesAPIRequest(note_id = note_id).invoke()
+
+		return motd
+
+class GetTagsAPIRequest(TaggableLimitableGetAPIRequest):
+	def __init__(self, tag_name: Optional[str] = None, limit: Optional[int] = None):
+		super().__init__(uri = "tags", tag_name = tag_name, limit = limit)
+
 class DeleteAPIRequest(APIRequest):
 	def __init__(self, uri: str, uri_args = None, payload = None):
 		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
@@ -188,6 +252,10 @@ class DeleteAPIRequest(APIRequest):
 		)
 
 		self.validate_response(response)
+
+class DeleteNotesAPIRequest(DeleteAPIRequest):
+	def __init__(self, note_id: int):
+		super().__init__(uri = f"notes/{note_id}")
 
 class Timer:
 	def __init__(self, name: str, offline: bool, rtc: ExternalRTC = None, battery: BatteryMonitor = None):
@@ -475,14 +543,9 @@ class GetNamedTimerAPIRequest(GetAPIRequest, TimerAPIRequest):
 			"name": self.get_timer_name(name)
 		})
 
-class GetAllTimersAPIRequest(GetAPIRequest, TimerAPIRequest):
-	def __init__(self, limit: Optional[int] = None):
-		uri_args = {}
-		if limit is not None:
-			if limit < 1:
-				raise ValueError(f"Limit {limit} must be >= 1 or None")
-			uri_args["limit"] = limit
-		super().__init__(uri = "timers", uri_args = uri_args)
+class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
+	def __init__(self, tag_name: Optional[str] = None, limit: Optional[int] = None):
+		super().__init__(uri = "timers", tag_name = tag_name, limit = limit)
 
 	def get_active_timers(self) -> Generator[Timer]:
 		response = self.invoke()

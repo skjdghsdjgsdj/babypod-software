@@ -7,13 +7,14 @@ from adafruit_datetime import datetime
 from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
 	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest, \
-	ConnectionManager
+	ConnectionManager, ConsumeMOTDAPIRequest
 from offline_event_queue import OfflineEventQueue
 from devices import Devices
 from lcd import LCD, BacklightColors
 from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
+from piezo import Piezo
 from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal
 
@@ -231,14 +232,59 @@ class Flow:
 				self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 	def start(self):
-		self.devices.lcd.clear()
+		self.device_startup()
 
+		self.init_child_id()
+		self.jump_to_running_timer()
+		self.check_motd()
+		self.loop()
+
+	def check_motd(self):
+		if self.devices.rtc and not NVRAMValues.OFFLINE:
+			now = self.devices.rtc.now()
+			last_checked = self.offline_state.last_motd_check
+
+			if last_checked is not None:
+				delta = now - last_checked
+				# noinspection PyUnresolvedReferences
+				delta_seconds = delta.seconds + (delta.days * 60 * 60 * 24)
+
+				print(f"Now: {now}, last MOTD check: {last_checked}")
+
+				motd_check_required = delta_seconds >= int(NVRAMValues.MOTD_CHECK_INTERVAL)
+			else:
+				motd_check_required = True
+
+			if motd_check_required:
+				print(f"MOTD check interval exceeded")
+				try:
+					self.render_splash("Checking messages...")
+					motd = ConsumeMOTDAPIRequest().get_motd()
+
+					if motd is not None:
+						self.clear_and_show_battery()
+						Modal(
+							devices = self.devices,
+							message = motd,
+							before_wait_loop = lambda: Piezo.tone("motd")
+						).render_and_wait()
+						self.clear_and_show_battery()
+
+					self.offline_state.last_motd_check = now
+					self.offline_state.to_sdcard()
+				except Exception as e:
+					import traceback
+					traceback.print_exception(e)
+					print(f"Getting MOTD failed: {e}")
+
+	def device_startup(self):
+		self.devices.lcd.clear()
 		self.auto_connect()
 		self.init_rtc()
 		self.init_battery()
-
 		self.devices.lcd.clear()
 
+	def init_child_id(self):
 		child_id = NVRAMValues.CHILD_ID.get()
 		if not child_id:
 			self.render_splash("Getting children...")
@@ -250,23 +296,24 @@ class Flow:
 				child_id = 1
 			NVRAMValues.CHILD_ID.write(child_id)
 			self.devices.lcd.clear()
-
 		self.child_id = child_id
 		print(f"Using child ID {child_id}")
 
+	def loop(self):
+		while True:
+			try:
+				self.main_menu()
+			except Exception as e:
+				self.on_error(e)
+			finally:
+				if not self.is_shutting_down:
+					self.clear_and_show_battery()
+
+	def jump_to_running_timer(self):
 		timer = None
 		if not NVRAMValues.OFFLINE:
 			print("Checking for active timers to skip main menu...")
-			try:
-				self.render_splash("Checking timers...")
-				timers = list(GetAllTimersAPIRequest(limit = 1).get_active_timers())
-				if timers:
-					timer = timers[0]
-			except Exception as e:
-				print(f"Failed getting active timers; continuing to main menu: {e}")
-			finally:
-				self.clear_and_show_battery()
-
+			timer = self.check_for_running_timer()
 		if timer is not None:
 			try:
 				if timer.name == TimerAPIRequest.get_timer_name("feeding"):
@@ -280,14 +327,18 @@ class Flow:
 			finally:
 				self.clear_and_show_battery()
 
-		while True:
-			try:
-				self.main_menu()
-			except Exception as e:
-				self.on_error(e)
-			finally:
-				if not self.is_shutting_down:
-					self.clear_and_show_battery()
+	def check_for_running_timer(self):
+		timer = None
+		try:
+			self.render_splash("Checking timers...")
+			timers = list(GetAllTimersAPIRequest(limit = 1).get_active_timers())
+			if timers:
+				timer = timers[0]
+		except Exception as e:
+			print(f"Failed getting active timers; continuing to main menu: {e}")
+		finally:
+			self.clear_and_show_battery()
+		return timer
 
 	def on_error(self, e: Exception) -> None:
 		traceback.print_exception(e)
