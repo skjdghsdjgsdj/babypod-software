@@ -216,8 +216,8 @@ class SparkfunSerLCD(LCD):
 
 class AdafruitCharacterLCDBackpack(LCD):
 	def __init__(self, lcd: Character_LCD, backlight: Backlight):
-		super().__init__(backlight)
 		self.device = lcd
+		super().__init__(backlight)
 
 	def create_special_char(self, special_char: int, data: List[int]) -> None:
 		self.device.create_char(special_char, data)
