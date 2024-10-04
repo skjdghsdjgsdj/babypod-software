@@ -393,22 +393,26 @@ class PostChangeAPIRequest(PostAPIRequest):
 		return request.merge_serialized_notes(json_object)
 
 class PostPumpingAPIRequest(PostAPIRequest):
-	def __init__(self, child_id: int, amount: float):
-		super().__init__(uri = "pumping", payload = {
+	def __init__(self, child_id: int, timer: Timer, amount: float):
+		super().__init__(uri = "pumping", payload = APIRequest.merge({
 			"child": child_id,
 			"amount": amount
-		})
+		}, timer))
+
+		self.timer = timer
 
 	def serialize_to_json(self) -> object:
-		return {
+		return APIRequest.merge({
 			"child_id": self.payload["child"],
 			"amount": self.payload["amount"]
-		}
+		}, self.timer)
 
 	@classmethod
 	def deserialize_from_json(cls, json_object):
+		timer = Timer.from_payload(name = "pumping", payload = json_object)
 		request = PostPumpingAPIRequest(
 			child_id = json_object["child_id"],
+			timer = timer,
 			amount = json_object["amount"]
 		)
 
