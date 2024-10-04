@@ -193,10 +193,6 @@ class DeleteAPIRequest(APIRequest):
 	def get_connection_method(self) -> Callable:
 		return ConnectionManager.connect().delete
 
-class PostTagAPIRequest(PostAPIRequest):
-	def __init__(self, tag_name: str):
-		super().__init__(uri = "tags", payload = {"name": tag_name})
-
 class TaggableLimitableGetAPIRequest(GetAPIRequest):
 	def __init__(self, uri: str, tag_name: Optional[str] = None, limit: Optional[int] = None, uri_args = None, payload = None):
 		self.tag_name = tag_name
@@ -239,10 +235,6 @@ class ConsumeMOTDAPIRequest:
 		DeleteNotesAPIRequest(note_id = note_id).invoke()
 
 		return motd
-
-class GetTagsAPIRequest(TaggableLimitableGetAPIRequest):
-	def __init__(self, tag_name: Optional[str] = None, limit: Optional[int] = None):
-		super().__init__(uri = "tags", tag_name = tag_name, limit = limit)
 
 class DeleteNotesAPIRequest(DeleteAPIRequest):
 	def __init__(self, note_id: int):
