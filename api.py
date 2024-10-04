@@ -1,3 +1,5 @@
+import time
+
 import adafruit_datetime
 import adafruit_requests
 import wifi
@@ -7,13 +9,15 @@ import binascii
 import adafruit_connection_manager
 import re
 
+from adafruit_requests import Response
+
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
 from util import Util
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, List, Any, Generator
+	from typing import Optional, List, Any, Generator, Callable, Dict
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -132,22 +136,20 @@ class APIRequest:
 
 		return None
 
-	def invoke(self):
+	def get_verb(self) -> str:
 		raise NotImplementedError()
 
-class APIRequestFailedException(Exception):
-	def __init__(self, request: APIRequest, http_status_code: int = 0):
-		self.request = request
-		self.http_status_code = http_status_code
-
-class PostAPIRequest(APIRequest):
-	def __init__(self, uri: str, uri_args = None, payload = None):
-		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
+	def get_connection_method(self) -> Callable:
+		raise NotImplementedError()
 
 	def invoke(self):
 		full_url = self.build_full_url()
-		print(f"HTTP POST: {full_url} with data: {self.payload}")
-		response = ConnectionManager.connect().post(
+		print(f"HTTP {self.get_verb()}: {full_url}")
+		if self.payload is not None:
+			print(f"Payload: {self.payload}")
+
+		start = time.monotonic()
+		response = self.get_connection_method()(
 			url = full_url,
 			json = self.payload,
 			headers = {
@@ -155,39 +157,45 @@ class PostAPIRequest(APIRequest):
 			},
 			timeout = ConnectionManager.timeout
 		)
+		end = time.monotonic()
 		self.validate_response(response)
-		response_json = response.json()
+		print(f"Got HTTP {response.status_code}, took {end - start} sec")
+
+		# HTTP 204 is No Content so there shouldn't be a response payload
+		response_json = None if response.status_code is 204 else response.json()
 		response.close()
 
 		return response_json
 
+class APIRequestFailedException(Exception):
+	def __init__(self, request: APIRequest, http_status_code: int = 0):
+		self.request = request
+		self.http_status_code = http_status_code
+
+class GetAPIRequest(APIRequest):
+	def get_verb(self) -> str:
+		return "GET"
+
+	def get_connection_method(self) -> Callable:
+		return ConnectionManager.connect().get
+
+class PostAPIRequest(APIRequest):
+	def get_verb(self) -> str:
+		return "POST"
+
+	def get_connection_method(self) -> Callable:
+		return ConnectionManager.connect().post
+
+class DeleteAPIRequest(APIRequest):
+	def get_verb(self) -> str:
+		return "DELETE"
+
+	def get_connection_method(self) -> Callable:
+		return ConnectionManager.connect().delete
+
 class PostTagAPIRequest(PostAPIRequest):
 	def __init__(self, tag_name: str):
 		super().__init__(uri = "tags", payload = {"name": tag_name})
-
-class GetAPIRequest(APIRequest):
-	def __init__(self, uri: str, uri_args = None, payload = None):
-		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
-
-	def invoke(self):
-		full_url = self.build_full_url()
-		print(f"HTTP GET: {full_url}")
-		response = ConnectionManager.connect().get(
-			url = full_url,
-			headers = {
-				"Authorization": f"Token {APIRequest.API_KEY}"
-			},
-			timeout = ConnectionManager.timeout
-		)
-
-		self.validate_response(response)
-		json_response = response.json()
-		response.close()
-
-		return json_response
-
-	def has_results(self) -> bool:
-		return len(self.invoke()["results"]) > 0
 
 class TaggableLimitableGetAPIRequest(GetAPIRequest):
 	def __init__(self, uri: str, tag_name: Optional[str] = None, limit: Optional[int] = None, uri_args = None, payload = None):
@@ -235,23 +243,6 @@ class ConsumeMOTDAPIRequest:
 class GetTagsAPIRequest(TaggableLimitableGetAPIRequest):
 	def __init__(self, tag_name: Optional[str] = None, limit: Optional[int] = None):
 		super().__init__(uri = "tags", tag_name = tag_name, limit = limit)
-
-class DeleteAPIRequest(APIRequest):
-	def __init__(self, uri: str, uri_args = None, payload = None):
-		super().__init__(uri = uri, uri_args = uri_args, payload = payload)
-
-	def invoke(self):
-		full_url = self.build_full_url()
-		print(f"HTTP DELETE: {full_url}")
-		response = ConnectionManager.connect().delete(
-			url = full_url,
-			headers = {
-				"Authorization": f"Token {APIRequest.API_KEY}"
-			},
-			timeout = ConnectionManager.timeout
-		)
-
-		self.validate_response(response)
 
 class DeleteNotesAPIRequest(DeleteAPIRequest):
 	def __init__(self, note_id: int):
