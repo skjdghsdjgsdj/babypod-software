@@ -56,7 +56,6 @@ class BacklightColor:
 class BacklightColors:
 	DEFAULT = BacklightColor.from_setting("BACKLIGHT_COLOR_FULL", (255, 255, 255))
 	DIM = BacklightColor.from_setting("BACKLIGHT_COLOR_DIM", (128, 128, 128))
-	IDLE_WARNING = BacklightColor.from_setting("BACKLIGHT_COLOR_IDLE_WARNING", (255, 128, 128))
 	ERROR = BacklightColor.from_setting("BACKLIGHT_COLOR_ERROR", (255, 0, 0))
 	SUCCESS = BacklightColor.from_setting("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 	OFF = BacklightColor((0, 0, 0))
