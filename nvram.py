@@ -39,10 +39,10 @@ class NVRAMValue:
 
             print(f"Wrote {self}")
 
-    def reset_to_default(self):
+    def reset_to_default(self) -> None:
         self.write(self.default)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.name is not None:
             value = f"NVRAM {self.name}"
         else:
@@ -74,7 +74,7 @@ class NVRAMBooleanValue(NVRAMValue):
     def get(self) -> bool:
         return super().get()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.get()
 
 class NVRAMIntegerValue(NVRAMValue):
@@ -94,10 +94,10 @@ class NVRAMIntegerValue(NVRAMValue):
     def get(self) -> int:
         return super().get()
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.get()
 
-    def __float__(self):
+    def __float__(self) -> float:
         return float(int(self))
 
 class NVRAMValues:

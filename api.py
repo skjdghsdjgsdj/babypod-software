@@ -511,7 +511,7 @@ class GetFirstChildIDAPIRequest(GetAPIRequest):
 
 class TimerAPIRequest:
 	@staticmethod
-	def get_timer_basename():
+	def get_timer_basename() -> str:
 		return "babypod-"
 
 	@staticmethod

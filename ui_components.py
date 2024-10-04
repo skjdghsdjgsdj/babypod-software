@@ -76,7 +76,7 @@ class ProgressBar(UIComponent):
 		self.max_block_count = LCD.COLUMNS - len(str(self.count)) * 2 - 1
 		self.message = message
 
-	def set_index(self, index: int = 0):
+	def set_index(self, index: int = 0) -> None:
 		if index < 0:
 			raise ValueError(f"Index must be >= 0, not {index}")
 
@@ -87,7 +87,7 @@ class ProgressBar(UIComponent):
 
 		self.render_progress()
 
-	def render_progress(self):
+	def render_progress(self) -> None:
 		self.devices.lcd.write(
 			message = str(self.index + 1),
 			coords = (LCD.COLUMNS - len(str(self.count)) * 2 - 1, 2)

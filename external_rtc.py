@@ -21,7 +21,7 @@ class ExternalRTC:
         self.device = adafruit_pcf8523.pcf8523.PCF8523(i2c)
         self.offline_state: Optional[OfflineState] = None
 
-    def sync(self, requests: adafruit_requests.Session):
+    def sync(self, requests: adafruit_requests.Session) -> None:
         if not self.offline_state:
             raise RuntimeError("Must set offline_state before syncing")
 

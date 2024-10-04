@@ -79,10 +79,10 @@ class MAX17048BatteryMonitor(BatteryMonitor):
 	def init_raw_device(self) -> MAX17048:
 		return MAX17048(self.i2c)
 
-	def get_current_percent(self):
+	def get_current_percent(self) -> float:
 		return self.device.cell_percent
 
-	def is_charging(self):
+	def is_charging(self) -> bool:
 		self.init_device()
 
 		is_charging = super().is_charging()

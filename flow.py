@@ -128,7 +128,7 @@ class Flow:
 
 		self.is_shutting_down = False
 
-	def on_shutdown_requested(self):
+	def on_shutdown_requested(self) -> None:
 		self.is_shutting_down = True
 		self.devices.power_control.shutdown()
 
@@ -219,7 +219,7 @@ class Flow:
 				else:
 					print(f"RTC doesn't need updating: set to {self.devices.rtc.now()}, last refreshed {self.offline_state.last_rtc_set}")
 
-	def init_battery(self):
+	def init_battery(self) -> None:
 		if self.devices.battery_monitor:
 			battery_percent = self.devices.battery_monitor.get_percent()
 			if battery_percent is not None and battery_percent <= 15:
@@ -231,7 +231,7 @@ class Flow:
 
 				self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
-	def start(self):
+	def start(self) -> None:
 		self.device_startup()
 
 		self.init_child_id()
@@ -239,7 +239,7 @@ class Flow:
 		self.check_motd()
 		self.loop()
 
-	def check_motd(self):
+	def check_motd(self) -> None:
 		if self.devices.rtc and not NVRAMValues.OFFLINE:
 			now = self.devices.rtc.now()
 			last_checked = self.offline_state.last_motd_check
@@ -277,14 +277,14 @@ class Flow:
 					traceback.print_exception(e)
 					print(f"Getting MOTD failed: {e}")
 
-	def device_startup(self):
+	def device_startup(self) -> None:
 		self.devices.lcd.clear()
 		self.auto_connect()
 		self.init_rtc()
 		self.init_battery()
 		self.devices.lcd.clear()
 
-	def init_child_id(self):
+	def init_child_id(self) -> None:
 		child_id = NVRAMValues.CHILD_ID.get()
 		if not child_id:
 			self.render_splash("Getting children...")
@@ -299,7 +299,7 @@ class Flow:
 		self.child_id = child_id
 		print(f"Using child ID {child_id}")
 
-	def loop(self):
+	def loop(self) -> None:
 		while True:
 			try:
 				self.main_menu()
@@ -309,7 +309,7 @@ class Flow:
 				if not self.is_shutting_down:
 					self.clear_and_show_battery()
 
-	def jump_to_running_timer(self):
+	def jump_to_running_timer(self) -> None:
 		timer = None
 		if not NVRAMValues.OFFLINE:
 			print("Checking for active timers to skip main menu...")
@@ -327,7 +327,7 @@ class Flow:
 			finally:
 				self.clear_and_show_battery()
 
-	def check_for_running_timer(self):
+	def check_for_running_timer(self) -> Optional[Timer]:
 		timer = None
 		try:
 			self.render_splash("Checking timers...")
@@ -519,7 +519,7 @@ class Flow:
 
 				NVRAMValues.OFFLINE.write(responses[1])
 
-	def back_online(self):
+	def back_online(self) -> None:
 		files = self.offline_queue.get_json_files()
 		if len(files) == 0:
 			return # nothing to do
@@ -565,7 +565,7 @@ class Flow:
 				request.invoke()
 			self.render_success_splash()
 
-	def pumping(self):
+	def pumping(self) -> None:
 		saved = False
 		while not saved:
 			timer = self.start_or_resume_timer(
