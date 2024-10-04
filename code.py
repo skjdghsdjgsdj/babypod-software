@@ -11,13 +11,10 @@ try:
 	use_soft_power_control = os.getenv("USE_SOFT_POWER_CONTROL")
 	just_refresh_shutdown_screen = use_soft_power_control and isinstance(alarm.wake_alarm, TimeAlarm)
 
-	# init I2C and at a higher frequency than default, unless waking from deep sleep, then just use the default instance
+	# init I2C and at a higher frequency than default
 	import board
-	if just_refresh_shutdown_screen:
-		i2c = board.I2C()
-	else:
-		from busio import I2C
-		i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
+	from busio import I2C
+	i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
 	power_control_status = "enabled" if use_soft_power_control else "disabled"
 	print(f"Soft power control is {power_control_status}")
