@@ -274,7 +274,6 @@ Please contribute and submit pull requests if you can help! But some of these th
 - Remember the last item selected in vertical menus.
 - Use interrupts for rotary encoder events instead of polling in a loop. I really want this one, but CircuitPython's design seems antithetical to interrupts. The encoder breakout board does support interrupts, but you still need to poll for one instead of just being...well, interrupted.
 - On devices with multiple CPU cores, use secondary cores for multithreading to do things in the background, like API requests. Same caveat as above: I don't think it'll happen.
-- Track pumping durations, not just total amounts; depends on a [pending Baby Buddy API issue](https://github.com/babybuddy/babybuddy/issues/826).
 - Fluid ounces are the assumed unit for pumping. Baby Buddy itself seems unitless, so this could be a localization option for `settings.toml` to change the units shown in the pumping interface. 0.5 increments are used too, so changing units might call for a different increment.
 - Support 24-hour time in addition to AM/PM.
 - Buffer events even when online in case they fail to submit to the server and can therefore be replayed later.
