@@ -39,12 +39,12 @@ class ActivityListener:
 		self.on_activity()
 
 class Button(DigitalIO):
-	def __init__(self, seesaw: seesaw.Seesaw, pin: int):
+	def __init__(self, seesaw_controller: seesaw.Seesaw, pin: int):
 		self.pin = pin
 		success = False
 		while not success:
 			try:
-				super().__init__(seesaw, pin)
+				super().__init__(seesaw_controller, pin)
 				self.direction = digitalio.Direction.INPUT
 				self.pull = digitalio.Pull.UP
 
