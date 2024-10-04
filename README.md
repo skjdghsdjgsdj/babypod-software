@@ -165,6 +165,7 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 - Try to use one codebase for most Feathers and let the code discover its own environment rather than needing to override pins, I2C addresses, etc. for different hardware.
 - Provide abstractions for the devices, and in cases where there could be different hardware variants like different battery monitor chips, use polymorphism to hide the underlying hardware from the application.
 - Keep a given screen simple. For example, don't make vertical menus scrollable such that they have more than four items and you have to scroll to see them. Instead, make a user experience flow that negates the need for scrolling.
+- There is a global exception handler in `code.py`. If there is an exception raised that isn't caught elsewhere in the call stack, then it's printed to the console and the system sleeps for a minute to allow for a USB debugging window. Then `microcontroller.reset()` is called to force a reboot. This provides some protection against crashes that happen on BabyPods with soft power control because there's no exposed reset button and USB debugging might not be available, thus requiring you to unscrew the BabyPod and physically press the Feather's reset button.
 
 ### Files
 | File                     | Purpose                                                                                                                                                                              |
