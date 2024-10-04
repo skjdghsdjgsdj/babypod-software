@@ -566,38 +566,43 @@ class Flow:
 			self.render_success_splash()
 
 	def pumping(self):
-		timer = self.start_or_resume_timer(
-			header_text = "Pumping",
-			timer_name = "pumping",
-			periodic_chime = ConsistentIntervalPeriodicChime(
-				devices = self.devices,
-				chime_at_seconds = 5 * 60
-			)
-		)
-
-		if timer is not None:
-			self.clear_and_show_battery()
-			self.render_header_text("How much?")
-
-			amount = NumericSelector(
-				devices = self.devices,
-				minimum = 0,
-				step = 0.5,
-				format_str = "%.1f fl oz"
-			).render_and_wait()
-
-			if amount is not None:
-				request = PostPumpingAPIRequest(
-					child_id = self.child_id,
-					timer = timer,
-					amount = amount
+		saved = False
+		while not saved:
+			timer = self.start_or_resume_timer(
+				header_text = "Pumping",
+				timer_name = "pumping",
+				periodic_chime = ConsistentIntervalPeriodicChime(
+					devices = self.devices,
+					chime_at_seconds = 5 * 60
 				)
-				if NVRAMValues.OFFLINE:
-					self.offline_queue.add(request)
-				else:
-					self.render_splash("Saving...")
-					request.invoke()
-				self.render_success_splash()
+			)
+
+			if timer is not None:
+				self.clear_and_show_battery()
+				self.render_header_text("How much?")
+
+				amount = NumericSelector(
+					devices = self.devices,
+					minimum = 0,
+					step = 0.5,
+					format_str = "%.1f fl oz"
+				).render_and_wait()
+
+				if amount is not None:
+					request = PostPumpingAPIRequest(
+						child_id = self.child_id,
+						timer = timer,
+						amount = amount
+					)
+					if NVRAMValues.OFFLINE:
+						self.offline_queue.add(request)
+					else:
+						self.render_splash("Saving...")
+						request.invoke()
+					self.render_success_splash()
+					saved = True
+			else:
+				return
 
 	def start_or_resume_timer(self,
 		header_text: str,
