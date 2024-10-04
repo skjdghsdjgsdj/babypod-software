@@ -26,10 +26,6 @@ class NVRAMValue:
         self.value = self.default
         if nvram_value != 0x0:
             self.value = self.nvram_to_native(nvram_value)
-            #print(f"Read {self.value} from NVRAM at index {self.index}, stored as {nvram_value}")
-        else:
-            #print(f"NVRAM at index {self.index} is 0x0, using default value {self.default}")
-            pass
 
         self.has_read = True
 
