@@ -36,12 +36,16 @@ class PowerControl:
 		self.battery_monitor = battery_monitor
 
 	def init_center_button_interrupt(self) -> None:
+		# set up the interrupt which is connected to D11
 		mask = 1 << self.seesaw_pin
 
 		self.encoder.seesaw.pin_mode(self.seesaw_pin, seesaw.Seesaw.INPUT_PULLUP)
 		self.encoder.seesaw.set_GPIO_interrupts(mask, True)
-
 		print("Enabled interrupt for center button")
+
+		# clear any interrupt so the next one wakes up D11
+		self.encoder.seesaw.digital_read_bulk(1 << self.seesaw_pin)
+		print("Cleared encoder read queue")
 
 	def lcd_shutdown(self) -> None:
 		self.lcd.backlight.off()
@@ -59,28 +63,26 @@ class PowerControl:
 					break
 				time.sleep(0.2)
 
-	def sd_shutdown(self) -> None:
-		self.spi.deinit()
-		print("SPI bus disabled")
-
 	def enter_deep_sleep(self) -> None:
-		# wake up when D11 gets an interrupt from the rotary encoder
-		from alarm.pin import PinAlarm
-		pin_alarm = PinAlarm(self.interrupt_pin, value = False, pull = False)
-
-		# also wake up every few minutes to refresh the battery display, assuming there's a battery monitor
+		# wake up every few minutes to refresh the battery display, assuming there's a battery monitor
 		time_alarm = None
 		if self.battery_monitor is not None:
+			print("Creating time alarm")
 			from alarm.time import TimeAlarm
 			interval = 60 if self.battery_monitor.is_charging() else NVRAMValues.SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL
 			time_alarm = TimeAlarm(monotonic_time = time.monotonic() + interval)
 
-		# clear any interrupt so the next one wakes up D11
-		self.encoder.seesaw.digital_read_bulk(1 << self.seesaw_pin)
-
 		# keep I2C_PWR on during deep sleep so the rotary encoder can still generate interrupts
 		i2c_power = digitalio.DigitalInOut(board.I2C_POWER)
 		i2c_power.switch_to_output(True)
+		print("Preserved I2C_POWER")
+
+		# wake up when D11 gets an interrupt from the rotary encoder
+		from alarm.pin import PinAlarm
+		pin_alarm = PinAlarm(self.interrupt_pin, pull = False, value = False)
+		print("Created pin alarm")
+
+		# enter deep sleep
 		if time_alarm is not None:
 			print(f"Entering deep sleep; will wake up from PinAlarm or automatically in {int(time_alarm.monotonic_time - time.monotonic())} seconds")
 			alarm.exit_and_deep_sleep_until_alarms(pin_alarm, time_alarm, preserve_dios = [i2c_power])
@@ -93,9 +95,13 @@ class PowerControl:
 	def shutdown(self, silent: bool = False) -> None:
 		if not silent:
 			self.piezo.tone("shutdown")
-		self.sd_shutdown()
-		self.lcd_shutdown()
+		self.lcd.clear()
+		self.lcd.write_centered("Powering off...")
 		self.init_center_button_interrupt()
 
+		print("Waiting a few seconds for deep sleep")
 		time.sleep(3) # give the user time to let go of the button, or it'll just wake immediately
+
+		self.lcd_shutdown()
+
 		self.enter_deep_sleep()
