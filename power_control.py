@@ -31,7 +31,6 @@ class PowerControl:
 		self.lcd = lcd
 		self.interrupt_pin = interrupt_pin
 		self.seesaw_pin = seesaw_pin
-		self.spi = board.SPI()
 		self.piezo = piezo
 		self.battery_monitor = battery_monitor
 
@@ -83,12 +82,17 @@ class PowerControl:
 		print("Created pin alarm")
 
 		# enter deep sleep
-		if time_alarm is not None:
-			print(f"Entering deep sleep; will wake up from PinAlarm or automatically in {int(time_alarm.monotonic_time - time.monotonic())} seconds")
+		if time_alarm is not None and pin_alarm is not None:
+			print(f"Entering deep sleep; will wake up from PinAlarm or TimeAlarm in {int(time_alarm.monotonic_time - time.monotonic())} seconds")
 			alarm.exit_and_deep_sleep_until_alarms(pin_alarm, time_alarm, preserve_dios = [i2c_power])
-		else:
+		elif time_alarm is None and pin_alarm is not None:
 			print("Entering deep sleep; only wakeup source will be PinAlarm")
 			alarm.exit_and_deep_sleep_until_alarms(pin_alarm, preserve_dios = [i2c_power])
+		elif time_alarm is not None and pin_alarm is None:
+			print(f"Entering deep sleep; will wake up only from TimeAlarm in {int(time_alarm.monotonic_time - time.monotonic())} seconds")
+			alarm.exit_and_deep_sleep_until_alarms(time_alarm, preserve_dios = [i2c_power])
+		else:
+			raise ValueError("No alarm defined for deep sleep")
 
 		raise RuntimeError("Deep sleep failed")
 
@@ -97,11 +101,11 @@ class PowerControl:
 			self.piezo.tone("shutdown")
 		self.lcd.clear()
 		self.lcd.write_centered("Powering off...")
+
 		self.init_center_button_interrupt()
 
 		print("Waiting a few seconds for deep sleep")
 		time.sleep(3) # give the user time to let go of the button, or it'll just wake immediately
 
 		self.lcd_shutdown()
-
 		self.enter_deep_sleep()
