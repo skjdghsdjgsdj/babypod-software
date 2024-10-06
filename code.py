@@ -2,6 +2,13 @@
 import supervisor
 supervisor.runtime.autoreload = False
 
+# watchdog auto-reboot
+import watchdog
+import microcontroller
+microcontroller.watchdog.timeout = 20
+microcontroller.watchdog.mode = watchdog.WatchDogMode.RESET
+microcontroller.watchdog.feed()
+
 try:
 	# see why it woke up; if it's a TimeAlarm, it's likely because there was a soft shutdown and the battery needs to be
 	# refreshed periodically
@@ -90,10 +97,17 @@ try:
 
 		Flow(devices = devices).start()
 except BaseException as e:
-	print(f"Uncaught exception: {e}")
+	if isinstance(e, KeyboardInterrupt):
+		import sys
+		sys.exit(0) # don't run error handler on Ctrl-C
+
+	print(f"Uncaught {type(e).__name__}: {str(e)}")
 	print("Keeping alive for one minute to allow for USB debugging")
 	import time
-	time.sleep(60)
+	start = time.monotonic()
+	while time.monotonic() - start <= 60:
+		microcontroller.watchdog.feed()
+		time.sleep(5)
 
 	print("Resetting")
 	import microcontroller

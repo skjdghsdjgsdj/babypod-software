@@ -2,6 +2,7 @@ import os
 import time
 import traceback
 
+import microcontroller
 from adafruit_datetime import datetime
 
 from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
@@ -15,7 +16,7 @@ from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from piezo import Piezo
-from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener
+from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener, ResetRequestListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal
 
 # noinspection PyBroadException
@@ -97,6 +98,10 @@ class Flow:
 				on_shutdown_requested = self.on_shutdown_requested
 			))
 
+		self.devices.rotary_encoder.on_reset_requested_listeners.append(ResetRequestListener(
+			on_reset_requested = self.on_reset_requested
+		))
+
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
 				on_tick = self.on_backlight_dim_idle,
@@ -131,6 +136,13 @@ class Flow:
 	def on_shutdown_requested(self) -> None:
 		self.is_shutting_down = True
 		self.devices.power_control.shutdown()
+
+	def on_reset_requested(self) -> None:
+		self.devices.piezo.tone("error")
+		self.devices.lcd.clear()
+		self.devices.lcd.backlight.set_color(BacklightColors.ERROR)
+		self.devices.lcd.write_centered("Reset!")
+		microcontroller.reset()
 
 	def on_backlight_dim_idle(self, _: float) -> None:
 		if not self.suppress_dim_timeout:
@@ -303,9 +315,10 @@ class Flow:
 		while True:
 			try:
 				self.main_menu()
+				if not self.is_shutting_down:
+					self.clear_and_show_battery()
 			except Exception as e:
 				self.on_error(e)
-			finally:
 				if not self.is_shutting_down:
 					self.clear_and_show_battery()
 
@@ -322,9 +335,9 @@ class Flow:
 					self.sleep(timer)
 				elif timer.name == TimerAPIRequest.get_timer_name("tummy_time"):
 					self.tummy_time(timer)
+				self.clear_and_show_battery()
 			except Exception as e:
 				self.on_error(e)
-			finally:
 				self.clear_and_show_battery()
 
 	def check_for_running_timer(self) -> Optional[Timer]:
@@ -334,9 +347,9 @@ class Flow:
 			timers = list(GetAllTimersAPIRequest(limit = 1).get_active_timers())
 			if timers:
 				timer = timers[0]
+			self.clear_and_show_battery()
 		except Exception as e:
 			print(f"Failed getting active timers; continuing to main menu: {e}")
-		finally:
 			self.clear_and_show_battery()
 		return timer
 

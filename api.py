@@ -2,14 +2,13 @@ import time
 
 import adafruit_datetime
 import adafruit_requests
+import microcontroller
 import wifi
 import os
 from adafruit_datetime import datetime
 import binascii
 import adafruit_connection_manager
 import re
-
-from adafruit_requests import Response
 
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
@@ -148,6 +147,8 @@ class APIRequest:
 		if self.payload is not None:
 			print(f"Payload: {self.payload}")
 
+		microcontroller.watchdog.feed()
+
 		start = time.monotonic()
 		response = self.get_connection_method()(
 			url = full_url,
@@ -160,6 +161,8 @@ class APIRequest:
 		end = time.monotonic()
 		self.validate_response(response)
 		print(f"Got HTTP {response.status_code}, took {end - start} sec")
+
+		microcontroller.watchdog.feed()
 
 		# HTTP 204 is No Content so there shouldn't be a response payload
 		response_json = None if response.status_code is 204 else response.json()

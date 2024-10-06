@@ -1,5 +1,6 @@
 import time
 
+import microcontroller
 from busio import I2C
 
 # noinspection PyBroadException
@@ -30,6 +31,13 @@ class ShutdownRequestListener:
 
 	def trigger(self) -> None:
 		self.on_shutdown_requested()
+
+class ResetRequestListener:
+	def __init__(self, on_reset_requested: Callable[[], None]):
+		self.on_reset_requested = on_reset_requested
+
+	def trigger(self) -> None:
+		self.on_reset_requested()
 
 class ActivityListener:
 	def __init__(self, on_activity):
@@ -88,6 +96,7 @@ class RotaryEncoder:
 		self.on_activity_listeners: List[ActivityListener] = []
 		self.on_wait_tick_listeners: List[WaitTickListener] = []
 		self.on_shutdown_requested_listeners: List[ShutdownRequestListener] = []
+		self.on_reset_requested_listeners: List[ResetRequestListener] = []
 
 		self.last_position = None
 		self.buttons = {}
@@ -164,11 +173,18 @@ class RotaryEncoder:
 
 		for key, button in self.buttons.items():
 			was_pressed, hold_time = button.was_pressed()
-			if button.pin == RotaryEncoder.SELECT and hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS and len(self.on_shutdown_requested_listeners) > 0:
-				print("Informing listeners of shutdown request")
-				for listener in self.on_shutdown_requested_listeners:
-					listener.on_shutdown_requested()
-				raise RuntimeError("No listeners initiated shutdown!")
+			if hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
+				if button.pin == RotaryEncoder.SELECT and len(self.on_shutdown_requested_listeners) > 0:
+					print("Informing listeners of shutdown request")
+					for listener in self.on_shutdown_requested_listeners:
+						listener.on_shutdown_requested()
+					raise RuntimeError("No listeners initiated shutdown!")
+				elif button.pin == RotaryEncoder.DOWN and len(self.on_shutdown_requested_listeners) > 0:
+					try:
+						for listener in self.on_reset_requested_listeners:
+							listener.on_reset_requested()
+					finally:
+						microcontroller.reset()
 			if was_pressed and listen_for_buttons:
 				response = key
 				break
@@ -183,5 +199,7 @@ class RotaryEncoder:
 				response = RotaryEncoder.CLOCKWISE
 			elif current_position < last_position:
 				response = RotaryEncoder.COUNTERCLOCKWISE
+
+		microcontroller.watchdog.feed()
 
 		return response
