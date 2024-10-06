@@ -96,11 +96,11 @@ class ProgressBar(UIComponent):
 		block_count = math.ceil(((self.index + 1) / self.count) * self.max_block_count) + 1
 
 		if self.last_block_count == -1:
-			self.devices.lcd.write("\xFF" * block_count, (0, 2))
+			self.devices.lcd.write("-" * block_count, (0, 2))
 			self.last_block_count = block_count
 		elif block_count != self.last_block_count:
 			extra_blocks = block_count - self.last_block_count
-			self.devices.lcd.write("\xFF" * extra_blocks, (self.last_block_count - 1, 2))
+			self.devices.lcd.write("-" * extra_blocks, (self.last_block_count - 1, 2))
 
 	def render_and_wait(self) -> None:
 		super().render_and_wait()
