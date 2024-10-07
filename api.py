@@ -49,6 +49,11 @@ class ConnectionManager:
 
 		return ConnectionManager.requests
 
+	@staticmethod
+	def disconnect() -> None:
+		wifi.radio.enabled = False
+		ConnectionManager.requests = None
+
 timeout = os.getenv("CIRCUITPY_WIFI_TIMEOUT")
 ConnectionManager.timeout = 10 if (timeout is None or not timeout) else int(timeout)
 
