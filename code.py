@@ -96,7 +96,7 @@ try:
 		from flow import Flow
 
 		Flow(devices = devices).start()
-except BaseException as e:
+except Exception as e:
 	if isinstance(e, KeyboardInterrupt):
 		import sys
 		sys.exit(0) # don't run error handler on Ctrl-C
