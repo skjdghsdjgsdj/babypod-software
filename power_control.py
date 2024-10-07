@@ -43,7 +43,7 @@ class PowerControl:
 		print("Enabled interrupt for center button")
 
 		# clear any interrupt so the next one wakes up D11
-		self.encoder.seesaw.digital_read_bulk(1 << self.seesaw_pin)
+		self.encoder.seesaw.digital_read_bulk(mask)
 		print("Cleared encoder read queue")
 
 	def lcd_shutdown(self) -> None:
