@@ -107,8 +107,9 @@ class PowerControl:
 
 		self.init_center_button_interrupt()
 
-		print("Waiting a few seconds for deep sleep")
-		time.sleep(3) # give the user time to let go of the button, or it'll just wake immediately
+		if not silent:
+			print("Waiting a few seconds for deep sleep")
+			time.sleep(3) # give the user time to let go of the button, or it'll just wake immediately
 
 		self.lcd_shutdown()
 		self.enter_deep_sleep()
