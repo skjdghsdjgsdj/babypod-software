@@ -132,10 +132,11 @@ If you update CircuitPython on the Feather, you will likely need to build a corr
 
 The build script supports several arguments:
 - `--no-compile`: instead of building files with `mpy-cross`, just copy the source `.py` files. This is useful for debugging so errors don't always show as line 1 of a file, but execution is slower. You should only use `--no-compile` when debugging. `code.py` doesn't get compiled regardless.
-- `--modules`: only builds or copies the given files. For example, use `--modules code` to just copy `code.py`, or `--modules code sdcard` to just copy `code.py` and build/copy `sdcard.py`.
+- `--modules example1 example2`: only builds or copies the given files. For example, use `--modules code` to just copy `code.py`, or `--modules code sdcard` to just copy `code.py` and build/copy `sdcard.py`.
 - `--clean`: deletes everything from `lib/` on the `CIRCUITPY` drive and repopulates it with the required Adafruit libraries. This is useful if using `--no-compile` after using compiled files, or vice versa, to ensure the `.py` or `.mpy` files are being used correctly without duplicates. It can take a minute or two to finish.
 - `--no-reboot`: don't attempt to reboot the Feather after copying files.
-- `--output`: use the specified path instead of the `CIRCUITPY` drive; useful for building zip releases
+- `--output /path/to/output/`: use the specified path instead of the `CIRCUITPY` drive
+- `--build-release-zip filename.zip`: create a zip file with the given filename containing all compiled files, `code.py`, and `settings.toml.example`; overrides other options
 
 To set up a brand new BabyPod, all you should need to do is:
 1. Erase the flash then re-flash CircuitPython.
