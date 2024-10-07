@@ -123,3 +123,6 @@ class NVRAMValues:
     HAS_CONFIGURED_SPARKFUN_LCD = NVRAMBooleanValue(9, False, "HAS_CONFIGURED_SPARKFUN_LCD")
     # How frequently in seconds to check for a MOTD
     MOTD_CHECK_INTERVAL = NVRAMIntegerValue(10, 60 * 60 * 6, "MOTD_CHECK_INTERVAL")
+    # Soft shutdown after this many seconds of being idle and not in a timer; only has an effect if soft shutdown
+    # is enabled
+    IDLE_SHUTDOWN = NVRAMIntegerValue(11, 60 * 5, "IDLE_SHUTDOWN")

@@ -119,6 +119,13 @@ class Flow:
 			)
 		])
 
+		idle_shutdown = NVRAMValues.IDLE_SHUTDOWN.get()
+		if self.devices.power_control and idle_shutdown:
+			self.devices.rotary_encoder.on_wait_tick_listeners.append(WaitTickListener(
+				on_tick = self.idle_shutdown,
+				seconds = NVRAMValues.IDLE_SHUTDOWN.get()
+			))
+
 		if self.devices.rtc is None or self.devices.sdcard is None:
 			self.offline_state = None
 			self.offline_queue = None
@@ -156,6 +163,11 @@ class Flow:
 		if not self.suppress_idle_warning and self.devices.battery_monitor and not self.devices.battery_monitor.is_charging():
 			print("Idle; warning not suppressed and is discharging")
 			self.devices.piezo.tone("idle_warning")
+
+	def idle_shutdown(self, _: float) -> None:
+		if not self.suppress_idle_warning:
+			print("Idle; soft shutdown")
+			self.devices.power_control.shutdown(silent = True)
 
 	def on_user_input(self) -> None:
 		if not self.suppress_dim_timeout:
