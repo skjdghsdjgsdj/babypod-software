@@ -81,6 +81,9 @@ class PowerControl:
 		pin_alarm = PinAlarm(self.interrupt_pin, pull = False, value = False)
 		print("Created pin alarm")
 
+		# disable the watchdog
+		microcontroller.watchdog.mode = None
+
 		# enter deep sleep
 		if time_alarm is not None and pin_alarm is not None:
 			print(f"Entering deep sleep; will wake up from PinAlarm or TimeAlarm in {int(time_alarm.monotonic_time - time.monotonic())} seconds")
