@@ -3,7 +3,6 @@ import time
 import traceback
 
 import microcontroller
-import wifi
 from adafruit_datetime import datetime
 
 from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
