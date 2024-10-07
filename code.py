@@ -96,11 +96,9 @@ try:
 		from flow import Flow
 
 		Flow(devices = devices).start()
+except KeyboardInterrupt:
+	pass # don't care about Ctrl-C, just exit
 except Exception as e:
-	if isinstance(e, KeyboardInterrupt):
-		import sys
-		sys.exit(0) # don't run error handler on Ctrl-C
-
 	print(f"Uncaught {type(e).__name__}: {str(e)}")
 	print("Keeping alive for one minute to allow for USB debugging")
 	import time
