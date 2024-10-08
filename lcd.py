@@ -75,11 +75,13 @@ class Backlight:
 		self.set_color(BacklightColors.OFF)
 
 class AdafruitCharacterLCDBackpackBacklight(Backlight):
-	def __init__(self, led: adafruit_rgbled.RGBLED):
+	def __init__(self):
 		super().__init__()
-		self.device = led
+		self.device: Optional[adafruit_rgbled.RGBLED] = None
 
 	def set_color_impl(self, color: BacklightColor) -> None:
+		if self.device is None:
+			self.device = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
 		self.device.color = color.invert()
 
 class SparkfunSerLCDBacklight(Backlight):
@@ -104,8 +106,8 @@ class LCD:
 	COLUMNS = 20
 	LINES = 4
 
-	def __init__(self, backlight: Backlight):
-		self.backlight = backlight
+	def __init__(self):
+		self.backlight: Backlight
 		for key, value in LCD.CHARS.items():
 			self.create_special_char(key, value)
 
@@ -168,11 +170,10 @@ class LCD:
 			if 0x20 in i2c_address_list:
 				from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
 				lcd = Character_LCD_I2C(i2c, LCD.COLUMNS, LCD.LINES)
-				led = adafruit_rgbled.RGBLED(board.D9, board.D5, board.D6)
-				return AdafruitCharacterLCDBackpack(lcd, AdafruitCharacterLCDBackpackBacklight(led))
+				return AdafruitCharacterLCDBackpack(lcd)
 			elif 0x72 in i2c_address_list:
 				lcd = Sparkfun_SerLCD_I2C(i2c)
-				return SparkfunSerLCD(lcd, SparkfunSerLCDBacklight(lcd))
+				return SparkfunSerLCD(lcd, )
 
 			print("Couldn't find LCD on I2C, retrying")
 			time.sleep(0.2)
@@ -196,9 +197,10 @@ LCD.CHARS = {
 }
 
 class SparkfunSerLCD(LCD):
-	def __init__(self, lcd: Sparkfun_SerLCD, backlight: Backlight):
+	def __init__(self, lcd: Sparkfun_SerLCD):
 		self.device = lcd
-		super().__init__(backlight)
+		self.backlight = SparkfunSerLCDBacklight(lcd)
+		super().__init__()
 		if not NVRAMValues.HAS_CONFIGURED_SPARKFUN_LCD:
 			self.device.command(0x2F) # turn off command messages
 			self.device.command(0x31) # disable splash screen
@@ -216,9 +218,10 @@ class SparkfunSerLCD(LCD):
 		self.device.create_character(special_char, data)
 
 class AdafruitCharacterLCDBackpack(LCD):
-	def __init__(self, lcd: Character_LCD, backlight: Backlight):
+	def __init__(self, lcd: Character_LCD):
 		self.device = lcd
-		super().__init__(backlight)
+		self.backlight = AdafruitCharacterLCDBackpackBacklight()
+		super().__init__()
 
 	def create_special_char(self, special_char: int, data: List[int]) -> None:
 		self.device.create_char(special_char, data)
