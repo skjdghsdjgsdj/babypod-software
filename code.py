@@ -108,5 +108,4 @@ except Exception as e:
 		time.sleep(5)
 
 	print("Resetting")
-	import microcontroller
 	microcontroller.reset()
