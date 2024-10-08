@@ -119,6 +119,13 @@ class Flow:
 			)
 		])
 
+		idle_shutdown = NVRAMValues.IDLE_SHUTDOWN.get()
+		if self.devices.power_control and idle_shutdown:
+			self.devices.rotary_encoder.on_wait_tick_listeners.append(WaitTickListener(
+				on_tick = self.idle_shutdown,
+				seconds = NVRAMValues.IDLE_SHUTDOWN.get()
+			))
+
 		if self.devices.rtc is None or self.devices.sdcard is None:
 			self.offline_state = None
 			self.offline_queue = None
@@ -157,6 +164,11 @@ class Flow:
 			print("Idle; warning not suppressed and is discharging")
 			self.devices.piezo.tone("idle_warning")
 
+	def idle_shutdown(self, _: float) -> None:
+		if not self.suppress_idle_warning:
+			print("Idle; soft shutdown")
+			self.devices.power_control.shutdown(silent = True)
+
 	def on_user_input(self) -> None:
 		if not self.suppress_dim_timeout:
 			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
@@ -190,15 +202,13 @@ class Flow:
 			self.render_splash("Connecting...")
 			# noinspection PyBroadException
 			try:
+				print("Getting requests instance from ConnectionManager")
 				self.requests = ConnectionManager.connect()
 			except Exception as e:
 				import traceback
 				traceback.print_exception(e)
 				if self.devices.rtc and self.devices.sdcard:
-					self.render_splash("Going offline")
-					self.devices.piezo.tone("info")
-					time.sleep(1)
-					NVRAMValues.OFFLINE.write(True)
+					self.offline()
 				else:
 					raise e # can't go offline automatically because there's no hardware support
 		elif not self.devices.rtc:
@@ -529,29 +539,39 @@ class Flow:
 			if has_offline_hardware:
 				if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
 					self.back_online()
+				elif not NVRAMValues.OFFLINE and responses[1]: # was online, now offline
+					self.offline()
 
-				NVRAMValues.OFFLINE.write(responses[1])
+	def offline(self):
+		self.render_splash("Going offline")
+		self.devices.piezo.tone("info")
+		time.sleep(1)
+		ConnectionManager.disconnect()
+		NVRAMValues.OFFLINE.write(True)
 
 	def back_online(self) -> None:
+		NVRAMValues.OFFLINE.write(False)
+		self.auto_connect()
 		files = self.offline_queue.get_json_files()
-		if len(files) == 0:
-			return # nothing to do
+		if len(files) > 0:
+			print(f"Replaying offline-serialized {len(files)} requests")
 
+			self.devices.lcd.clear()
 
-		print(f"Replaying offline-serialized {len(files)} requests")
+			progress_bar = ProgressBar(devices = self.devices, count = len(files), message = "Syncing changes...")
+			progress_bar.render_and_wait()
 
-		self.devices.lcd.clear()
+			index = 0
+			for filename in files:
+				progress_bar.set_index(index)
+				try:
+					self.offline_queue.replay(filename)
+				except Exception as e:
+					NVRAMValues.OFFLINE.write(True)
+					raise e
+				index += 1
 
-		progress_bar = ProgressBar(devices = self.devices, count = len(files), message = "Syncing changes...")
-		progress_bar.render_and_wait()
-
-		index = 0
-		for filename in files:
-			progress_bar.set_index(index)
-			self.offline_queue.replay(filename)
-			index += 1
-
-		self.render_success_splash("Change synced!" if len(files) == 1 else f"{len(files)} changes synced!")
+			self.render_success_splash("Change synced!" if len(files) == 1 else f"{len(files)} changes synced!")
 
 	def diaper(self) -> None:
 		self.render_header_text("How was diaper?")
