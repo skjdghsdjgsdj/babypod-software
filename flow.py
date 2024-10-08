@@ -3,7 +3,6 @@ import time
 import traceback
 
 import microcontroller
-from adafruit_datetime import datetime
 
 from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
@@ -18,6 +17,7 @@ from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPe
 from piezo import Piezo
 from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener, ResetRequestListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal
+from util import Util
 
 # noinspection PyBroadException
 try:
@@ -397,10 +397,6 @@ class Flow:
 	def render_header_text(self, text: str) -> None:
 		self.devices.lcd.write(text, (0, 0))
 
-	@staticmethod
-	def format_battery_percent(percent: int) -> str:
-		return f"{percent}%"
-
 	def render_battery_percent(self, only_if_changed: bool = False) -> None:
 		if self.devices.battery_monitor is None:
 			return
@@ -416,18 +412,18 @@ class Flow:
 		if last_percent is None and percent is None:
 			return
 
-		message = self.format_battery_percent(percent)
+		message = Util.format_battery_percent(percent)
 
 		if not only_if_changed or last_percent != percent:
 			if last_percent is not None and percent < last_percent:
 				current_len = len(message)
-				last_len = len(self.format_battery_percent(last_percent))
+				last_len = len(Util.format_battery_percent(last_percent))
 				char_count_difference = last_len - current_len
 
 				if char_count_difference > 0:
 					self.devices.lcd.write(" " * char_count_difference, (LCD.COLUMNS - last_len, 0))
 
-			message = self.format_battery_percent(percent)
+			message = Util.format_battery_percent(percent)
 			self.devices.lcd.write(message, (LCD.COLUMNS - len(message), 0))
 
 	def render_splash(self, text: str) -> None:
@@ -440,22 +436,6 @@ class Flow:
 		self.devices.piezo.tone("success")
 		time.sleep(hold_seconds)
 		self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
-
-	@staticmethod
-	def datetime_to_time_str(datetime_obj: datetime) -> str:
-		hour = datetime_obj.hour
-		minute = datetime_obj.minute
-		meridian = "a"
-
-		if hour == 0:
-			hour = 12
-		elif hour == 12:
-			meridian = "p"
-		elif hour > 12:
-			hour -= 12
-			meridian = "p"
-
-		return f"{hour}:{minute:02}{meridian}"
 
 	def main_menu(self) -> None:
 		if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
@@ -475,7 +455,7 @@ class Flow:
 				self.offline_state.to_sdcard()
 
 		if last_feeding is not None:
-			last_feeding_str = "Feed " + Flow.datetime_to_time_str(last_feeding)
+			last_feeding_str = "Feed " + Util.datetime_to_time_str(last_feeding)
 
 			if method == "right breast":
 				last_feeding_str += " R"
