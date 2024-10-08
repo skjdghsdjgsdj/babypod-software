@@ -69,7 +69,7 @@ class Backlight:
 		self.color = color
 
 	def set_color_impl(self, color: BacklightColor):
-		pass
+		raise NotImplementedError()
 
 	def off(self) -> None:
 		self.set_color(BacklightColors.OFF)
