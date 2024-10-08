@@ -345,6 +345,8 @@ class Flow:
 					self.sleep(timer)
 				elif timer.name == TimerAPIRequest.get_timer_name("tummy_time"):
 					self.tummy_time(timer)
+				elif timer.name == TimerAPIRequest.get_timer_name("pumping"):
+					self.pumping(timer)
 				self.clear_and_show_battery()
 			except Exception as e:
 				self.on_error(e)
@@ -598,10 +600,11 @@ class Flow:
 				request.invoke()
 			self.render_success_splash()
 
-	def pumping(self) -> None:
+	def pumping(self, existing_timer: Optional[Timer] = None) -> None:
 		saved = False
 		while not saved:
 			timer = self.start_or_resume_timer(
+				existing_timer = existing_timer,
 				header_text = "Pumping",
 				timer_name = "pumping",
 				periodic_chime = ConsistentIntervalPeriodicChime(
