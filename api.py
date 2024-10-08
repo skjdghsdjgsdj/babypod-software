@@ -37,15 +37,19 @@ class ConnectionManager:
 			ConnectionManager.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
 			wifi.radio.hostname = f"babypod-{ConnectionManager.mac_id}"
 
-			print(f"Connecting to {ssid}...")
-			wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = ConnectionManager.timeout)
-			print("Getting SSL context...")
-			ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
-			print("Getting socket pool...")
-			pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
-			print("Getting session...")
-			ConnectionManager.requests = adafruit_requests.Session(pool, ssl_context)
-			print(f"Connected: RSSI {wifi.radio.ap_info.rssi} on channel {wifi.radio.ap_info.channel}, tx power {wifi.radio.tx_power} dBm")
+			try:
+				print(f"Connecting to {ssid}...")
+				wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = ConnectionManager.timeout)
+				print("Getting SSL context...")
+				ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
+				print("Getting socket pool...")
+				pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
+				print("Getting session...")
+				ConnectionManager.requests = adafruit_requests.Session(pool, ssl_context)
+				print(f"Connected: RSSI {wifi.radio.ap_info.rssi} on channel {wifi.radio.ap_info.channel}, tx power {wifi.radio.tx_power} dBm")
+			except ConnectionError as e:
+				print(f"Connection attempt failed: {e}")
+				raise e
 
 		return ConnectionManager.requests
 
