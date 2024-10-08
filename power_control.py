@@ -105,10 +105,10 @@ class PowerControl:
 			self.lcd.clear()
 			self.lcd.write_centered("Powering off...")
 
-		self.init_center_button_interrupt()
+			print("Waiting a few seconds for deep sleep")
+			time.sleep(3) # give the user time to let go of the button, or it'll just wake immediately
 
-		print("Waiting a few seconds for deep sleep")
-		time.sleep(3) # give the user time to let go of the button, or it'll just wake immediately
+		self.init_center_button_interrupt()
 
 		self.lcd_shutdown()
 		self.enter_deep_sleep()
