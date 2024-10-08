@@ -106,8 +106,8 @@ class LCD:
 	COLUMNS = 20
 	LINES = 4
 
-	def __init__(self):
-		self.backlight: Backlight
+	def __init__(self, backlight: Backlight):
+		self.backlight = backlight
 		for key, value in LCD.CHARS.items():
 			self.create_special_char(key, value)
 
@@ -199,8 +199,7 @@ LCD.CHARS = {
 class SparkfunSerLCD(LCD):
 	def __init__(self, lcd: Sparkfun_SerLCD):
 		self.device = lcd
-		self.backlight = SparkfunSerLCDBacklight(lcd)
-		super().__init__()
+		super().__init__(SparkfunSerLCDBacklight(lcd))
 		if not NVRAMValues.HAS_CONFIGURED_SPARKFUN_LCD:
 			self.device.command(0x2F) # turn off command messages
 			self.device.command(0x31) # disable splash screen
@@ -220,8 +219,7 @@ class SparkfunSerLCD(LCD):
 class AdafruitCharacterLCDBackpack(LCD):
 	def __init__(self, lcd: Character_LCD):
 		self.device = lcd
-		self.backlight = AdafruitCharacterLCDBackpackBacklight()
-		super().__init__()
+		super().__init__(AdafruitCharacterLCDBackpackBacklight())
 
 	def create_special_char(self, special_char: int, data: List[int]) -> None:
 		self.device.create_char(special_char, data)
