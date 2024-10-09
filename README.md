@@ -115,13 +115,13 @@ These instructions assume you've already built a BabyPod per the instructions at
 To make code changes, you need to do the following to build and deploy them.
 
 1. Clone BabyPod's software GitHub repository first: `git clone https://github.com/skjdghsdjgsdj/babypod-software.git`
-
-2. Plug in the Feather to a USB port and verify the `CIRCUITPY` drive shows up. The power switch must be on. Some Feathers don't show up as local drives because they lack the USB support for it. In those cases, the build script won't work right and you'll have to copy files another way, which is usually by Wi-Fi or the serial console. Refer to that Feather's documentation for details.
 	
-3. Compile your own `mpy-cross` executable and put it in your `$PATH`. As of this documentation, there's no prebuilt `mpy-cross` for CircuitPython 9, and older releases are not backwards-compatible. Fortunately you only need to build `mpy-cross` once because it takes a long time. To do this:
+2. Compile your own `mpy-cross` executable and put it in your `$PATH`. As of this documentation, there's no prebuilt `mpy-cross` for CircuitPython 9, and older releases are not backwards-compatible. Fortunately you only need to build `mpy-cross` once because it takes a long time. To do this:
 	1. [Download and build CircuitPython 9](https://learn.adafruit.com/building-circuitpython), including building submodules. Note you have to do a full clone; you can't do `git clone --depth` or you'll miss tags and the build will fail. Be sure to use the exact same version that's flashed to the Feather.
 	2. [Build `mpy-cross`](https://learn.adafruit.com/building-circuitpython?view=all#build-circuitpython) and put the resulting binary that ends up in `circuitpython/mpy-cross/build/mpy-cross` in your `$PATH`, like copying it to `/usr/local/bin`.
 	3. You can delete the cloned `circuitpython` repository if you don't plan on building `mpy-cross` again or doing CircuitPython upgrades.
+
+3. Plug in the Feather to a USB port and verify the `CIRCUITPY` drive shows up. The power switch, if you have one wired across `EN` and `GND`, must be on. Some Feathers don't show up as local drives because they lack the USB support for it. In those cases, the build script won't work right and you'll have to copy files another way, which is usually by Wi-Fi or the serial console. Refer to that Feather's documentation for details.
 
 If you update CircuitPython on the Feather, you will likely need to build a corresponding new `mpy-cross`.
 
@@ -139,8 +139,8 @@ The build script supports several arguments:
 - `--modules example1 example2`: only builds or copies the given files. For example, use `--modules code` to just copy `code.py`, or `--modules code sdcard` to just copy `code.py` and build/copy `sdcard.py`.
 - `--clean`: deletes everything from `lib/` on the `CIRCUITPY` drive and repopulates it with the required Adafruit libraries. This is useful if using `--no-compile` after using compiled files, or vice versa, to ensure the `.py` or `.mpy` files are being used correctly without duplicates. It can take a minute or two to finish.
 - `--no-reboot`: don't attempt to reboot the Feather after copying files.
-- `--output /path/to/output/`: use the specified path instead of the `CIRCUITPY` drive
-- `--build-release-zip filename.zip`: create a zip file with the given filename containing all compiled files, `code.py`, and `settings.toml.example`; overrides other options
+- `--output /path/to/output/`: use the specified path instead of the `CIRCUITPY` drive.
+- `--build-release-zip filename.zip`: create a zip file with the given filename containing all compiled files, `code.py`, and `settings.toml.example`; overrides other options.
 
 To set up a brand new BabyPod, all you should need to do is:
 1. Erase the flash then re-flash CircuitPython.
@@ -157,10 +157,10 @@ I haven't tried, but you should be able to modify `build-and-deploy.py` with Win
 
 Unlike CircuitPython's default behavior, the Feather won't reboot automatically when you copy a file to the `CIRCUITPY` drive. This is deliberate to avoid a storm of reboots as compiled files are copied to the Feather. Instead, you can reboot the Feather by:
 
-- Running `build-and-deploy.py` which, by default, will reboot the Feather upon completion. Passing `--no-reboot` disables this behavior.
-- With a serial console open, like [`tio`](https://formulae.brew.sh/formula/tio) on macOS, press Ctrl-C to abort the currently running code, then `Ctrl-D` to reboot the Feather. This keeps you connected to the console and importantly means you don't miss any console messages as the Feather starts back up. This is what the build script does too, just programmatically. The Feather might not reboot via this script unless you have a serial console connected via USB.
-- Cycling the power switch. Not ideal if you have a serial console open because it'll disconnect and even if it reconnects you may miss some startup messages, but if CircuitPython says it "crashed hard", then you need to do this.
-- Press the Feather's reset button, if it's accessible.
+- With a serial console open, like [`tio`](https://formulae.brew.sh/formula/tio) on macOS, press Ctrl-C to abort the currently running code, then `Ctrl-D` to reboot the Feather. This keeps you connected to the console and importantly means you don't miss any console messages as the Feather starts back up. This is what the build script does too, just programmatically. 
+- Running `build-and-deploy.py` which, by default, will reboot the Feather upon completion. Passing `--no-reboot` disables this behavior. The Feather might not reboot via this script unless you have a serial console connected via USB.
+- Cycling the power switch, assuming you have one wired across `EN` and `GND`. Not ideal if you have a serial console open because it'll disconnect and even if it reconnects you may miss some startup messages, but if CircuitPython says it "crashed hard", then you need to do this.
+- Press the Feather's reset button or jumping the `RESET` pin to `GND`, if accessible.
 
 ## Code design and architectural principles
 
@@ -272,14 +272,16 @@ Please contribute and submit pull requests if you can help!
 
 Please contribute and submit pull requests if you can help! But some of these things I'm not sure CircuitPython can do.
 
+- Have the build process somehow merge everything but `code.py` into a single `.mpy` to make imports faster, or not necessary in the first place.
 - Connect to Wi-Fi asynchronously! The slowest part of startup is usually waiting for Wi-Fi, but every selection from the main menu will need a connection; may as well let the menu render and then connect to Wi-Fi in the background so the experience seems faster.
 - Support multiple children, although if there's only one, don't require the user to select him/her. Right now, the API is queried for the list of children, but if there's more than one, only the first is used.
 - Have the build process burn all the code into the CircuitPython image, and the imports go from slow to near-instant. That's no small feat but could be really useful.
-- Better error handling and recovery. There's pretty much none right now except for showing a generic error for uncaught exceptions. There's little retry logic for most things.
-- Allow defining multiple Wi-Fi networks when travelling between trusted networks, like your own home and a family member's.
+- Better error handling and recovery.
+- Allow defining multiple Wi-Fi networks when travelling between trusted networks, like your own home and a family member's, and when attempting to connect, first try the last successful one.
 - Remember the last item selected in vertical menus.
 - Use interrupts for rotary encoder events instead of polling in a loop. I really want this one, but CircuitPython's design seems antithetical to interrupts. The encoder breakout board does support interrupts, but you still need to poll for one instead of just being...well, interrupted.
 - On devices with multiple CPU cores, use secondary cores for multithreading to do things in the background, like API requests. Same caveat as above: I don't think it'll happen.
-- Fluid ounces are the assumed unit for pumping. Baby Buddy itself seems unitless, so this could be a localization option for `settings.toml` to change the units shown in the pumping interface. 0.5 increments are used too, so changing units might call for a different increment.
-- Support 24-hour time in addition to AM/PM.
 - Buffer events even when online in case they fail to submit to the server and can therefore be replayed later.
+- Localization stuff:
+  - Fluid ounces are the assumed unit for pumping. Baby Buddy itself seems unitless, so this could be a localization option for `settings.toml` to change the units shown in the pumping interface. 0.5 increments are used too, so changing units might call for a different increment.
+  - Support 24-hour time in addition to AM/PM.
