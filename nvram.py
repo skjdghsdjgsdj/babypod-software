@@ -108,7 +108,7 @@ class NVRAMValues:
     # How many seconds until backlight dims from user inactivity on most screens
     BACKLIGHT_DIM_TIMEOUT = NVRAMIntegerValue(3, 30, "BACKLIGHT_DIM_TIMEOUT")
     # If battery is not charging, how many seconds until the piezo makes a warning tone
-    IDLE_WARNING = NVRAMIntegerValue(4, 60 * 2, "IDLE_WARNING")
+    IDLE_WARNING = NVRAMIntegerValue(4, 60, "IDLE_WARNING")
     # Bitmask of food types to enable in the feeding menu for flow.py; default is all
     ENABLED_FOOD_TYPES_MASK = NVRAMIntegerValue(5, 0x1 + 0x2 + 0x4 + 0x8, "ENABLED_FOOD_TYPES_MASK")
     # True to work offline; requires an RTC and SD card hardware
@@ -125,4 +125,4 @@ class NVRAMValues:
     MOTD_CHECK_INTERVAL = NVRAMIntegerValue(10, 60 * 60 * 6, "MOTD_CHECK_INTERVAL")
     # Soft shutdown after this many seconds of being idle and not in a timer; only has an effect if soft shutdown
     # is enabled
-    IDLE_SHUTDOWN = NVRAMIntegerValue(11, 60 * 5, "IDLE_SHUTDOWN")
+    IDLE_SHUTDOWN = NVRAMIntegerValue(11, 60 * 2, "IDLE_SHUTDOWN")
