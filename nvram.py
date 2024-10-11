@@ -125,4 +125,4 @@ class NVRAMValues:
     MOTD_CHECK_INTERVAL = NVRAMIntegerValue(10, 60 * 60 * 6, "MOTD_CHECK_INTERVAL")
     # Soft shutdown after this many seconds of being idle and not in a timer; only has an effect if soft shutdown
     # is enabled
-    IDLE_SHUTDOWN = NVRAMIntegerValue(11, 60 * 2, "IDLE_SHUTDOWN")
+    IDLE_SHUTDOWN = NVRAMIntegerValue(11, 60 * 3 - 5, "IDLE_SHUTDOWN") # -5 seconds to avoid the warning triggering right at shutdown
