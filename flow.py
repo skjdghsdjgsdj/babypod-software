@@ -105,26 +105,31 @@ class Flow:
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
 				on_tick = self.on_backlight_dim_idle,
-				seconds = NVRAMValues.BACKLIGHT_DIM_TIMEOUT.get()
+				seconds = NVRAMValues.BACKLIGHT_DIM_TIMEOUT.get(),
+				name = "Backlight dim idle"
 			),
 			WaitTickListener(
 				on_tick = self.idle_warning,
 				seconds = NVRAMValues.IDLE_WARNING.get(),
-				recurring = True
+				recurring = True,
+				name = "Idle warning"
 			),
 			WaitTickListener(
 				on_tick = self.on_idle,
-				seconds = 5,
-				recurring = True
+				seconds = 30,
+				recurring = True,
+				name = "On idle tick"
 			)
 		])
 
 		idle_shutdown = NVRAMValues.IDLE_SHUTDOWN.get()
 		if self.devices.power_control and idle_shutdown:
-			self.devices.rotary_encoder.on_wait_tick_listeners.append(WaitTickListener(
+			listener = WaitTickListener(
 				on_tick = self.idle_shutdown,
-				seconds = NVRAMValues.IDLE_SHUTDOWN.get()
-			))
+				seconds = idle_shutdown,
+				name = "Idle shutdown"
+			)
+			self.devices.rotary_encoder.on_wait_tick_listeners.append(listener)
 
 		if self.devices.rtc is None or self.devices.sdcard is None:
 			self.offline_state = None
