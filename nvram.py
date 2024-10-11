@@ -107,7 +107,7 @@ class NVRAMValues:
     CHILD_ID = NVRAMIntegerValue(2, 0, "CHILD_ID")
     # How many seconds until backlight dims from user inactivity on most screens
     BACKLIGHT_DIM_TIMEOUT = NVRAMIntegerValue(3, 30, "BACKLIGHT_DIM_TIMEOUT")
-    # If battery is not charging, how many seconds until the piezo makes a warning tone
+    # How many seconds until the piezo makes a warning tone (repeating)
     IDLE_WARNING = NVRAMIntegerValue(4, 60, "IDLE_WARNING")
     # Bitmask of food types to enable in the feeding menu for flow.py; default is all
     ENABLED_FOOD_TYPES_MASK = NVRAMIntegerValue(5, 0x1 + 0x2 + 0x4 + 0x8, "ENABLED_FOOD_TYPES_MASK")

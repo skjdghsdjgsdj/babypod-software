@@ -165,8 +165,8 @@ class Flow:
 		self.render_battery_percent(only_if_changed = True)
 
 	def idle_warning(self, _: float) -> None:
-		if not self.suppress_idle_warning and self.devices.battery_monitor and not self.devices.battery_monitor.is_charging():
-			print("Idle; warning not suppressed and is discharging")
+		if not self.suppress_idle_warning:
+			print("Idle; warning not suppressed")
 			self.devices.piezo.tone("idle_warning")
 
 	def idle_shutdown(self, _: float) -> None:
