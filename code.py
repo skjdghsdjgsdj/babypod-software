@@ -100,6 +100,8 @@ except KeyboardInterrupt:
 	pass # don't care about Ctrl-C, just exit
 except Exception as e:
 	print(f"Uncaught {type(e).__name__}: {str(e)}")
+	import traceback
+	traceback.print_exception(e)
 	print("Keeping alive for one minute to allow for USB debugging")
 	import time
 	start = time.monotonic()
