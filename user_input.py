@@ -15,15 +15,19 @@ import digitalio
 from adafruit_seesaw.digitalio import DigitalIO
 
 class WaitTickListener:
-	def __init__(self, seconds: int, on_tick: Callable[[float], None], recurring = False):
+	def __init__(self, seconds: int, on_tick: Callable[[float], None], recurring = False, name: Optional[str] = None):
 		self.seconds = seconds
 		self.on_tick = on_tick
 		self.last_triggered = None
 		self.recurring = recurring
+		self.name = name
 
 	def trigger(self, elapsed: float) -> None:
 		self.last_triggered = elapsed
 		self.on_tick(elapsed)
+
+	def __str__(self):
+		return super().__str__() if self.name is None else self.name
 
 class ShutdownRequestListener:
 	def __init__(self, on_shutdown_requested: Callable[[], None]):
