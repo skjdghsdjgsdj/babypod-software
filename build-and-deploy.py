@@ -92,7 +92,7 @@ def build_and_deploy(source_module: str, output_path: str, compile_to_mpy: bool 
             raise ValueError(f"File doesn't exist: {full_src}")
 
         if compile_to_mpy:
-            temp_mpy = tempfile.NamedTemporaryFile(suffix = ".mpy", delete = False, delete_on_close = False)
+            temp_mpy = tempfile.NamedTemporaryFile(suffix = ".mpy", delete = False)
             print(f"Compiling {source_module}.py...", end = "", flush = True)
             result = subprocess.run(["mpy-cross", full_src, "-O9", "-o", temp_mpy.name])
             if result.returncode != 0:
