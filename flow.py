@@ -449,7 +449,16 @@ class Flow:
 		self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 		if is_stopped_timer and NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED:
-			self.devices.power_control.shutdown()
+			self.clear_and_show_battery()
+			response = Modal(
+				devices = self.devices,
+				message = "Auto shutdown in 10 seconds...",
+				dismiss_text = "Keep on",
+				auto_dismiss_after_seconds = 10
+			).render_and_wait()
+
+			if not response:
+				self.devices.power_control.shutdown(silent = True)
 
 	def main_menu(self) -> None:
 		if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
