@@ -40,13 +40,21 @@ class UIComponent:
 		self.devices.lcd.write(save_message, (LCD.COLUMNS - len(save_message), LCD.LINES - y_delta - 1))
 
 class Modal(UIComponent):
-	def __init__(self, devices: Devices, message: str, dismiss_text: str = "Dismiss", before_wait_loop: Optional[Callable[[], None]] = None):
+	def __init__(
+			self,
+			devices: Devices,
+			message: str,
+			dismiss_text: str = "Dismiss",
+			before_wait_loop: Optional[Callable[[], None]] = None,
+			auto_dismiss_after_seconds: int = 0
+		):
 		super().__init__(devices = devices, allow_cancel = False, before_wait_loop = before_wait_loop)
 
+		self.auto_dismiss_after_seconds = auto_dismiss_after_seconds
 		self.message = message
 		self.dismiss_text = dismiss_text
 
-	def render_and_wait(self) -> None:
+	def render_and_wait(self) -> bool:
 		super().render_and_wait()
 
 		self.devices.lcd.write_centered(self.message)
@@ -56,10 +64,29 @@ class Modal(UIComponent):
 		if self.before_wait_loop is not None:
 			self.before_wait_loop()
 
+		class ModalDialogExpiredException(Exception):
+			pass
+
+		class AutoDismissWaitTickListener(WaitTickListener):
+			def __init__(self, auto_dismiss_after_seconds: int):
+				super().__init__(auto_dismiss_after_seconds, self.dismiss_dialog)
+
+			def dismiss_dialog(self, _: float):
+				raise ModalDialogExpiredException()
+
+		extra_wait_tick_listeners = [] if self.auto_dismiss_after_seconds <= 0 else [AutoDismissWaitTickListener(self.auto_dismiss_after_seconds)]
+
 		while True:
-			button = self.devices.rotary_encoder.wait(listen_for_rotation = False)
+			try:
+				button = self.devices.rotary_encoder.wait(
+					listen_for_rotation = False,
+					extra_wait_tick_listeners = extra_wait_tick_listeners
+				)
+			except ModalDialogExpiredException:
+				return False
+
 			if button == RotaryEncoder.SELECT or button == RotaryEncoder.RIGHT:
-				return
+				return True
 
 class ProgressBar(UIComponent):
 	def __init__(self, devices: Devices, count: int, message: str):
