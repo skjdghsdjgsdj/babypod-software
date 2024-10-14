@@ -102,10 +102,10 @@ except Exception as e:
 	print(f"Uncaught {type(e).__name__}: {str(e)}")
 	import traceback
 	traceback.print_exception(e)
-	print("Keeping alive for one minute to allow for USB debugging")
+	print("Keeping alive for five minutes to allow for USB debugging")
 	import time
 	start = time.monotonic()
-	while time.monotonic() - start <= 60:
+	while time.monotonic() - start <= 60 * 5:
 		microcontroller.watchdog.feed()
 		time.sleep(5)
 
