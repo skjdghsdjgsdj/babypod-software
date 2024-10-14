@@ -418,7 +418,7 @@ class VerticalCheckboxes(VerticalMenu):
 	def format_menu_item(self, index: int, name: str) -> str:
 		return self.get_checkbox_char(index) + name
 
-	def render_and_wait(self) -> list[int]:
+	def render_and_wait(self) -> list[bool]:
 		response = super().render_and_wait()
 		return None if response is None else self.states
 
