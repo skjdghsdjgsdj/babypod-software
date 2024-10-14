@@ -126,3 +126,5 @@ class NVRAMValues:
     # Soft shutdown after this many seconds of being idle and not in a timer; only has an effect if soft shutdown
     # is enabled
     IDLE_SHUTDOWN = NVRAMIntegerValue(11, 60 * 3 - 5, "IDLE_SHUTDOWN") # -5 seconds to avoid the warning triggering right at shutdown
+    # For soft power control, auto shutdown after saving a timer
+    AUTO_OFF_AFTER_TIMER_SAVED = NVRAMBooleanValue(12, False, "AUTO_OFF_AFTER_TIMER_SAVED")

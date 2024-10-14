@@ -15,6 +15,7 @@ from nvram import NVRAMValues
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from piezo import Piezo
+from setting import Setting
 from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener, ResetRequestListener
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal
 from util import Util
@@ -339,23 +340,28 @@ class Flow:
 
 	def jump_to_running_timer(self) -> None:
 		timer = None
+
 		if not NVRAMValues.OFFLINE:
 			print("Checking for active timers to skip main menu...")
 			timer = self.check_for_running_timer()
+
 		if timer is not None:
-			try:
-				if timer.name == TimerAPIRequest.get_timer_name("feeding"):
-					self.feeding(timer)
-				elif timer.name == TimerAPIRequest.get_timer_name("sleep"):
-					self.sleep(timer)
-				elif timer.name == TimerAPIRequest.get_timer_name("tummy_time"):
-					self.tummy_time(timer)
-				elif timer.name == TimerAPIRequest.get_timer_name("pumping"):
-					self.pumping(timer)
-				self.clear_and_show_battery()
-			except Exception as e:
-				self.on_error(e)
-				self.clear_and_show_battery()
+			timer_map = {
+				"feeding": self.feeding,
+				"sleep": self.sleep,
+				"tummy_time": self.tummy_time,
+				"pumping": self.pumping
+			}
+
+			for name, _ in timer_map.items():
+				if timer.name == TimerAPIRequest.get_timer_name(name):
+					try:
+						timer_map[name](timer)
+					except Exception as e:
+						self.on_error(e)
+
+					break
+			self.clear_and_show_battery()
 
 	def check_for_running_timer(self) -> Optional[Timer]:
 		timer = None
@@ -435,12 +441,15 @@ class Flow:
 		self.clear_and_show_battery()
 		self.devices.lcd.write_centered(text)
 
-	def render_success_splash(self, text: str = "Saved!", hold_seconds: int = 1) -> None:
+	def render_success_splash(self, text: str = "Saved!", hold_seconds: int = 1, is_stopped_timer: bool = False) -> None:
 		self.render_splash(text)
 		self.devices.lcd.backlight.set_color(BacklightColors.SUCCESS)
 		self.devices.piezo.tone("success")
 		time.sleep(hold_seconds)
 		self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
+
+		if is_stopped_timer and NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED:
+			self.devices.power_control.shutdown()
 
 	def main_menu(self) -> None:
 		if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
@@ -502,39 +511,49 @@ class Flow:
 		self.clear_and_show_battery()
 
 	def settings(self) -> None:
-		options = [
-			"Sounds"
+		all_settings = [
+			Setting(
+				name = "Play sounds",
+				backing_nvram_value = NVRAMValues.PIEZO
+			),
+			Setting(
+				name = "Off after timers",
+				backing_nvram_value = NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED,
+				is_available = lambda: self.devices.power_control is not None
+			),
+			Setting(
+				name = "Offline",
+				backing_nvram_value = NVRAMValues.OFFLINE,
+				is_available = lambda: self.devices.rtc is not None and self.devices.sdcard is not None,
+				on_save = lambda going_offline: self.offline() if going_offline else self.back_online()
+			)
 		]
 
-		initial_states = [
-			NVRAMValues.PIEZO.get()
-		]
+		settings = [setting for setting in all_settings if setting.is_available()]
 
-		has_offline_hardware = self.devices.rtc and self.devices.sdcard
-		if has_offline_hardware:
-			options.append("Offline")
-			initial_states.append(NVRAMValues.OFFLINE.get())
+		if len(settings) == 0:
+			print("Warning: no settings available!")
+			return
 
 		responses = VerticalCheckboxes(
-			options = options,
-			initial_states = initial_states, devices = self.devices, anchor = VerticalMenu.ANCHOR_TOP
+			options = [setting.name for setting in settings],
+			initial_states = [setting.get() for setting in settings],
+			devices = self.devices,
+			anchor = VerticalMenu.ANCHOR_TOP
 		).render_and_wait()
 
 		if responses is not None:
-			NVRAMValues.PIEZO.write(responses[0])
-
-			if has_offline_hardware:
-				if NVRAMValues.OFFLINE and not responses[1]: # was offline, now back online
-					self.back_online()
-				elif not NVRAMValues.OFFLINE and responses[1]: # was online, now offline
-					self.offline()
+			assert(len(responses) == len(settings))
+			for i in range(0, len(responses)):
+				setting = settings[i]
+				value = responses[i]
+				setting.save(value)
 
 	def offline(self):
 		self.render_splash("Going offline")
 		self.devices.piezo.tone("info")
 		time.sleep(1)
 		ConnectionManager.disconnect()
-		NVRAMValues.OFFLINE.write(True)
 
 	def back_online(self) -> None:
 		NVRAMValues.OFFLINE.write(False)
@@ -620,7 +639,7 @@ class Flow:
 					else:
 						self.render_splash("Saving...")
 						request.invoke()
-					self.render_success_splash()
+					self.render_success_splash(is_stopped_timer = True)
 					saved = True
 			else:
 				return
@@ -772,7 +791,7 @@ class Flow:
 			self.offline_state.to_sdcard()
 			self.use_offline_feeding_stats = True
 
-		self.render_success_splash()
+		self.render_success_splash(is_stopped_timer = True)
 
 		return True
 
@@ -791,7 +810,7 @@ class Flow:
 				self.render_splash("Saving...")
 				request.invoke()
 
-			self.render_success_splash()
+			self.render_success_splash(is_stopped_timer = True)
 
 	def tummy_time(self, existing_timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
@@ -811,4 +830,4 @@ class Flow:
 			else:
 				self.render_splash("Saving...")
 				request.invoke()
-			self.render_success_splash()
+			self.render_success_splash(is_stopped_timer = True)
