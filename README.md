@@ -190,6 +190,7 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 | `piezo.py`               | Abstraction of the piezo, including allowing playback of tones by name rather than specifying them externally                                                                        |
 | `power_control.py`       | Provides soft shutdown and wakeup capability, if so enabled in `settings.toml`                                                                                                       |
 | `sdcard.py`              | Abstraction of the microSD card reader                                                                                                                                               |
+| `settings.py`            | User-accessible settings backed by NVRAM values                                                                                                                                      |
 | `ui_components.py`       | Definition of various UI components, detailed below                                                                                                                                  |
 | `user_input.py`          | Abstraction of the rotary encoder, which takes into account the 90° physical rotation when mounted in the enclosure                                                                  |
 | `util.py`                | Helper methods, like a workaround for [a CircuitPython bug that doesn't support UTC ISO-formatted timestamps](https://github.com/adafruit/Adafruit_CircuitPython_datetime/issues/22) |
