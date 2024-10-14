@@ -35,6 +35,7 @@ class ConnectionManager:
 			channel = int(channel) if channel else 0
 
 			ConnectionManager.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
+			wifi.radio.enabled = True
 			wifi.radio.hostname = f"babypod-{ConnectionManager.mac_id}"
 
 			try:
