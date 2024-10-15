@@ -469,7 +469,14 @@ class Flow:
 			self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
 		else:
 			self.render_splash("Getting feeding...")
-			last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
+			try:
+				last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
+			except Exception as e:
+				print(f"Failed getting last feeding: {e}")
+				traceback.print_exception(e)
+				last_feeding = None
+				method = None
+
 			if self.offline_state is not None and \
 					(self.offline_state.last_feeding != last_feeding or
 					self.offline_state.last_feeding_method != method):
