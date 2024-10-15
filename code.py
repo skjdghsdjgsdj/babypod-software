@@ -81,6 +81,13 @@ try:
 					from nvram import NVRAMValues
 					NVRAMValues.OFFLINE.write(False)
 
+					lcd.clear()
+					lcd.backlight.set_color(BacklightColors.ERROR)
+					lcd.write_centered("SD card failure!")
+					import time
+					time.sleep(2)
+					lcd.backlight.set_color(BacklightColors.DEFAULT)
+
 				rtc = ExternalRTC(i2c)
 
 		from devices import Devices
