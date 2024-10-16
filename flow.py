@@ -1,5 +1,4 @@
 import os
-import time
 import traceback
 
 import microcontroller
@@ -8,16 +7,16 @@ from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeA
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
 	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest, \
 	ConnectionManager, ConsumeMOTDAPIRequest, FeedingAPIRequest
-from offline_event_queue import OfflineEventQueue
 from devices import Devices
 from lcd import LCD, BacklightColors
 from nvram import NVRAMValues
+from offline_event_queue import OfflineEventQueue
 from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
-from piezo import Piezo
 from setting import Setting
+from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal, \
+	StatusMessage, NoisyBrightModal, SuccessModal, ErrorModal, UIComponent
 from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener, ResetRequestListener
-from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal
 from util import Util
 
 # noinspection PyBroadException
@@ -34,7 +33,6 @@ class Flow:
 		self.devices = devices
 
 		self.suppress_idle_warning = False
-		self.suppress_dim_timeout = False
 
 		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
 			on_activity = self.on_user_input
@@ -104,13 +102,11 @@ class Flow:
 		microcontroller.reset()
 
 	def on_backlight_dim_idle(self, _: float) -> None:
-		if not self.suppress_dim_timeout:
-			print("Dimming backlight due to inactivity")
+		if self.devices.lcd.backlight.color == BacklightColors.DEFAULT:
 			self.devices.lcd.backlight.set_color(BacklightColors.DIM)
 
 	def idle_warning(self, _: float) -> None:
 		if not self.suppress_idle_warning:
-			print("Idle; warning not suppressed")
 			self.devices.piezo.tone("idle_warning")
 
 	def idle_shutdown(self, _: float) -> None:
@@ -119,12 +115,8 @@ class Flow:
 			self.devices.power_control.shutdown(silent = True)
 
 	def on_user_input(self) -> None:
-		if not self.suppress_dim_timeout:
+		if self.devices.lcd.backlight.color == BacklightColors.DIM:
 			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
-
-	def clear_and_show_battery(self) -> None:
-		self.devices.lcd.clear()
-		self.render_battery_percent()
 
 	def refresh_rtc(self) -> None:
 		if NVRAMValues.OFFLINE:
@@ -132,15 +124,13 @@ class Flow:
 			NVRAMValues.OFFLINE.write(False)
 			raise ValueError("RTC must be set before going offline")
 
-		print("Syncing RTC")
-		self.render_splash("Setting clock...")
+		StatusMessage(devices = self.devices, message = "Setting clock...").render()
 
 		try:
 			old_now = self.devices.rtc.now()
 			self.devices.rtc.sync(self.requests)
-			print(f"RTC updated to {self.devices.rtc.now()}")
 			if old_now is not None:
-				print(f"RTC drift: {old_now - self.devices.rtc.now()}")
+				print(f"RTC drift since last sync: {old_now - self.devices.rtc.now()}")
 		except Exception as e:
 			print(f"{e} when syncing RTC; forcing sync on next online boot")
 			NVRAMValues.FORCE_RTC_UPDATE.write(True)
@@ -148,10 +138,9 @@ class Flow:
 
 	def auto_connect(self) -> None:
 		if not NVRAMValues.OFFLINE:
-			self.render_splash("Connecting...")
+			StatusMessage(devices = self.devices, message = "Connecting...").render()
 			# noinspection PyBroadException
 			try:
-				print("Getting requests instance from ConnectionManager")
 				self.requests = ConnectionManager.connect()
 			except Exception as e:
 				import traceback
@@ -178,7 +167,6 @@ class Flow:
 			else:
 				now = self.devices.rtc.now()
 				last_rtc_set_delta = now - self.offline_state.last_rtc_set
-				print(f"RTC = {now}, last set = {self.offline_state.last_rtc_set} (delta = {last_rtc_set_delta.seconds} sec)")
 				if last_rtc_set_delta.seconds >= 60 * 60 * 24 or last_rtc_set_delta.days >= 1:
 					print("RTC last set more than a day ago")
 
@@ -187,20 +175,17 @@ class Flow:
 					else:
 						print("RTC refresh interval expired")
 						self.refresh_rtc()
-				else:
-					print(f"RTC doesn't need updating: set to {self.devices.rtc.now()}, last refreshed {self.offline_state.last_rtc_set}")
 
 	def init_battery(self) -> None:
 		if self.devices.battery_monitor:
 			battery_percent = self.devices.battery_monitor.get_percent()
 			if battery_percent is not None and battery_percent <= 15:
-				self.devices.lcd.backlight.set_color(BacklightColors.ERROR)
-				self.render_splash(f"Low battery!")
-				self.devices.piezo.tone("low_battery")
-
-				time.sleep(1.5)
-
-				self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
+				NoisyBrightModal(
+					devices = self.devices,
+					piezo_tone = "low_battery",
+					message = "Low battery!",
+					color = BacklightColors.ERROR,
+					auto_dismiss_after_seconds = 2).render().wait()
 
 	def start(self) -> None:
 		self.device_startup()
@@ -219,27 +204,21 @@ class Flow:
 				delta = now - last_checked
 				# noinspection PyUnresolvedReferences
 				delta_seconds = delta.seconds + (delta.days * 60 * 60 * 24)
-
-				print(f"Now: {now}, last MOTD check: {last_checked}")
-
 				motd_check_required = delta_seconds >= int(NVRAMValues.MOTD_CHECK_INTERVAL)
 			else:
 				motd_check_required = True
 
 			if motd_check_required:
-				print(f"MOTD check interval exceeded")
 				try:
-					self.render_splash("Checking messages...")
+					StatusMessage(devices = self.devices, message = "Checking messages...").render()
 					motd = ConsumeMOTDAPIRequest().get_motd()
 
 					if motd is not None:
-						self.clear_and_show_battery()
-						Modal(
+						NoisyBrightModal(
 							devices = self.devices,
 							message = motd,
-							before_wait_loop = lambda: Piezo.tone("motd")
-						).render_and_wait()
-						self.clear_and_show_battery()
+							piezo_tone = "motd"
+						).render().wait()
 
 					self.offline_state.last_motd_check = now
 					self.offline_state.to_sdcard()
@@ -258,7 +237,7 @@ class Flow:
 	def init_child_id(self) -> None:
 		child_id = NVRAMValues.CHILD_ID.get()
 		if not child_id:
-			self.render_splash("Getting children...")
+			StatusMessage(devices = self.devices, message = "Getting children...").render()
 			try:
 				child_id = GetFirstChildIDAPIRequest().get_first_child_id()
 			except Exception as e:
@@ -268,24 +247,18 @@ class Flow:
 			NVRAMValues.CHILD_ID.write(child_id)
 			self.devices.lcd.clear()
 		self.child_id = child_id
-		print(f"Using child ID {child_id}")
 
 	def loop(self) -> None:
 		while True:
 			try:
 				self.main_menu()
-				if not self.is_shutting_down:
-					self.clear_and_show_battery()
 			except Exception as e:
 				self.on_error(e)
-				if not self.is_shutting_down:
-					self.clear_and_show_battery()
 
 	def jump_to_running_timer(self) -> None:
 		timer = None
 
 		if not NVRAMValues.OFFLINE:
-			print("Checking for active timers to skip main menu...")
 			timer = self.check_for_running_timer()
 
 		if timer is not None:
@@ -304,19 +277,16 @@ class Flow:
 						self.on_error(e)
 
 					break
-			self.clear_and_show_battery()
 
 	def check_for_running_timer(self) -> Optional[Timer]:
 		timer = None
 		try:
-			self.render_splash("Checking timers...")
+			StatusMessage(devices = self.devices, message = "Checking timers...").render()
 			timers = list(GetAllTimersAPIRequest(limit = 1).get_active_timers())
 			if timers:
 				timer = timers[0]
-			self.clear_and_show_battery()
 		except Exception as e:
 			print(f"Failed getting active timers; continuing to main menu: {e}")
-			self.clear_and_show_battery()
 		return timer
 
 	def on_error(self, e: Exception) -> None:
@@ -340,16 +310,7 @@ class Flow:
 		elif "ETIMEDOUT" in str(e):
 				message = "Request timeout!"
 
-		self.devices.lcd.backlight.set_color(BacklightColors.ERROR)
-		self.devices.piezo.tone("error")
-		self.clear_and_show_battery()
-		self.suppress_dim_timeout = True
-		Modal(devices = self.devices, message = message).render_and_wait()
-		self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
-		self.suppress_dim_timeout = False
-
-	def render_header_text(self, text: str) -> None:
-		self.devices.lcd.write(text, (0, 0))
+		ErrorModal(devices = self.devices, message = message).render().wait()\
 
 	def render_battery_percent(self, only_if_changed: bool = False) -> None:
 		if self.devices.battery_monitor is None:
@@ -380,25 +341,16 @@ class Flow:
 			message = Util.format_battery_percent(percent)
 			self.devices.lcd.write(message, (LCD.COLUMNS - len(message), 0))
 
-	def render_splash(self, text: str) -> None:
-		self.clear_and_show_battery()
-		self.devices.lcd.write_centered(text)
-
-	def render_success_splash(self, text: str = "Saved!", hold_seconds: int = 1, is_stopped_timer: bool = False) -> None:
-		self.render_splash(text)
-		self.devices.lcd.backlight.set_color(BacklightColors.SUCCESS)
-		self.devices.piezo.tone("success")
-		time.sleep(hold_seconds)
-		self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
+	def render_success_splash(self, message: str = "Saved!", is_stopped_timer: bool = False) -> None:
+		SuccessModal(devices = self.devices, message = message).render().wait()
 
 		if is_stopped_timer and NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED:
-			self.clear_and_show_battery()
 			response = Modal(
 				devices = self.devices,
 				message = "Auto shutdown in 10 seconds...",
-				dismiss_text = "Keep on",
+				save_text = "Keep on",
 				auto_dismiss_after_seconds = 10
-			).render_and_wait()
+			).render().wait()
 
 			if not response:
 				self.devices.power_control.shutdown(silent = True)
@@ -411,7 +363,7 @@ class Flow:
 			# reapply the value which could have been changed by feeding saved just now
 			self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
 		else:
-			self.render_splash("Getting feeding...")
+			StatusMessage(devices = self.devices, message = "Getting feeding...").render()
 			try:
 				last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
 			except Exception as e:
@@ -441,44 +393,38 @@ class Flow:
 		else:
 			last_feeding_str = "Feeding"
 
-		self.clear_and_show_battery()
+		menu_items = [
+			(last_feeding_str, self.feeding),
+			("Diaper change", self.diaper),
+			("Sleep", self.sleep),
+			("Pumping", self.pumping)
+		]
 
-		selected_index = VerticalMenu(options = [
-			last_feeding_str,
-			"Diaper change",
-			"Sleep",
-			"Pumping",
-		],
+		selected_index = VerticalMenu(
+			header = "Main menu",
+			options = [item[0] for item in menu_items],
 			devices = self.devices,
-			cancel_text = self.devices.lcd[LCD.LEFT] +
-				(self.devices.lcd[LCD.UNCHECKED if NVRAMValues.OFFLINE else LCD.CHECKED])
-		).render_and_wait()
-
-		self.clear_and_show_battery() # preps for next menu
+			cancel_align = UIComponent.RIGHT,
+			cancel_text = self.devices.lcd[LCD.UNCHECKED if NVRAMValues.OFFLINE else LCD.CHECKED],
+			save_text = None
+		).render().wait()
 
 		if selected_index is None:
 			self.settings()
-		elif selected_index == 0:
-			self.feeding()
-		elif selected_index == 1:
-			self.diaper()
-		elif selected_index == 2:
-			self.sleep()
-		elif selected_index == 3:
-			self.pumping()
-
-		self.clear_and_show_battery()
+		else:
+			_, method = menu_items[selected_index]
+			method()
 
 	def settings(self) -> None:
 		all_settings = [
 			Setting(
-				name = "Play sounds",
-				backing_nvram_value = NVRAMValues.PIEZO
-			),
-			Setting(
 				name = "Off after timers",
 				backing_nvram_value = NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED,
 				is_available = lambda: self.devices.power_control is not None
+			),
+			Setting(
+				name = "Play sounds",
+				backing_nvram_value = NVRAMValues.PIEZO
 			),
 			Setting(
 				name = "Offline",
@@ -495,11 +441,12 @@ class Flow:
 			return
 
 		responses = VerticalCheckboxes(
+			header = "Settings",
 			options = [setting.name for setting in settings],
 			initial_states = [setting.get() for setting in settings],
 			devices = self.devices,
-			anchor = VerticalMenu.ANCHOR_TOP
-		).render_and_wait()
+			cancel_align = UIComponent.RIGHT
+		).render().wait()
 
 		if responses is not None:
 			assert(len(responses) == len(settings))
@@ -509,9 +456,11 @@ class Flow:
 				setting.save(value)
 
 	def offline(self):
-		self.render_splash("Going offline")
-		self.devices.piezo.tone("info")
-		time.sleep(1)
+		NoisyBrightModal(
+			devices = self.devices,
+			message = "Going offline",
+			piezo_tone = "info", auto_dismiss_after_seconds = 1
+		).render().wait()
 		ConnectionManager.disconnect()
 
 	def back_online(self) -> None:
@@ -524,7 +473,7 @@ class Flow:
 			self.devices.lcd.clear()
 
 			progress_bar = ProgressBar(devices = self.devices, count = len(files), message = "Syncing changes...")
-			progress_bar.render_and_wait()
+			progress_bar.render()
 
 			index = 0
 			for filename in files:
@@ -539,13 +488,15 @@ class Flow:
 			self.render_success_splash("Change synced!" if len(files) == 1 else f"{len(files)} changes synced!")
 
 	def diaper(self) -> None:
-		self.render_header_text("How was diaper?")
-
-		selected_index = VerticalMenu(options = [
-			"Wet",
-			"Solid",
-			"Both"
-		], devices = self.devices).render_and_wait()
+		selected_index = VerticalMenu(
+			header = "How was diaper?",
+			options = [
+				"Wet",
+				"Solid",
+				"Both"
+			],
+			devices = self.devices
+		).render().wait()
 
 		if selected_index is not None:
 			is_wet = selected_index == 0 or selected_index == 2
@@ -559,7 +510,7 @@ class Flow:
 			if NVRAMValues.OFFLINE:
 				self.offline_queue.add(request)
 			else:
-				self.render_splash("Saving...")
+				StatusMessage(devices = self.devices, message = "Saving...").render()
 				request.invoke()
 			self.render_success_splash()
 
@@ -577,15 +528,13 @@ class Flow:
 			)
 
 			if timer is not None:
-				self.clear_and_show_battery()
-				self.render_header_text("How much?")
-
 				amount = NumericSelector(
+					header = "How much?",
 					devices = self.devices,
 					minimum = 0,
 					step = 0.5,
 					format_str = "%.1f fl oz"
-				).render_and_wait()
+				).render().wait()
 
 				if amount is not None:
 					request = PostPumpingAPIRequest(
@@ -596,7 +545,7 @@ class Flow:
 					if NVRAMValues.OFFLINE:
 						self.offline_queue.add(request)
 					else:
-						self.render_splash("Saving...")
+						StatusMessage(devices = self.devices, message = "Saving...").render()
 						request.invoke()
 					self.render_success_splash(is_stopped_timer = True)
 					saved = True
@@ -622,7 +571,7 @@ class Flow:
 			timer.started_at = self.devices.rtc.now()
 			timer.start_or_resume()
 		else:
-			self.render_splash("Checking status...")
+			StatusMessage(devices = self.devices, message = "Checking timers...").render()
 			timer = Timer(
 				name = timer_name,
 				offline = False,
@@ -630,23 +579,21 @@ class Flow:
 			)
 			timer.start_or_resume()
 
-		self.clear_and_show_battery()
-		self.render_header_text(header_text)
-
 		if subtext is not None:
 			self.devices.lcd.write(message = subtext, coords = (0, 2))
 
 		self.suppress_idle_warning = True
 		response = ActiveTimer(
+			header = header_text,
 			devices = self.devices,
 			periodic_chime = periodic_chime,
 			start_at = timer.resume_from_duration
-		).render_and_wait()
+		).render().wait()
 		self.suppress_idle_warning = False
 
 		if response is None:
 			if not NVRAMValues.OFFLINE:
-				self.render_splash("Canceling...")
+				StatusMessage(devices = self.devices, message = "Stopping timer...").render()
 			timer.cancel()
 			return None # canceled
 
@@ -673,11 +620,6 @@ class Flow:
 				return # canceled the timer
 
 	def save_feeding(self, timer: Timer) -> bool:
-		self.clear_and_show_battery()
-
-		def get_name(item):
-			return item["name"]
-
 		enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
 
 		options = []
@@ -691,10 +633,11 @@ class Flow:
 		if len(options) == 1:
 			food_type_metadata = options[0]
 		else:
-			selected_index = VerticalMenu(
+			selected_index: Optional[int] = VerticalMenu(
+				header = "What was fed?",
 				devices = self.devices,
-				options = list(map(get_name, options))
-			).render_and_wait()
+				options = list(map(lambda item: item["name"], options))
+			).render().wait()
 
 			if selected_index is None:
 				return False
@@ -708,20 +651,16 @@ class Flow:
 			method = food_type_metadata["methods"][0]
 		else:
 			method_names = []
-			for allowed_method in food_type_metadata["methods"]:
-				for available_method in FeedingAPIRequest.FEEDING_METHODS:
+			for available_method in FeedingAPIRequest.FEEDING_METHODS:
+				for allowed_method in food_type_metadata["methods"]:
 					if available_method["method"] == allowed_method:
 						method_names.append(available_method["name"])
 
-			self.clear_and_show_battery()
-			if len(method_names) < LCD.LINES:
-				self.render_header_text("How was this fed?")
-
 			selected_index = VerticalMenu(
+				header = "How was this fed?",
 				devices = self.devices,
-				options = method_names,
-				anchor = VerticalMenu.ANCHOR_BOTTOM
-			).render_and_wait()
+				options = method_names
+			).render().wait()
 
 			if selected_index is None:
 				return False
@@ -741,7 +680,7 @@ class Flow:
 		if NVRAMValues.OFFLINE:
 			self.offline_queue.add(request)
 		else:
-			self.render_splash("Saving...")
+			StatusMessage(devices = self.devices, message = "Saving...").render()
 			request.invoke()
 
 		if self.offline_state is not None:
@@ -766,7 +705,7 @@ class Flow:
 			if NVRAMValues.OFFLINE:
 				self.offline_queue.add(request)
 			else:
-				self.render_splash("Saving...")
+				StatusMessage(devices = self.devices, message = "Saving...").render()
 				request.invoke()
 
 			self.render_success_splash(is_stopped_timer = True)
@@ -787,6 +726,6 @@ class Flow:
 			if NVRAMValues.OFFLINE:
 				self.offline_queue.add(request)
 			else:
-				self.render_splash("Saving...")
+				StatusMessage(devices = self.devices, message = "Saving...").render()
 				request.invoke()
 			self.render_success_splash(is_stopped_timer = True)

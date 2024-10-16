@@ -1,10 +1,12 @@
 import math
 
 from devices import Devices
-from lcd import LCD
+from lcd import LCD, BacklightColors, BacklightColor
 from periodic_chime import PeriodicChime
 from user_input import RotaryEncoder, WaitTickListener
 import time
+
+from util import Util
 
 # noinspection PyBroadException
 try:
@@ -24,95 +26,111 @@ class UIComponent:
 	def __init__(self,
 		devices: Devices,
 		allow_cancel: bool = True,
-		cancel_text: str = None,
-		cancel_align: int = None,
-		before_wait_loop: Optional[Callable[[], None]] = None
+		cancel_text: Optional[str] = None,
+		cancel_align: Optional[int] = None,
+		header: Optional[str] = None,
+		save_text: Optional[str] = "Save",
+		save_text_y_delta: int = 0
 	):
 		"""
-		Child classes might not respect all these properties or may have somewhat different semantic meaning given the
-		context for how they're used.
-
 		:param devices: Devices dependency injection
 		:param allow_cancel: True to allow the user to cancel (go back) from this component, False if not
 		:param cancel_text: UI hint to show to the user for cancelling this action
 		:param cancel_align: Left (UIComponent.LEFT) or right (UIComponent.RIGHT) alignment of the cancel text
-		:param before_wait_loop: Function to call just before entering the blocking loop waiting for user input but
-		after the UI is rendered
 		"""
 
 		self.devices = devices
 		self.allow_cancel = allow_cancel
 		self.cancel_align = cancel_align
-		self.cancel_text = (self.devices.lcd[LCD.LEFT] + "Cancel") if cancel_text is None else cancel_text
-		self.before_wait_loop = before_wait_loop
+		self.cancel_text = self.devices.lcd[LCD.LEFT] + ("Cancel" if cancel_text is None else cancel_text)
+		self.header = header
+		self.save_text = save_text
+		self.save_text_y_delta = save_text_y_delta
 
-	def render_and_wait(self) -> None:
+	def render(self):
 		"""
-		Renders the UI and waits (blocks) for user input, although child classes will greatly extend this abstract
-		method--and should always call the base implementation.
+		Renders the UI. Child classes will greatly extend this abstract method but should always call the base method.
 
-		:return: Nothing in the base method, but child classes usually will return something based on user input or
-		None if the input was canceled.
+		:return: self for chaining
 		"""
+		self.devices.lcd.clear()
+
+		if self.header is not None:
+			self.devices.lcd.write(self.header)
+
+		battery_percent = self.devices.battery_monitor.get_percent() if self.devices.battery_monitor else None
+		if battery_percent is not None:
+			self.devices.lcd.write_right_aligned(Util.format_battery_percent(battery_percent))
 
 		if self.allow_cancel:
-			col = 0 if self.cancel_align == UIComponent.LEFT else LCD.COLUMNS - len(self.cancel_text)
-			self.devices.lcd.write(self.cancel_text, (col, LCD.LINES - 1))
+			if self.cancel_align == UIComponent.RIGHT:
+				self.devices.lcd.write_bottom_right_aligned(self.cancel_text, 0 if self.save_text is None else 1)
+			elif self.cancel_align == UIComponent.LEFT or self.cancel_align is None:
+				self.devices.lcd.write_bottom_left_aligned(self.cancel_text)
+			else:
+				raise ValueError(f"Unknown alignment {self.cancel_align}")
 
-	def render_save(self, y_delta: int = 0, message: str = "Save") -> None:
-		"""
-		Renders the "Save" widget at the bottom-right of the screen.
+		if self.save_text is not None:
+			save_message = self.save_text + self.devices.lcd[LCD.RIGHT]
+			self.devices.lcd.write_bottom_right_aligned(save_message, self.save_text_y_delta)
 
-		:param y_delta: Number of lines up from the bottom to render
-		:param message: Message to show; defaults to "Save" and always gets prepended with a right arrow
-		"""
+		return self
 
-		save_message = message + self.devices.lcd[LCD.RIGHT]
-		self.devices.lcd.write(save_message, (LCD.COLUMNS - len(save_message), LCD.LINES - y_delta - 1))
+	def wait(self):
+		raise RuntimeError(f"UIComponents of type {type(self).__name__} are non-blocking")
+
+class StatusMessage(UIComponent):
+	"""
+	Renders a message in full screen with no controls and without blocking.
+	"""
+
+	def __init__(self, devices: Devices, message: str):
+		super().__init__(devices = devices, allow_cancel = False, save_text = None)
+		self.message = message
+
+	def render(self) -> UIComponent:
+		super().render()
+		self.devices.lcd.write_centered(self.message)
+		return self
 
 class Modal(UIComponent):
 	"""
-	A simple text dialog that must be dismissed by the user with no other actions.
+	A simple text dialog that must be dismissed by the user with no other actions or automatically closes after a
+	defined number of seconds.
 	"""
 
 	def __init__(
 			self,
 			devices: Devices,
 			message: str,
-			dismiss_text: str = "Dismiss",
-			before_wait_loop: Optional[Callable[[], None]] = None,
+			save_text: str = "Dismiss",
 			auto_dismiss_after_seconds: int = 0
 		):
 		"""
 		:param devices: Devices dependency injection
 		:param message: Message to show to the user; keep it <= 20 characters long
-		:param dismiss_text: Widget text for dismissing the modal; gets prepended with a right arrow
-		:param before_wait_loop: Do this just before waiting for input
 		:param auto_dismiss_after_seconds: 0 to keep the modal open indefinitely or > 0 to automatically dismiss the
-		modal if it wasn't manually dismissed by the user by this many seconds
+		modal if it wasn't manually dismissed by the user by this many seconds.
+		because this method won't block.
 		"""
-		super().__init__(devices = devices, allow_cancel = False, before_wait_loop = before_wait_loop)
+
+		super().__init__(devices = devices, allow_cancel = False, save_text = save_text)
 
 		self.auto_dismiss_after_seconds = auto_dismiss_after_seconds
 		self.message = message
-		self.dismiss_text = dismiss_text
 
-	def render_and_wait(self) -> bool:
+	def render(self) -> UIComponent:
 		"""
-		Shows the modal and waits until it is dismissed or times out.
+		Shows the modal and waits until it is dismissed or times out, or if dismiss_text was None, then doesn't block.
 
 		:return: True if the user explicitly dismissed the modal or False if it just timed out through inaction
 		"""
 
-		super().render_and_wait()
-
+		super().render()
 		self.devices.lcd.write_centered(self.message)
+		return self
 
-		self.render_save(message = self.dismiss_text)
-
-		if self.before_wait_loop is not None:
-			self.before_wait_loop()
-
+	def wait(self) -> bool:
 		class ModalDialogExpiredException(Exception):
 			pass
 
@@ -120,7 +138,7 @@ class Modal(UIComponent):
 			def __init__(self, auto_dismiss_after_seconds: int):
 				super().__init__(auto_dismiss_after_seconds, self.dismiss_dialog)
 
-			def dismiss_dialog(self, _: float):
+			def dismiss_dialog(self, _: float) -> None:
 				raise ModalDialogExpiredException()
 
 		extra_wait_tick_listeners = [] if self.auto_dismiss_after_seconds <= 0 else [AutoDismissWaitTickListener(self.auto_dismiss_after_seconds)]
@@ -134,15 +152,73 @@ class Modal(UIComponent):
 			except ModalDialogExpiredException:
 				return False
 
-			if button == RotaryEncoder.SELECT or button == RotaryEncoder.RIGHT:
+			if self.save_text is not None and (button == RotaryEncoder.SELECT or button == RotaryEncoder.RIGHT):
 				return True
+
+class NoisyBrightModal(Modal):
+	def __init__(self,
+				 devices: Devices,
+				 message: str,
+				 color: Optional[BacklightColor] = None,
+				 piezo_tone: Optional[str] = None,
+				 auto_dismiss_after_seconds: int = 0):
+		super().__init__(
+			devices = devices,
+			message = message,
+			auto_dismiss_after_seconds = auto_dismiss_after_seconds
+		)
+
+		self.color = color
+		self.piezo_tone = piezo_tone
+
+	def render(self) -> UIComponent:
+		super().render()
+		if self.color is not None:
+			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
+		return self
+
+	def wait(self) -> bool:
+		if self.color is not None:
+			self.devices.lcd.backlight.set_color(self.color)
+		if self.piezo_tone is not None:
+			self.devices.piezo.tone(self.piezo_tone)
+
+		response = super().wait()
+
+		if self.color is not None:
+			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
+
+		return response
+
+class SuccessModal(NoisyBrightModal):
+	def __init__(self,
+				 devices: Devices,
+				 message: str = "Saved!"):
+		super().__init__(
+			devices = devices,
+			message = message,
+			auto_dismiss_after_seconds = 2,
+			color = BacklightColors.SUCCESS,
+			piezo_tone = "success"
+		)
+
+class ErrorModal(NoisyBrightModal):
+	def __init__(self,
+				 devices: Devices,
+				 message: str = "Saved!"):
+		super().__init__(
+			devices = devices,
+			message = message,
+			color = BacklightColors.ERROR,
+			piezo_tone = "error"
+		)
 
 class ProgressBar(UIComponent):
 	"""
 	Renders a full screen progress bar that can't be canceled.
 	"""
 
-	def __init__(self, devices: Devices, count: int, message: str):
+	def __init__(self, devices: Devices, count: int, message: str, header: Optional[str] = None):
 		"""
 		:param devices: Devices dependency injection
 		:param count: Number of items that will be iterated over
@@ -152,7 +228,8 @@ class ProgressBar(UIComponent):
 
 		super().__init__(
 			devices = devices,
-			allow_cancel = False
+			allow_cancel = False,
+			header = header
 		)
 
 		self.count = count
@@ -197,18 +274,18 @@ class ProgressBar(UIComponent):
 			extra_blocks = block_count - self.last_block_count
 			self.devices.lcd.write(self.devices.lcd[LCD.BLOCK] * extra_blocks, (self.last_block_count - 1, 2))
 
-	def render_and_wait(self) -> None:
+	def render(self) -> UIComponent:
 		"""
-		Renders the progress bar. Unlike most other implementations of this method, this DOESN'T block for user input
-		because you'll need to call set_index() repeatedly as progress is made.
+		Renders the progress bar in its initial state. Use set_index() to update it.
 		"""
 
-		super().render_and_wait()
+		super().render()
 
 		self.devices.lcd.write_centered(self.message)
 		self.devices.lcd.write_right_aligned("/" + str(self.count), 2)
-
 		self.render_progress()
+
+		return self
 
 class ActiveTimer(UIComponent):
 	"""
@@ -221,7 +298,8 @@ class ActiveTimer(UIComponent):
 		cancel_text: str = None,
 		periodic_chime: PeriodicChime = None,
 		start_at: float = 0,
-		before_wait_loop: Optional[Callable[[], None]] = None
+		header: Optional[str] = None,
+		save_text: Optional[str] = "Save"
 	):
 		"""
 		:param devices: Devices dependency injection
@@ -229,8 +307,6 @@ class ActiveTimer(UIComponent):
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
 		:param periodic_chime: Logic for how often to chime, or None for never
 		:param start_at: Starting time in seconds of the timer, or 0 to start fresh
-		:param before_wait_loop: Function to call just before entering the blocking loop waiting for user input but
-		after the UI is rendered
 		"""
 
 		super().__init__(
@@ -238,23 +314,15 @@ class ActiveTimer(UIComponent):
 			allow_cancel = allow_cancel,
 			cancel_text = cancel_text,
 			cancel_align = UIComponent.LEFT,
-			before_wait_loop = before_wait_loop
+			header = header,
+			save_text = save_text
 		)
 		self.start = None
 		self.periodic_chime = periodic_chime
 		self.start_at = start_at
+		self.save_text = save_text
 
-	def render_and_wait(self) -> Optional[bool]:
-		"""
-		Renders the timer and starts it counting up.
-
-		:return: True if the user stopped the timer by saving it or None if it was canceled
-		"""
-
-		super().render_and_wait()
-
-		self.render_save()
-
+	def wait(self) -> Optional[bool]:
 		self.start = time.monotonic()
 		if self.periodic_chime is not None:
 			self.periodic_chime.start()
@@ -294,9 +362,6 @@ class ActiveTimer(UIComponent):
 			periodic_chime = self.periodic_chime
 		)
 
-		if self.before_wait_loop is not None:
-			self.before_wait_loop()
-
 		while True:
 			button = self.devices.rotary_encoder.wait(
 				listen_for_rotation = False,
@@ -320,9 +385,9 @@ class NumericSelector(UIComponent):
 		maximum: float = None,
 		allow_cancel: bool = True,
 		cancel_text: str = None,
-		row: int = 2,
 		format_str: str = "%d",
-		before_wait_loop: Optional[Callable[[], None]] = None
+		header: Optional[str] = None,
+		save_text: Optional[str] = "Save"
 	):
 		"""
 		:param devices: Devices dependency injection
@@ -332,15 +397,17 @@ class NumericSelector(UIComponent):
 		:param maximum: Maximum allowed value or None for no upper bound
 		:param allow_cancel: True if this can be dismissed, False if not
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
-		:param row: y coordinate to render the input
 		:param format_str: Python format string to render the value
-		:param before_wait_loop: Function to call just before entering the blocking loop waiting for user input but
-		after the UI is rendered
 		"""
 
-		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text, before_wait_loop = before_wait_loop)
+		super().__init__(
+			devices = devices,
+			allow_cancel = allow_cancel,
+			cancel_text = cancel_text,
+			header = header,
+			save_text = save_text
+		)
 
-		assert(0 <= row < LCD.LINES)
 		assert(minimum is None or isinstance(minimum, (int, float)))
 		assert(maximum is None or isinstance(maximum, (int, float)))
 		assert(isinstance(step, (int, float)))
@@ -364,24 +431,22 @@ class NumericSelector(UIComponent):
 		self.range = (minimum, maximum)
 		self.step = step
 		self.selected_value = value
-		self.row = row
 		self.format_str = format_str
+		self.row = 1 if self.header else 0
 
-	def render_and_wait(self) -> Optional[float]:
+	def render(self) -> UIComponent:
 		"""
 		Renders the UI and waits for the user to input the numeric value or cancel the input.
 
 		:return: Entered numeric value or None if canceled
 		"""
 
-		super().render_and_wait()
-		super().render_save(1)
-
+		super().render()
 		self.devices.lcd.write(self.devices.lcd[LCD.UP_DOWN], (0, self.row))
 
-		if self.before_wait_loop is not None:
-			self.before_wait_loop()
+		return self
 
+	def wait(self) -> Optional[float]:
 		last_value = None
 		while True:
 			if last_value != self.selected_value:
@@ -419,32 +484,41 @@ class VerticalMenu(UIComponent):
 	Shows a list of menu items and allows the user to select one.
 	"""
 
-	ANCHOR_TOP = 0
-	ANCHOR_BOTTOM = 1
-
 	def __init__(self,
 				 devices: Devices,
 				 options: list[str],
 				 allow_cancel: bool = True,
+				 cancel_align: int = None,
 				 cancel_text: str = None,
-				 anchor: int = ANCHOR_BOTTOM,
-				 before_wait_loop: Optional[Callable[[], None]] = None):
+				 header: Optional[str] = None,
+				 save_text: Optional[str] = "Save"):
 		"""
 		:param devices: Devices dependency injection
 		:param options: List of values to present to the user; do not exceed 4 because the list doesn't scroll by design
 		:param allow_cancel: True if this can be dismissed, False if not
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
-		:param anchor: y anchor: either VerticalMenu.ANCHOR_TOP for top of the LCD or VerticalMenu.ANCHOR_BOTTOM for the
-		bottom
-		:param before_wait_loop: Function to call just before entering the blocking loop waiting for user input but
-		after the UI is rendered
 		"""
 
-		super().__init__(devices = devices, allow_cancel = allow_cancel, cancel_text = cancel_text, before_wait_loop = before_wait_loop)
+		if len(options) <= 0:
+			raise ValueError("No options provided")
+		if len(options) > LCD.LINES:
+			raise ValueError(f"{len(options)} options provided but must be <= {LCD.LINES}")
+		if len(options) == LCD.LINES:
+			header = None # header won't fit because menu takes up the entire screen
+		if len(options) >= LCD.LINES - 1:
+			cancel_align = UIComponent.RIGHT
+
+		super().__init__(
+			devices = devices,
+			allow_cancel = allow_cancel,
+			cancel_text = cancel_text,
+			cancel_align = cancel_align,
+			header = header,
+			save_text = save_text
+		)
 
 		self.options = options
 		self.selected_row_index = None
-		self.anchor = anchor
 
 	def index_to_row(self, i: int) -> int:
 		"""
@@ -455,8 +529,8 @@ class VerticalMenu(UIComponent):
 		"""
 
 		row = i
-		if self.anchor == VerticalMenu.ANCHOR_BOTTOM:
-			row += LCD.LINES - len(self.options)
+		if self.header is not None:
+			row += 1
 
 		return row
 
@@ -512,14 +586,14 @@ class VerticalMenu(UIComponent):
 		"""
 		return name
 
-	def render_and_wait(self) -> Optional[int]:
+	def render(self) -> UIComponent:
 		"""
 		Shows the menu to the user and waits for them to select an item.
 
 		:return: Index of selected item or None if canceled
 		"""
 
-		super().render_and_wait()
+		super().render()
 
 		i = 0
 		for value in self.options:
@@ -529,12 +603,11 @@ class VerticalMenu(UIComponent):
 			i += 1
 
 		self.move_arrow(0)
-
 		self.init_extra_ui()
 
-		if self.before_wait_loop is not None:
-			self.before_wait_loop()
+		return self
 
+	def wait(self) -> Optional[int]:
 		while True:
 			button = self.devices.rotary_encoder.wait()
 			if not self.move_selection(button):
@@ -605,28 +678,24 @@ class VerticalCheckboxes(VerticalMenu):
 		options: list[str],
 		initial_states: list[bool],
 		allow_cancel: bool = True,
+		cancel_align: Optional[int] = None,
 		cancel_text: str = None,
-		anchor: int = 1,
-		before_wait_loop: Optional[Callable[[], None]] = None
+		header: Optional[str] = None
 	):
 		"""
 		:param devices: Devices dependency injection
 		:param options: List of values to present to the user; do not exceed 4 because the list doesn't scroll by design
 		:param allow_cancel: True if this can be dismissed, False if not
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
-		:param anchor: y anchor: either VerticalMenu.ANCHOR_TOP for top of the LCD or VerticalMenu.ANCHOR_BOTTOM for the
-		bottom
-		:param before_wait_loop: Function to call just before entering the blocking loop waiting for user input but
-		after the UI is rendered
 		"""
 
 		super().__init__(
 			devices = devices,
 			options = options,
 			allow_cancel = allow_cancel,
+			cancel_align = cancel_align,
 			cancel_text = cancel_text,
-			anchor = anchor,
-			before_wait_loop = before_wait_loop
+			header = header
 		)
 
 		assert(len(options) == len(initial_states))
@@ -667,12 +736,6 @@ class VerticalCheckboxes(VerticalMenu):
 		"""
 		return self.states
 
-	def init_extra_ui(self) -> None:
-		"""
-		Renders a Save widget above the Cancel widget, if one exists.
-		"""
-		self.render_save(y_delta = 1 if self.allow_cancel else 0)
-
 	def format_menu_item(self, index: int, name: str) -> str:
 		"""
 		Overridden to render the checkbox.
@@ -683,65 +746,6 @@ class VerticalCheckboxes(VerticalMenu):
 		"""
 		return self.get_checkbox_char(index) + name
 
-	def render_and_wait(self) -> list[bool]:
-		"""
-		Renders the list of options and waits for selections to be made and then saved.
-
-		:return: The state of each option or None if the input was canceled
-		"""
-		response = super().render_and_wait()
+	def wait(self) -> list[bool]:
+		response = super().wait()
 		return None if response is None else self.states
-
-class BooleanPrompt(VerticalMenu):
-	"""
-	A boolean user input, like "Yes"/"No".
-	"""
-
-	def __init__(
-		self,
-		devices: Devices,
-		allow_cancel: bool = True,
-		cancel_text: str = None,
-		anchor: int = VerticalMenu.ANCHOR_BOTTOM,
-		yes_text: str = "Yes",
-		no_text: str = "No",
-		before_wait_loop: Optional[Callable[[], None]] = None
-	):
-		"""
-		:param devices: Devices dependency injection
-		:param yes_text: The text that indicates True
-		:param no_text: The text that indicates False
-		:param allow_cancel: True if this can be dismissed, False if not
-		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
-		:param anchor: y anchor: either VerticalMenu.ANCHOR_TOP for top of the LCD or VerticalMenu.ANCHOR_BOTTOM for the
-		bottom
-		:param before_wait_loop: Function to call just before entering the blocking loop waiting for user input but
-		after the UI is rendered
-		"""
-
-		if cancel_text is not None:
-			print("cancel_text is not supported for boolean prompts; it will be ignored")
-
-		super().__init__(
-			devices = devices,
-			options = [yes_text, no_text],
-			allow_cancel = allow_cancel,
-			cancel_text = None,
-			anchor = anchor,
-			before_wait_loop = before_wait_loop
-		)
-
-	def render_and_wait(self) -> Optional[bool]:
-		"""
-		Shows the boolean input and waits for a response.
-
-		:return: True if the True option was selected, False for False, or None if canceled.
-		"""
-		selected_index = super().render_and_wait()
-
-		if selected_index == 0:
-			return True
-		elif selected_index == 1:
-			return False
-		else:
-			return None
