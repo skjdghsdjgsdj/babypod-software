@@ -92,9 +92,11 @@ class ExternalRTC:
 
         now = self.device.datetime
         if now.tm_year < 2024 or now.tm_year > 2050:
+            print(f"RTC date/time is implausible because year is {now.tm_year}")
             return None
 
         if self.offline_state.rtc_utc_offset is None:
+            print("UTC offset not stored in offline set; RTC must be set")
             return None
 
         # noinspection PyUnresolvedReferences
