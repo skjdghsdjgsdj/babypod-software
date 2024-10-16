@@ -5,6 +5,10 @@ import time
 from nvram import NVRAMValues
 
 class Piezo:
+	"""
+	Abstraction of the piezo.
+	"""
+
 	TONES = {
 		"startup": [
 			[440, 0.1],
@@ -63,6 +67,14 @@ class Piezo:
 
 	@staticmethod
 	def tone(name: str, pin = board.A3) -> None:
+		"""
+		Play something on the piezo. Note that this method blocks as the piezo plays, so if a given tone takes, say, 5
+		seconds to play, this method blocks for the entire 5 seconds.
+
+		:param name: Tone/melody/chime/etc. to play; use a string from the keys in Piezo.TONES, like "success"
+		:param pin: PWM pin to which the piezo is connected
+		"""
+
 		if NVRAMValues.PIEZO.get():
 			data = Piezo.TONES[name]
 			for i in range(0, len(data)):
