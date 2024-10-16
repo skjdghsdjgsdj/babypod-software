@@ -97,8 +97,9 @@ class Flow:
 	def on_reset_requested(self) -> None:
 		ErrorModal(
 			devices = self.devices,
-			message = "Resetting"
-		).render() # but not wait
+			message = "Resetting",
+			auto_dismiss_after_seconds = 2
+		).render().wait()
 		microcontroller.reset()
 
 	def on_backlight_dim_idle(self, _: float) -> None:

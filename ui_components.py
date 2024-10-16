@@ -236,12 +236,14 @@ class SuccessModal(NoisyBrightModal):
 class ErrorModal(NoisyBrightModal):
 	def __init__(self,
 				 devices: Devices,
-				 message: str = "Error!"):
+				 message: str = "Error!",
+				 auto_dismiss_after_seconds: int = 0):
 		super().__init__(
 			devices = devices,
 			message = message,
 			color = BacklightColors.ERROR,
-			piezo_tone = "error"
+			piezo_tone = "error",
+			auto_dismiss_after_seconds = auto_dismiss_after_seconds
 		)
 
 class ProgressBar(UIComponent):
