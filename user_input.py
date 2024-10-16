@@ -182,7 +182,7 @@ class RotaryEncoder:
 					for listener in self.on_shutdown_requested_listeners:
 						listener.on_shutdown_requested()
 					raise RuntimeError("No listeners initiated shutdown!")
-				elif button.pin == RotaryEncoder.DOWN and len(self.on_shutdown_requested_listeners) > 0:
+				elif button.pin == RotaryEncoder.DOWN and len(self.on_reset_requested_listeners) > 0:
 					try:
 						for listener in self.on_reset_requested_listeners:
 							listener.on_reset_requested()
