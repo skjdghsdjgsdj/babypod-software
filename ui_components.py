@@ -205,7 +205,7 @@ class SuccessModal(NoisyBrightModal):
 class ErrorModal(NoisyBrightModal):
 	def __init__(self,
 				 devices: Devices,
-				 message: str = "Saved!"):
+				 message: str = "Error!"):
 		super().__init__(
 			devices = devices,
 			message = message,
