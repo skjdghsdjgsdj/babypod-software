@@ -42,7 +42,7 @@ class ExternalRTC:
         if not self.offline_state:
             raise RuntimeError("Must set offline_state before syncing")
 
-        print("Updating RTC from Adafruit IO")
+        print("Updating RTC...", end = "")
 
         username = os.getenv("ADAFRUIT_AIO_USERNAME")
         api_key = os.getenv("ADAFRUIT_AIO_KEY")
@@ -58,11 +58,6 @@ class ExternalRTC:
         while self.offline_state.rtc_utc_offset <= -24:
             self.offline_state.rtc_utc_offset += 24
 
-        print(f"adafruit.io said: \"{response.text}\"")
-        print(f"Resulting date/time: {now}")
-        print(f"UTC offset: {self.offline_state.rtc_utc_offset}")
-
-        print(f"Setting RTC to {now}")
         self.device.datetime = struct_time((
             now.year,
             now.month,
@@ -78,7 +73,7 @@ class ExternalRTC:
         self.offline_state.last_rtc_set = now
         self.offline_state.to_sdcard()
 
-        print(f"RTC now set to: {self.device.datetime} UTC offset {self.offline_state.rtc_utc_offset}")
+        print(f"set to {self.device.datetime}, UTC offset {self.offline_state.rtc_utc_offset}")
 
     def now(self) -> Optional[datetime]:
         """

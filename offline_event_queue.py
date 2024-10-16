@@ -46,9 +46,8 @@ class OfflineEventQueue:
 
 		try:
 			os.stat(self.json_path)
-			print(f"Resuming offline event queue at {self.json_path}")
 		except OSError:
-			print(f"No offline event queue exists yet at {self.json_path}, creating one")
+			print(f"Creating new offline event queue at {self.json_path}")
 			os.mkdir(self.json_path)
 
 	def get_json_files(self) -> List[str]:

@@ -179,7 +179,6 @@ class RotaryEncoder:
 			was_pressed, hold_time = button.was_pressed()
 			if hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
 				if button.pin == RotaryEncoder.SELECT and len(self.on_shutdown_requested_listeners) > 0:
-					print("Informing listeners of shutdown request")
 					for listener in self.on_shutdown_requested_listeners:
 						listener.on_shutdown_requested()
 					raise RuntimeError("No listeners initiated shutdown!")

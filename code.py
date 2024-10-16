@@ -23,11 +23,6 @@ try:
 	from busio import I2C
 	i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
-	power_control_status = "enabled" if use_soft_power_control else "disabled"
-	print(f"Soft power control is {power_control_status}")
-	if just_refresh_shutdown_screen:
-		print("Woke up just to refresh battery display")
-
 	# set up piezo, but only play the sound if this is a normal startup
 	piezo = None
 	if not just_refresh_shutdown_screen:

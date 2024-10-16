@@ -49,9 +49,8 @@ class OfflineState:
             pass
 
         if exists:
-            print("Reloading serialized state")
             with open(path, "r") as file:
-                print(f"Loading offline state from {path}:")
+                print(f"Loading offline state from {path}...", end = "")
                 serialized = json.load(file)
                 print(serialized)
 
@@ -87,9 +86,6 @@ class OfflineState:
             "last_motd_check": self.last_motd_check.isoformat() if self.last_motd_check else None,
             "rtc_utc_offset": self.rtc_utc_offset,
         }
-
-        print("Persisting serialized state to SD card:")
-        print(serialized)
 
         with open(self.sdcard.get_absolute_path("state.json"), "w") as file:
             json.dump(serialized, file)
