@@ -12,7 +12,17 @@ except:
     pass
 
 class OfflineState:
+    """
+    Stores some state information in a JSON file for offline use. This is separate from the OfflineEventQueue which
+    stores a list of serialized APIRequest instances to be replayed in sequence once back online.
+
+    Use get_instance() to get a fully initialized instance, not the constructor.
+    """
+
     def __init__(self, sdcard: SDCard):
+        """
+        :param sdcard: Where to save the state
+        """
         self.last_feeding: Optional[datetime] = None
         self.last_feeding_method: Optional[str] = None
         self.last_rtc_set: Optional[datetime] = None
@@ -22,6 +32,13 @@ class OfflineState:
 
     @staticmethod
     def from_sdcard(sdcard: SDCard):
+        """
+        Gets offline state as stored on the SD card. If one doesn't exist on the SD card, it is created.
+
+        :param sdcard: Where to save the state
+        :return: Fully initialized instance of OfflineState
+        """
+
         state = OfflineState(sdcard)
         path = sdcard.get_absolute_path("state.json")
         exists = False
@@ -59,6 +76,10 @@ class OfflineState:
         return state
 
     def to_sdcard(self) -> None:
+        """
+        Stores offline state back to the SD card.
+        """
+
         serialized = {
             "last_feeding": self.last_feeding.isoformat() if self.last_feeding else None,
             "last_feeding_method": self.last_feeding_method,
