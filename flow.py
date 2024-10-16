@@ -40,7 +40,7 @@ class Flow:
 
 		if self.devices.power_control is not None:
 			self.devices.rotary_encoder.on_shutdown_requested_listeners.append(ShutdownRequestListener(
-				on_shutdown_requested = self.on_shutdown_requested
+				on_shutdown_requested = lambda: self.devices.power_control.shutdown()
 			))
 
 		self.devices.rotary_encoder.on_reset_requested_listeners.append(ResetRequestListener(
@@ -87,12 +87,6 @@ class Flow:
 
 		self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
 		self.device_name = os.getenv("DEVICE_NAME") or "BabyPod"
-
-		self.is_shutting_down = False
-
-	def on_shutdown_requested(self) -> None:
-		self.is_shutting_down = True
-		self.devices.power_control.shutdown()
 
 	def on_reset_requested(self) -> None:
 		ErrorModal(
