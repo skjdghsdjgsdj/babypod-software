@@ -62,7 +62,7 @@ class Flow:
 				name = "Idle warning"
 			),
 			WaitTickListener(
-				on_tick = self.on_idle,
+				on_tick = lambda _: self.render_battery_percent(only_if_changed = True),
 				seconds = 30,
 				recurring = True,
 				name = "On idle tick"
@@ -107,9 +107,6 @@ class Flow:
 		if not self.suppress_dim_timeout:
 			print("Dimming backlight due to inactivity")
 			self.devices.lcd.backlight.set_color(BacklightColors.DIM)
-
-	def on_idle(self, _: float) -> None:
-		self.render_battery_percent(only_if_changed = True)
 
 	def idle_warning(self, _: float) -> None:
 		if not self.suppress_idle_warning:
