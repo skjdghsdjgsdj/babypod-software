@@ -14,14 +14,28 @@ except:
     # ignore, just for IDE's sake, not supported on board
 
 class Devices:
+    """
+    Dependency injection object for containing various hardware devices instead of passing them all around
+    individually.
+    """
+
     def __init__(self,
                  rotary_encoder: RotaryEncoder,
                  piezo: Piezo,
                  lcd: LCD,
-                 battery_monitor: BatteryMonitor,
+                 battery_monitor: Optional[BatteryMonitor],
                  sdcard: Optional[SDCard],
                  rtc: Optional[ExternalRTC],
-                 power_control: PowerControl):
+                 power_control: Optional[PowerControl]):
+        """
+        :param rotary_encoder: Rotary encoder instance
+        :param piezo: Piezo instance
+        :param lcd: LCD instance
+        :param battery_monitor: Battery monitor instance, or None if no hardware is available
+        :param sdcard: SD card instance, or None if no hardware is available
+        :param rtc: RTC instance, or None if no hardware is available
+        :param power_control: Power control instance, or None if this device doesn't have soft power control
+        """
         self.rotary_encoder = rotary_encoder
         self.piezo = piezo
         self.lcd = lcd
