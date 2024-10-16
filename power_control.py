@@ -19,6 +19,11 @@ except:
 	pass
 
 class PowerControl:
+	"""
+	Soft power control to enter to and exit from deep sleep. Note the I2C bus stays powered so the rotary encoder can
+	still generate interrupts to exit deep sleep.
+	"""
+
 	def __init__(self,
 		piezo: Piezo,
 		lcd: LCD,
@@ -27,6 +32,15 @@ class PowerControl:
 		interrupt_pin: microcontroller.Pin = board.D11,
 		seesaw_pin: int = 1
 	 ):
+		"""
+		:param piezo: Piezo for playing shutdown sound
+		:param lcd: LCD for writing shutdown messages
+		:param encoder: Rotary encoder to use for waking up
+		:param battery_monitor: Battery monitor to use for checking charging state
+		:param interrupt_pin: Interrupt pin to which the rotary encoder's INT is wired
+		:param seesaw_pin: Virtual pin on the rotary encoder to use for generating interrupts; 1 is the center button
+		"""
+
 		self.encoder = encoder
 		self.lcd = lcd
 		self.interrupt_pin = interrupt_pin
@@ -35,6 +49,11 @@ class PowerControl:
 		self.battery_monitor = battery_monitor
 
 	def init_center_button_interrupt(self) -> None:
+		"""
+		Sets up the rotary encoder to generate interrupts and clears any existing ones so the next one can exit from
+		deep sleep.
+		"""
+
 		# set up the interrupt which is connected to D11
 		mask = 1 << self.seesaw_pin
 
@@ -47,6 +66,11 @@ class PowerControl:
 		print("Cleared encoder read queue")
 
 	def lcd_shutdown(self) -> None:
+		"""
+		Clears the LCD, turns off its backlight, and renders just the battery percent and a message for the power
+		button.
+		"""
+
 		self.lcd.backlight.off()
 		self.lcd.clear()
 		self.lcd.write_bottom_left_aligned(self.lcd[LCD.CENTER] + " Power")
@@ -63,6 +87,18 @@ class PowerControl:
 				time.sleep(0.2)
 
 	def enter_deep_sleep(self) -> None:
+		"""
+		Enters deep sleep immediately. The wake alarms are:
+
+		* A time alarm if the battery charge state is known: 60 seconds if charging, or
+		  NVRAMValues.SOFT_SHUTDOWN_BATTERY_REFRESH_INTERVAL if not or unknown.
+		* A pin alarm so the rotary encoder, center button by default, triggers the hardwired interrupt pin
+
+		I2C power is preserved so the rotary encoder can generate interrupts. The watchdog is disabled too.
+
+		Given this method enters deep sleep, it never returns.
+		"""
+
 		# wake up every few minutes to refresh the battery display, assuming there's a battery monitor
 		time_alarm = None
 		if self.battery_monitor is not None:
@@ -100,6 +136,16 @@ class PowerControl:
 		raise RuntimeError("Deep sleep failed")
 
 	def shutdown(self, silent: bool = False) -> None:
+		"""
+		Soft shutdown the BabyPod: play the shutdown sound, show a "Powering off" message, and then enter deep sleep.
+		There is a brief delay from calling this method to actually entering deep sleep so, if the rotary encoder
+		button is still being held, it doesn't immediately wake up again.
+
+		Because this ultimately calls enter_deep_sleep(), it never returns.
+
+		:param silent: True to just enter deep sleep immediately with no warning message or piezo sounds
+		"""
+
 		if not silent:
 			self.piezo.tone("shutdown")
 			self.lcd.clear()
