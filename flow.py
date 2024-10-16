@@ -60,7 +60,7 @@ class Flow:
 				name = "Idle warning"
 			),
 			WaitTickListener(
-				on_tick = lambda _: self.render_battery_percent(only_if_changed = True),
+				on_tick = lambda _: UIComponent.refresh_battery_percent(devices = self.devices, only_if_changed = True),
 				seconds = 30,
 				recurring = True,
 				name = "On idle tick"
@@ -95,10 +95,10 @@ class Flow:
 		self.devices.power_control.shutdown()
 
 	def on_reset_requested(self) -> None:
-		self.devices.piezo.tone("error")
-		self.devices.lcd.clear()
-		self.devices.lcd.backlight.set_color(BacklightColors.ERROR)
-		self.devices.lcd.write_centered("Reset!")
+		ErrorModal(
+			devices = self.devices,
+			message = "Resetting"
+		).render() # but not wait
 		microcontroller.reset()
 
 	def on_backlight_dim_idle(self, _: float) -> None:
@@ -228,11 +228,9 @@ class Flow:
 					print(f"Getting MOTD failed: {e}")
 
 	def device_startup(self) -> None:
-		self.devices.lcd.clear()
 		self.auto_connect()
 		self.init_rtc()
 		self.init_battery()
-		self.devices.lcd.clear()
 
 	def init_child_id(self) -> None:
 		child_id = NVRAMValues.CHILD_ID.get()
@@ -245,7 +243,6 @@ class Flow:
 				print("Child discovery failed so just guessing ID 1")
 				child_id = 1
 			NVRAMValues.CHILD_ID.write(child_id)
-			self.devices.lcd.clear()
 		self.child_id = child_id
 
 	def loop(self) -> None:
@@ -310,36 +307,7 @@ class Flow:
 		elif "ETIMEDOUT" in str(e):
 				message = "Request timeout!"
 
-		ErrorModal(devices = self.devices, message = message).render().wait()\
-
-	def render_battery_percent(self, only_if_changed: bool = False) -> None:
-		if self.devices.battery_monitor is None:
-			return
-
-		last_percent = self.devices.battery_monitor.last_percent
-
-		try:
-			percent = self.devices.battery_monitor.get_percent()
-		except Exception as e:
-			traceback.print_exception(e)
-			return
-
-		if last_percent is None and percent is None:
-			return
-
-		message = Util.format_battery_percent(percent)
-
-		if not only_if_changed or last_percent != percent:
-			if last_percent is not None and percent < last_percent:
-				current_len = len(message)
-				last_len = len(Util.format_battery_percent(last_percent))
-				char_count_difference = last_len - current_len
-
-				if char_count_difference > 0:
-					self.devices.lcd.write(" " * char_count_difference, (LCD.COLUMNS - last_len, 0))
-
-			message = Util.format_battery_percent(percent)
-			self.devices.lcd.write(message, (LCD.COLUMNS - len(message), 0))
+		ErrorModal(devices = self.devices, message = message).render().wait()
 
 	def render_success_splash(self, message: str = "Saved!", is_stopped_timer: bool = False) -> None:
 		SuccessModal(devices = self.devices, message = message).render().wait()

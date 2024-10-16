@@ -79,6 +79,37 @@ class UIComponent:
 	def wait(self):
 		raise RuntimeError(f"UIComponents of type {type(self).__name__} are non-blocking")
 
+	@staticmethod
+	def refresh_battery_percent(devices: Devices, only_if_changed: bool = False) -> None:
+		if devices.battery_monitor is None:
+			return
+
+		last_percent = devices.battery_monitor.last_percent
+
+		try:
+			percent = devices.battery_monitor.get_percent()
+		except Exception as e:
+			import traceback
+			traceback.print_exception(e)
+			return
+
+		if last_percent is None and percent is None:
+			return
+
+		message = Util.format_battery_percent(percent)
+
+		if not only_if_changed or last_percent != percent:
+			if last_percent is not None and percent < last_percent:
+				current_len = len(message)
+				last_len = len(Util.format_battery_percent(last_percent))
+				char_count_difference = last_len - current_len
+
+				if char_count_difference > 0:
+					devices.lcd.write(" " * char_count_difference, (LCD.COLUMNS - last_len, 0))
+
+			message = Util.format_battery_percent(percent)
+			devices.lcd.write(message, (LCD.COLUMNS - len(message), 0))
+
 class StatusMessage(UIComponent):
 	"""
 	Renders a message in full screen with no controls and without blocking.
