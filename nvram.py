@@ -1,7 +1,18 @@
 import microcontroller
 
 class NVRAMValue:
+    """
+    Wraps a native Python type with a value that can be stored in NVRAM. Abstract class; construct a child class to use
+    this.
+    """
+
     def __init__(self, index: int, default = None, name: str = None):
+        """
+        :param index: Index in NVRAM that will hold the data. Must be unique across NVRAMValue instances.
+        :param default: Default value if one isn't defined in NVRAM
+        :param name: Name of this value; only used for debug output
+        """
+
         self.index = index
         self.default = default
         self.value = default
@@ -9,12 +20,37 @@ class NVRAMValue:
         self.name = name
 
     def nvram_to_native(self, nvram_value: int):
+        """
+        Gets a native Python value of what's stored in NVRAM as the given NVRAM byte. Abstract method; must be
+        overridden by child classes.
+
+        :param nvram_value: NVRAM byte
+        :return: Native Python value of what's stored as this NVRAM byte
+        """
+
         raise NotImplementedError()
 
     def native_to_nvram(self, native_value) -> int:
+        """
+        Gets an NVRAM byte used to store the given native Python value. Abstract method; must be overridden by child
+        classes.
+
+        Avoid using 0x0 for native values as that's treated effectively as "nothing was set".
+
+        :param native_value: Python native value to store in NVRAM
+        :return: NVRAM byte version of native_value
+        """
+
         raise NotImplementedError()
 
     def get(self):
+        """
+        Gets the current value from NVRAM. If this object was previously read successfully and not written since last
+        read by this same object, returns a memoized value instead of querying NVRAM directly again.
+
+        :return: Native Python value of what's stored in NVRAM
+        """
+
         value = self.value
         if not self.has_read:
             value = self.read()
@@ -22,6 +58,13 @@ class NVRAMValue:
         return value
 
     def read(self):
+        """
+        Reads the current value from NVRAM and returns it as a native Python value. Unlike get(), this will ALWAYS
+        read NVRAM; you probably want to use get() instead.
+
+        :return: Native Python value of what's in NVRAM.
+        """
+
         nvram_value = microcontroller.nvm[self.index]
         self.value = self.default
         if nvram_value != 0x0:
@@ -32,6 +75,14 @@ class NVRAMValue:
         return self.value
 
     def write(self, native_value: int, only_if_changed: bool = True) -> None:
+        """
+        Stores a value in NVRAM.
+
+        :param native_value: Python native value to store
+        :param only_if_changed: True to only write to NVRAM if the value passed differs from the last value read, or
+        False to write regardless.
+        """
+
         if not only_if_changed or native_value != self.value:
             self.value = native_value
             nvram_value = self.native_to_nvram(self.value)
@@ -40,9 +91,19 @@ class NVRAMValue:
             print(f"Wrote {self}")
 
     def reset_to_default(self) -> None:
+        """
+        Resets the value stored in NVRAM to the default value.
+        """
+
         self.write(self.default)
 
     def __str__(self) -> str:
+        """
+        Convenience method for debug printing NVRAMValues.
+
+        :return: Like "NVRAM SOME_NAME -> 3"
+        """
+
         if self.name is not None:
             value = f"NVRAM {self.name}"
         else:
@@ -53,6 +114,12 @@ class NVRAMValue:
         return value
 
 class NVRAMBooleanValue(NVRAMValue):
+    """
+    NVRAMValue that wraps a Python boolean. The NVRAM byte is 0xFF for True, 0xF0 for false. 0x0 is avoided because
+    that's meant to be "nothing was set." In instances where the value in NVRAM is not 0xFF nor 0xF0, then the default
+    is used.
+    """
+
     def __init__(self, index: int, default: bool = None, name: str = None):
         super().__init__(index, default, name)
 
@@ -75,9 +142,19 @@ class NVRAMBooleanValue(NVRAMValue):
         return super().get()
 
     def __bool__(self) -> bool:
+        """
+        Typecasts this NVRAMValue as a native Python boolean.
+
+        :return: self.get(), literally
+        """
         return self.get()
 
 class NVRAMIntegerValue(NVRAMValue):
+    """
+    NVRAMValue that wraps a Python int. For native values, avoid using 0 as that would get stored as 0x0 and that's
+    ambiguous between "store a 0" vs. "nothing was set." Because the underlying data is only a single byte, the value
+    must be 0..255 and, I presume, unsigned.
+    """
     def __init__(self, index: int, default: int = None, name: str = None):
         super().__init__(index, default, name)
 
@@ -95,12 +172,22 @@ class NVRAMIntegerValue(NVRAMValue):
         return super().get()
 
     def __int__(self) -> int:
+        """
+        :return: self.get(), literally
+        """
         return self.get()
 
     def __float__(self) -> float:
+        """
+        :return: self.get() cast to a float
+        """
         return float(int(self))
 
 class NVRAMValues:
+    """
+    Enum-like class of NVRAMValue instances. If modifying this list, be very careful not to reuse indices.
+    """
+
     # True to play piezo sounds, False to not
     PIEZO = NVRAMBooleanValue(0, True, "PIEZO")
     # Baby Buddy child ID; 0 to autodiscover
