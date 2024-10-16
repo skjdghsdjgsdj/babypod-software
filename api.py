@@ -29,7 +29,7 @@ class ConnectionManager:
 	"""
 
 	requests: adafruit_requests.Session = None
-	timeout: int
+	timeout: float
 
 	@staticmethod
 	def connect() -> adafruit_requests.Session:
@@ -38,6 +38,8 @@ class ConnectionManager:
 		:return: A session object for making requests, or an existing one if already connected.
 		"""
 		if ConnectionManager.requests is None:
+			ConnectionManager.set_timeout()
+
 			ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
 			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
 
@@ -49,17 +51,14 @@ class ConnectionManager:
 			wifi.radio.hostname = f"babypod-{ConnectionManager.mac_id}"
 
 			try:
-				print(f"Connecting to {ssid}...")
+				print(f"Connecting to {ssid}, timeout {ConnectionManager.timeout}...", end = "")
 				wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = ConnectionManager.timeout)
-				print("Getting SSL context...")
 				ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
-				print("Getting socket pool...")
 				pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
-				print("Getting session...")
 				ConnectionManager.requests = adafruit_requests.Session(pool, ssl_context)
-				print(f"Connected: RSSI {wifi.radio.ap_info.rssi} on channel {wifi.radio.ap_info.channel}, tx power {wifi.radio.tx_power} dBm")
+				print(f"done, RSSI {wifi.radio.ap_info.rssi}, channel {wifi.radio.ap_info.channel}, tx power {wifi.radio.tx_power} dBm")
 			except ConnectionError as e:
-				print(f"Connection attempt failed: {e}")
+				print()
 				raise e
 
 		return ConnectionManager.requests
@@ -72,8 +71,12 @@ class ConnectionManager:
 		wifi.radio.enabled = False
 		ConnectionManager.requests = None
 
-timeout = os.getenv("CIRCUITPY_WIFI_TIMEOUT")
-ConnectionManager.timeout = 10 if (timeout is None or not timeout) else int(timeout)
+	@staticmethod
+	def set_timeout(timeout: Optional[int] = None):
+		if timeout is None:
+			timeout = os.getenv("CIRCUITPY_WIFI_TIMEOUT")
+
+		ConnectionManager.timeout = 10 if (timeout is None or not timeout) else int(timeout)
 
 class APIRequest:
 	"""
@@ -246,24 +249,29 @@ class APIRequest:
 		"""
 
 		full_url = self.build_full_url()
-		print(f"HTTP {self.get_verb()}: {full_url}")
+		print(f"HTTP {self.get_verb()}: {full_url}, timeout {ConnectionManager.timeout}", end = "")
 		if self.payload is not None:
-			print(f"Payload: {self.payload}")
+			print(f"; payload: {self.payload}", end = "")
+		print("...", end = "")
 
 		microcontroller.watchdog.feed()
 
 		start = time.monotonic()
-		response = self.get_connection_method()(
-			url = full_url,
-			json = self.payload,
-			headers = {
-				"Authorization": f"Token {APIRequest.API_KEY}"
-			},
-			timeout = ConnectionManager.timeout
-		)
-		end = time.monotonic()
-		self.validate_response(response)
-		print(f"Got HTTP {response.status_code}, took {end - start} sec")
+		try:
+			response = self.get_connection_method()(
+				url = full_url,
+				json = self.payload,
+				headers = {
+					"Authorization": f"Token {APIRequest.API_KEY}"
+				},
+				timeout = ConnectionManager.timeout
+			)
+			end = time.monotonic()
+			self.validate_response(response)
+		except Exception as e:
+			print("failed!")
+			raise e
+		print(f"{response.status_code}, {end - start} sec")
 
 		microcontroller.watchdog.feed()
 
