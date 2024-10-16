@@ -7,7 +7,7 @@ import microcontroller
 from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
 	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest, \
-	ConnectionManager, ConsumeMOTDAPIRequest
+	ConnectionManager, ConsumeMOTDAPIRequest, FeedingAPIRequest
 from offline_event_queue import OfflineEventQueue
 from devices import Devices
 from lcd import LCD, BacklightColors
@@ -28,60 +28,6 @@ except:
 	# ignore, just for IDE's sake, not supported on board
 
 class Flow:
-	FOOD_TYPES = [
-		{
-			"name": "Breast milk",
-			"type": "breast milk",
-			"methods": ["left breast", "right breast", "both breasts", "bottle"],
-			"mask": 0x1
-		},
-		{
-			"name": "Fort. breast milk",
-			"type": "fortified breast milk",
-			"methods": ["bottle"],
-			"mask": 0x2
-		},
-		{
-			"name": "Formula",
-			"type": "formula",
-			"methods": ["bottle"],
-			"mask": 0x4
-		},
-		{
-			"name": "Solid food",
-			"type": "solid food",
-			"methods": ["parent fed", "self fed"],
-			"mask": 0x8
-		}
-	]
-
-	FEEDING_METHODS = [
-		{
-			"name": "Bottle",
-			"method": "bottle",
-		},
-		{
-			"name": "L. breast",
-			"method": "left breast"
-		},
-		{
-			"name": "R. breast",
-			"method": "right breast"
-		},
-		{
-			"name": "Both breasts",
-			"method": "both breasts"
-		},
-		{
-			"name": "Parent-fed",
-			"method": "parent fed"
-		},
-		{
-			"name": "Self-fed",
-			"method": "self fed"
-		}
-	]
-
 	def __init__(self, devices: Devices):
 		self.requests = None
 		self.child_id = None
@@ -738,7 +684,7 @@ class Flow:
 		enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
 
 		options = []
-		for food_type in Flow.FOOD_TYPES:
+		for food_type in FeedingAPIRequest.FOOD_TYPES:
 			if food_type["mask"] & enabled_food_types:
 				options.append(food_type)
 
@@ -766,7 +712,7 @@ class Flow:
 		else:
 			method_names = []
 			for allowed_method in food_type_metadata["methods"]:
-				for available_method in Flow.FEEDING_METHODS:
+				for available_method in FeedingAPIRequest.FEEDING_METHODS:
 					if available_method["method"] == allowed_method:
 						method_names.append(available_method["name"])
 
@@ -784,7 +730,7 @@ class Flow:
 				return False
 
 			selected_method_name = method_names[selected_index]
-			for available_method in Flow.FEEDING_METHODS:
+			for available_method in FeedingAPIRequest.FEEDING_METHODS:
 				if available_method["name"] == selected_method_name:
 					method = available_method["method"]
 					break

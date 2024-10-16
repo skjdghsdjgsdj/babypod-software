@@ -735,7 +735,72 @@ class PostTummyTimeAPIRequest(PostAPIRequest):
 
 		return request.merge_serialized_notes(json_object)
 
-class PostFeedingAPIRequest(PostAPIRequest):
+class FeedingAPIRequest(APIRequest):
+	"""
+	Base class for all feeding requests.
+
+	* FOOD_TYPES: a list of valid food types: their names to show to the user (name), what the API expects and emits
+	(type), methods to which the food type applies (methods), and a bitmask as a reference for toggling specific food
+	types to show up in the feeding menu.
+	* FEEDING_METHODS: a list of valid feeding methods: their names to show to the user (name) and what the API expects
+	and emits (method)
+	"""
+
+	FOOD_TYPES = [
+		{
+			"name": "Breast milk",
+			"type": "breast milk",
+			"methods": ["left breast", "right breast", "both breasts", "bottle"],
+			"mask": 0x1
+		},
+		{
+			"name": "Fort. breast milk",
+			"type": "fortified breast milk",
+			"methods": ["bottle"],
+			"mask": 0x2
+		},
+		{
+			"name": "Formula",
+			"type": "formula",
+			"methods": ["bottle"],
+			"mask": 0x4
+		},
+		{
+			"name": "Solid food",
+			"type": "solid food",
+			"methods": ["parent fed", "self fed"],
+			"mask": 0x8
+		}
+	]
+
+	FEEDING_METHODS = [
+		{
+			"name": "Bottle",
+			"method": "bottle",
+		},
+		{
+			"name": "L. breast",
+			"method": "left breast"
+		},
+		{
+			"name": "R. breast",
+			"method": "right breast"
+		},
+		{
+			"name": "Both breasts",
+			"method": "both breasts"
+		},
+		{
+			"name": "Parent-fed",
+			"method": "parent fed"
+		},
+		{
+			"name": "Self-fed",
+			"method": "self fed"
+		}
+	]
+
+class PostFeedingAPIRequest(PostAPIRequest, FeedingAPIRequest):
 	"""
 	Saves a feeding to Baby Buddy.
 	"""
@@ -775,7 +840,7 @@ class PostFeedingAPIRequest(PostAPIRequest):
 
 		return request.merge_serialized_notes(json_object)
 
-class GetLastFeedingAPIRequest(GetAPIRequest):
+class GetLastFeedingAPIRequest(GetAPIRequest, FeedingAPIRequest):
 	"""
 	Gets the most recent feeding from Baby Buddy.
 	"""
