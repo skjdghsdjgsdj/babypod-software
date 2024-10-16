@@ -209,7 +209,7 @@ class LCD:
 		for key, value in LCD.CHARS.items():
 			self.create_special_char(key, value)
 
-	def write(self, message: str, coords: tuple[int, int]) -> None:
+	def write(self, message: str, coords: tuple[int, int] = (0, 0)) -> None:
 		"""
 		Writes a message to the LCD at the given coordinates. The actual writing is delegated to write_impl() in
 		subclasses. Text that exceeds the width of the display minus the starting X coordinate might wrap on some LCDs
