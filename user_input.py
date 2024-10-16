@@ -92,7 +92,7 @@ class RotaryEncoder:
 	CLOCKWISE = 10
 	COUNTERCLOCKWISE = 11
 
-	HOLD_FOR_SHUTDOWN_SECONDS = 3
+	HOLD_FOR_SHUTDOWN_SECONDS = 2
 
 	def __init__(self, i2c: I2C):
 		self.i2c = i2c
