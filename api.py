@@ -783,16 +783,16 @@ class FeedingAPIRequest(APIRequest):
 
 	FEEDING_METHODS = [
 		{
-			"name": "Bottle",
-			"method": "bottle",
-		},
-		{
 			"name": "L. breast",
 			"method": "left breast"
 		},
 		{
 			"name": "R. breast",
 			"method": "right breast"
+		},
+		{
+			"name": "Bottle",
+			"method": "bottle",
 		},
 		{
 			"name": "Both breasts",
