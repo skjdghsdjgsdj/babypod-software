@@ -55,19 +55,19 @@ class OfflineState:
                 serialized = json.load(file)
                 print(serialized)
 
-            if "last_feeding" in serialized and serialized["last_feeding"]:
+            if "last_feeding" in serialized and serialized["last_feeding"] is not None:
                 state.last_feeding = Util.to_datetime(serialized["last_feeding"])
 
             if "last_feeding_method" in serialized:
                 state.last_feeding_method = serialized["last_feeding_method"]
 
-            if "last_rtc_set" in serialized and serialized["last_rtc_set"]:
+            if "last_rtc_set" in serialized and serialized["last_rtc_set"] is not None:
                 state.last_rtc_set = Util.to_datetime(serialized["last_rtc_set"])
 
-            if "last_motd_check" in serialized and serialized["last_motd_check"]:
+            if "last_motd_check" in serialized and serialized["last_motd_check"] is not None:
                 state.last_motd_check = Util.to_datetime(serialized["last_motd_check"])
 
-            if "rtc_utc_offset" in serialized and serialized["rtc_utc_offset"]:
+            if "rtc_utc_offset" in serialized and serialized["rtc_utc_offset"] is not None:
                 state.rtc_utc_offset = float(serialized["rtc_utc_offset"])
         else:
             print("No existing serialized state")
