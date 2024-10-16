@@ -17,11 +17,28 @@ except:
     pass
 
 class ExternalRTC:
+    """
+    Abstraction around a real time clock (RTC) peripheral separate from the system's default one. Right now only
+    supports a PFC8523 connected via I2C.
+    """
+
     def __init__(self, i2c: I2C):
+        """
+        Be sure to set the offline_state attribute to an instance of OfflineState after construction.
+
+        :param i2c: I2C bus that has the PCF8523 device on it
+        """
+
         self.device = adafruit_pcf8523.pcf8523.PCF8523(i2c)
         self.offline_state: Optional[OfflineState] = None
 
     def sync(self, requests: adafruit_requests.Session) -> None:
+        """
+        Updates the RTC and stores the last updated time in the offline state.
+
+        :param requests: Session to use for sending the HTTP request to adafruit.io
+        """
+
         if not self.offline_state:
             raise RuntimeError("Must set offline_state before syncing")
 
@@ -56,6 +73,12 @@ class ExternalRTC:
         print(f"RTC now set to: {self.device.datetime} UTC offset {self.offline_state.rtc_utc_offset}")
 
     def now(self) -> Optional[datetime]:
+        """
+        Gets the current date/time from the RTC, or None if the RTC is set to an implausible value.
+
+        :return: Current date/time or None if not available
+        """
+
         if not self.offline_state:
             raise RuntimeError("Must set offline_state before getting time")
 
@@ -81,6 +104,14 @@ class ExternalRTC:
 
     @staticmethod
     def exists(i2c: I2C) -> bool:
+        """
+        Checks if an RTC exists on the I2C bus. More formally right now: checks if the I2C bus has a device on adddress
+        0x68 because that's what a PCF8523 uses.
+
+        :param i2c: I2C bus to check
+        :return: True if a compatible RTC was found, False if not
+        """
+
         while not i2c.try_lock():
             pass
         i2c_address_list = i2c.scan()
