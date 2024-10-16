@@ -53,6 +53,14 @@ class ExternalRTC:
         response = requests.get(f"https://io.adafruit.com/api/v2/{username}/integrations/time/clock?x-aio-key={api_key}")
         now = Util.to_datetime(response.text)
         self.offline_state.rtc_utc_offset = (now.utcoffset().seconds / 60 / 60) - 24
+        while self.offline_state.rtc_utc_offset >= 24:
+            self.offline_state.rtc_utc_offset -= 24
+        while self.offline_state.rtc_utc_offset <= -24:
+            self.offline_state.rtc_utc_offset += 24
+
+        print(f"adafruit.io said: \"{response.text}\"")
+        print(f"Resulting date/time: {now}")
+        print(f"UTC offset: {self.offline_state.rtc_utc_offset}")
 
         print(f"Setting RTC to {now}")
         self.device.datetime = struct_time((
