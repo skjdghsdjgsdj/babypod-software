@@ -69,7 +69,7 @@ class BatteryMonitor:
 		Subclasses may override this method based on how their underlying hardware checks if the battery is charging,
 		but should call this base method first and return True if it does too.
 
-		:return: True if the battery is charging, False if not or indeterminite
+		:return: True if the battery is charging, False if not or indeterminate
 		"""
 
 		if supervisor.runtime.usb_connected:

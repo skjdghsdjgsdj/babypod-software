@@ -105,7 +105,7 @@ class ExternalRTC:
     @staticmethod
     def exists(i2c: I2C) -> bool:
         """
-        Checks if an RTC exists on the I2C bus. More formally right now: checks if the I2C bus has a device on adddress
+        Checks if an RTC exists on the I2C bus. More formally right now: checks if the I2C bus has a device on address
         0x68 because that's what a PCF8523 uses.
 
         :param i2c: I2C bus to check
