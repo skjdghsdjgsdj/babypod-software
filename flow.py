@@ -35,16 +35,16 @@ class Flow:
 		self.suppress_idle_warning = False
 
 		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
-			on_activity = self.on_user_input
+			on_triggered = self.on_user_input
 		))
 
 		if self.devices.power_control is not None:
 			self.devices.rotary_encoder.on_shutdown_requested_listeners.append(ShutdownRequestListener(
-				on_shutdown_requested = lambda: self.devices.power_control.shutdown()
+				on_triggered = lambda: self.devices.power_control.shutdown()
 			))
 
 		self.devices.rotary_encoder.on_reset_requested_listeners.append(ResetRequestListener(
-			on_reset_requested = self.on_reset_requested
+			on_triggered = self.on_reset_requested
 		))
 
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
