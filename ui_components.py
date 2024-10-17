@@ -17,7 +17,7 @@ except:
 
 class UIComponent:
 	"""
-	Abstract class that represents a component--usually a full screen--of the UI on the LCD.
+	Abstract class that represents a full screen user interface.
 	"""
 
 	RIGHT = 0
@@ -51,7 +51,12 @@ class UIComponent:
 		"""
 		Renders the UI. Child classes will greatly extend this abstract method but should always call the base method.
 
-		:return: self for chaining
+		The base method:
+		* Clears the screen
+		* Renders the battery percent at the top-right, if available
+		* Renders the Cancel and Save widgets, if applicable
+
+		:return: self for call chaining
 		"""
 		self.devices.lcd.clear()
 
@@ -77,10 +82,28 @@ class UIComponent:
 		return self
 
 	def wait(self):
+		"""
+		Wait for user input and returns what the user inputted. How that's actually defined is up to a subclass to
+		implement. The base method just throws RuntimeError.
+
+		Some UIComponents don't wait, like progress bars or status messages, because the code is expected to keep
+		doing things after rendering and no user input is expected.
+
+		:return: Up to a subclass to define, but a good practice is to return None if the equivalent of cancelling the
+		input was performed
+		"""
+
 		raise RuntimeError(f"UIComponents of type {type(self).__name__} are non-blocking")
 
 	@staticmethod
 	def refresh_battery_percent(devices: Devices, only_if_changed: bool = False) -> None:
+		"""
+		Refreshes the battery percentage shown at the top-right of the screen without clearing the entire screen.
+
+		:param devices: Devices dependency injection
+		:param only_if_changed: Only refresh the battery percentage if changed since it was last read
+		"""
+
 		if devices.battery_monitor is None:
 			return
 
@@ -116,6 +139,11 @@ class StatusMessage(UIComponent):
 	"""
 
 	def __init__(self, devices: Devices, message: str):
+		"""
+		:param devices: Devices dependency injection
+		:param message: Message to show (<= 20 characters)
+		"""
+
 		super().__init__(devices = devices, allow_cancel = False, save_text = None)
 		self.message = message
 
@@ -142,7 +170,6 @@ class Modal(UIComponent):
 		:param message: Message to show to the user; keep it <= 20 characters long
 		:param auto_dismiss_after_seconds: 0 to keep the modal open indefinitely or > 0 to automatically dismiss the
 		modal if it wasn't manually dismissed by the user by this many seconds.
-		because this method won't block.
 		"""
 
 		super().__init__(devices = devices, allow_cancel = False, save_text = save_text)
@@ -151,25 +178,40 @@ class Modal(UIComponent):
 		self.message = message
 
 	def render(self) -> UIComponent:
-		"""
-		Shows the modal and waits until it is dismissed or times out, or if dismiss_text was None, then doesn't block.
-
-		:return: True if the user explicitly dismissed the modal or False if it just timed out through inaction
-		"""
-
 		super().render()
 		self.devices.lcd.write_centered(self.message)
 		return self
 
 	def wait(self) -> bool:
+		"""
+		Blocks for user input or, if auto_dismiss_after_seconds is > 0, that many seconds have elapsed with no input.
+
+		:return: True if the user explicitly dismissed this modal using input or False if it just timed out instead
+		"""
+
 		class ModalDialogExpiredException(Exception):
 			pass
 
 		class AutoDismissWaitTickListener(WaitTickListener):
+			"""
+			Raises an exception after a specified timeout.
+			"""
+
 			def __init__(self, auto_dismiss_after_seconds: int):
+				"""
+				:param auto_dismiss_after_seconds: Raise an exception after this many seconds have elapsed
+				"""
+
 				super().__init__(auto_dismiss_after_seconds, self.dismiss_dialog)
 
 			def dismiss_dialog(self, _: float) -> None:
+				"""
+				Raises a ModalDialogExpiredException.
+
+				:param _: Ignored
+				:return:
+				"""
+
 				raise ModalDialogExpiredException()
 
 		extra_wait_tick_listeners = [] if self.auto_dismiss_after_seconds <= 0 else [AutoDismissWaitTickListener(self.auto_dismiss_after_seconds)]
@@ -187,12 +229,25 @@ class Modal(UIComponent):
 				return True
 
 class NoisyBrightModal(Modal):
+	"""
+	A modal that can play a piezo tone and change the backlight color. Get it?
+	"""
+
 	def __init__(self,
 				 devices: Devices,
 				 message: str,
 				 color: Optional[BacklightColor] = None,
 				 piezo_tone: Optional[str] = None,
 				 auto_dismiss_after_seconds: int = 0):
+		"""
+		:param devices: Devices dependency injection
+		:param message: Message to show (<= 20 characters)
+		:param color: Set the backlight to this color, or None to keep it as is
+		:param piezo_tone: Play this piezo tone or None to not play anything
+		:param auto_dismiss_after_seconds: 0 to keep the modal open indefinitely or > 0 to automatically dismiss the
+		modal if it wasn't manually dismissed by the user by this many seconds.
+		"""
+
 		super().__init__(
 			devices = devices,
 			message = message,
@@ -222,9 +277,18 @@ class NoisyBrightModal(Modal):
 		return response
 
 class SuccessModal(NoisyBrightModal):
+	"""
+	A NoisyBrightModel that sets the backlight to BacklightColors.SUCCESS and plays "success" on the piezo.
+	"""
+
 	def __init__(self,
 				 devices: Devices,
 				 message: str = "Saved!"):
+		"""
+		:param devices: Devices dependency injection
+		:param message: Message to show (<= 20 characters); "Saved!" by default
+		"""
+
 		super().__init__(
 			devices = devices,
 			message = message,
@@ -234,10 +298,21 @@ class SuccessModal(NoisyBrightModal):
 		)
 
 class ErrorModal(NoisyBrightModal):
+	"""
+	A NoisyBrightModel that sets the backlight to BacklightColors.ERROR and plays "error" on the piezo.
+	"""
+
 	def __init__(self,
 				 devices: Devices,
 				 message: str = "Error!",
 				 auto_dismiss_after_seconds: int = 0):
+		"""
+		:param devices: Devices dependency injection
+		:param message: Message to show (<= 20 characters); "Error!" by default
+		:param auto_dismiss_after_seconds: 0 to keep the modal open indefinitely or > 0 to automatically dismiss the
+		modal if it wasn't manually dismissed by the user by this many seconds.
+		"""
+
 		super().__init__(
 			devices = devices,
 			message = message,
@@ -248,7 +323,7 @@ class ErrorModal(NoisyBrightModal):
 
 class ProgressBar(UIComponent):
 	"""
-	Renders a full screen progress bar that can't be canceled.
+	Renders a full screen progress bar. This UI can't be wait()ed.
 	"""
 
 	def __init__(self, devices: Devices, count: int, message: str, header: Optional[str] = None):
@@ -256,6 +331,7 @@ class ProgressBar(UIComponent):
 		:param devices: Devices dependency injection
 		:param count: Number of items that will be iterated over
 		:param message: Message to show, like "Replaying events"
+		:param header: UI header text or None to omit
 		"""
 		assert(count > 0)
 
@@ -322,7 +398,7 @@ class ProgressBar(UIComponent):
 
 class ActiveTimer(UIComponent):
 	"""
-	Shows a timer that counts up.
+	Shows a timer that counts up. This UI can't be wait()ed.
 	"""
 
 	def __init__(self,
@@ -340,6 +416,8 @@ class ActiveTimer(UIComponent):
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
 		:param periodic_chime: Logic for how often to chime, or None for never
 		:param start_at: Starting time in seconds of the timer, or 0 to start fresh
+		:param header: UI header text
+		:param save_text: Save widget text or None to omit
 		"""
 
 		super().__init__(
@@ -356,12 +434,27 @@ class ActiveTimer(UIComponent):
 		self.save_text = save_text
 
 	def wait(self) -> Optional[bool]:
+		"""
+		Continuously update the timer as it runs and stop once appropriate input is given.
+
+		:return: True if the user inputted "Save" or "None" if it was canceled.
+		"""
+
 		self.start = time.monotonic()
 		if self.periodic_chime is not None:
 			self.periodic_chime.start()
 
 		class ActiveTimerWaitTickListener(WaitTickListener):
-			def __init__(self, devices: Devices, start: float, periodic_chime: PeriodicChime):
+			"""
+			A listener that updates the time as it increments.
+			"""
+			def __init__(self, devices: Devices, start: float, periodic_chime: Optional[PeriodicChime]):
+				"""
+				:param devices: Devices dependency injection
+				:param start: Start at this many seconds
+				:param periodic_chime: Periodic chiming logic or None for no chimes
+				"""
+
 				self.start = start
 				self.last_message = None
 				self.devices = devices
@@ -371,6 +464,13 @@ class ActiveTimer(UIComponent):
 
 			@staticmethod
 			def format_elapsed_time(elapsed: float) -> str:
+				"""
+				Takes a duration and makes a human-readable version of it.
+
+				:param elapsed: Seconds elapsed
+				:return: Like "1h 23m 56s" for 5,036 seconds
+				"""
+
 				if elapsed < 60:
 					return f"{elapsed:.0f} sec"
 				elif elapsed < 60 * 60:
@@ -379,6 +479,12 @@ class ActiveTimer(UIComponent):
 					return f"{(elapsed // 60 // 60):.0f} hr {(elapsed // 60 % 60):.0f} min {(int(elapsed) % 60):.0f} sec"
 
 			def render_elapsed_time(self, _: float) -> None:
+				"""
+				Updates the elapsed time shown.
+
+				:param _: Ignored
+				"""
+
 				message = ActiveTimerWaitTickListener.format_elapsed_time(time.monotonic() - self.start)
 				self.devices.lcd.write_centered(
 					text = message,
@@ -431,6 +537,7 @@ class NumericSelector(UIComponent):
 		:param allow_cancel: True if this can be dismissed, False if not
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
 		:param format_str: Python format string to render the value
+		:param header: UI header text
 		"""
 
 		super().__init__(
@@ -468,18 +575,18 @@ class NumericSelector(UIComponent):
 		self.row = 1 if self.header else 0
 
 	def render(self) -> UIComponent:
-		"""
-		Renders the UI and waits for the user to input the numeric value or cancel the input.
-
-		:return: Entered numeric value or None if canceled
-		"""
-
 		super().render()
 		self.devices.lcd.write(self.devices.lcd[LCD.UP_DOWN], (0, self.row))
 
 		return self
 
 	def wait(self) -> Optional[float]:
+		"""
+		Waits for the user to enter a number and save it.
+
+		:return: The number entered or None if it was canceled
+		"""
+
 		last_value = None
 		while True:
 			if last_value != self.selected_value:
@@ -524,12 +631,15 @@ class VerticalMenu(UIComponent):
 				 cancel_align: int = None,
 				 cancel_text: str = None,
 				 header: Optional[str] = None,
-				 save_text: Optional[str] = "Save"):
+				 save_text: str = "Save"):
 		"""
 		:param devices: Devices dependency injection
 		:param options: List of values to present to the user; do not exceed 4 because the list doesn't scroll by design
 		:param allow_cancel: True if this can be dismissed, False if not
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
+		:param cancel_align: Alignment (UIComponent.LEFT or .RIGHT) of the Cancel widget
+		:param header: UI header text
+		:param save_text: Text of the Save widget
 		"""
 
 		if len(options) <= 0:
@@ -602,12 +712,6 @@ class VerticalMenu(UIComponent):
 
 		return self.selected_row_index
 
-	def init_extra_ui(self) -> None:
-		"""
-		Extra rendering to do; base class does nothing but subclasses might override this.
-		"""
-		pass
-
 	def format_menu_item(self, index, name) -> str:
 		"""
 		Extra formatting to apply to each menu item; base class just renders it as is but child classes might override
@@ -620,12 +724,6 @@ class VerticalMenu(UIComponent):
 		return name
 
 	def render(self) -> UIComponent:
-		"""
-		Shows the menu to the user and waits for them to select an item.
-
-		:return: Index of selected item or None if canceled
-		"""
-
 		super().render()
 
 		i = 0
@@ -636,11 +734,16 @@ class VerticalMenu(UIComponent):
 			i += 1
 
 		self.move_arrow(0)
-		self.init_extra_ui()
 
 		return self
 
 	def wait(self) -> Optional[int]:
+		"""
+		Returns once the user selects a menu item.
+
+		:return: Index of the item selected or None if canceled
+		"""
+
 		while True:
 			button = self.devices.rotary_encoder.wait()
 			if not self.move_selection(button):
@@ -713,22 +816,17 @@ class VerticalCheckboxes(VerticalMenu):
 		allow_cancel: bool = True,
 		cancel_align: Optional[int] = None,
 		cancel_text: str = None,
-		header: Optional[str] = None
+		header: Optional[str] = None,
+		save_text: str = "Save"
 	):
-		"""
-		:param devices: Devices dependency injection
-		:param options: List of values to present to the user; do not exceed 4 because the list doesn't scroll by design
-		:param allow_cancel: True if this can be dismissed, False if not
-		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
-		"""
-
 		super().__init__(
 			devices = devices,
 			options = options,
 			allow_cancel = allow_cancel,
 			cancel_align = cancel_align,
 			cancel_text = cancel_text,
-			header = header
+			header = header,
+			save_text = save_text
 		)
 
 		assert(len(options) == len(initial_states))
@@ -742,6 +840,7 @@ class VerticalCheckboxes(VerticalMenu):
 		:param index: Item index
 		:return: Checkbox character based on the given item's state
 		"""
+
 		return self.devices.lcd[LCD.CHECKED] if self.states[index] else self.devices.lcd[LCD.UNCHECKED]
 
 	def toggle_item(self, index: int) -> None:
@@ -758,6 +857,7 @@ class VerticalCheckboxes(VerticalMenu):
 		"""
 		Inverts the currently checked state of the current item
 		"""
+
 		self.toggle_item(self.selected_row_index)
 		return None
 
@@ -767,6 +867,7 @@ class VerticalCheckboxes(VerticalMenu):
 
 		:return: All items' checked state ordered by the original order of all items
 		"""
+
 		return self.states
 
 	def format_menu_item(self, index: int, name: str) -> str:
@@ -777,8 +878,15 @@ class VerticalCheckboxes(VerticalMenu):
 		:param name: Item name
 		:return: Item name preceded with a checkbox
 		"""
+
 		return self.get_checkbox_char(index) + name
 
 	def wait(self) -> list[bool]:
+		"""
+		Returns a list of the state of each checkbox.
+
+		:return: The checked state for each checkbox in the same order as the items provided during construction
+		"""
+
 		response = super().wait()
 		return None if response is None else self.states
