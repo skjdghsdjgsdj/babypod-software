@@ -631,7 +631,7 @@ class VerticalMenu(UIComponent):
 				 cancel_align: int = None,
 				 cancel_text: str = None,
 				 header: Optional[str] = None,
-				 save_text: str = "Save"):
+				 save_text: Optional[str] = "Save"):
 		"""
 		:param devices: Devices dependency injection
 		:param options: List of values to present to the user; do not exceed 4 because the list doesn't scroll by design
@@ -639,7 +639,7 @@ class VerticalMenu(UIComponent):
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
 		:param cancel_align: Alignment (UIComponent.LEFT or .RIGHT) of the Cancel widget
 		:param header: UI header text
-		:param save_text: Text of the Save widget
+		:param save_text: Text of the Save widget or None to omit
 		"""
 
 		if len(options) <= 0:
