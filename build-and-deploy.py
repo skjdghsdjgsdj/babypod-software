@@ -68,8 +68,8 @@ def reboot():
     subprocess.Popen(f"expect -c \"send \003;\" > {tty}", shell = True).communicate()
     subprocess.Popen(f"expect -c \"send \004;\" > {tty}", shell = True).communicate()
 
-def clean(output_path: str):
-    lib = f"{output_path}/lib"
+def clean(clean_path: str):
+    lib = f"{clean_path}/lib"
     print(f"Purging everything from {lib}...", end = "", flush = True)
     shutil.rmtree(lib, ignore_errors = True)
     print("done")
@@ -79,11 +79,10 @@ def clean(output_path: str):
     shutil.copytree(local_lib, lib)
     print("done")
 
-def build_and_deploy(source_module: str, output_path: str, compile_to_mpy: bool = True) -> str:
-
+def build_and_deploy(source_module: str, module_output_path: str, compile_to_mpy: bool = True) -> str:
     if source_module == "code":
         print("Copying code.py...", end = "", flush = True)
-        dst = f"{output_path}/code.py"
+        dst = f"{module_output_path}/code.py"
         shutil.copyfile(get_base_path() + "/code.py", dst)
         print("done")
     else:
@@ -101,7 +100,7 @@ def build_and_deploy(source_module: str, output_path: str, compile_to_mpy: bool 
             if not os.path.isfile(temp_mpy.name):
                 raise ValueError(f"mpy-cross didn't actually output a file to {temp_mpy.name}")
 
-            dst = f"{output_path}/lib/{source_module}.mpy"
+            dst = f"{module_output_path}/lib/{source_module}.mpy"
 
             output_directory = pathlib.Path(dst).parent
             output_directory.mkdir(parents = True, exist_ok = True)
@@ -111,7 +110,7 @@ def build_and_deploy(source_module: str, output_path: str, compile_to_mpy: bool 
             os.remove(temp_mpy.name)
             print("done")
         else:
-            dst = f"{output_path}/lib/{source_module}.py"
+            dst = f"{module_output_path}/lib/{source_module}.py"
             print(f"Copying {source_module}.py (not compiling)...", end = "", flush = True)
             shutil.copyfile(full_src, dst)
             print("done")
