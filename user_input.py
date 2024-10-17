@@ -15,7 +15,18 @@ import digitalio
 from adafruit_seesaw.digitalio import DigitalIO
 
 class WaitTickListener:
+	"""
+	Something that happens periodically while waiting for user input.
+	"""
+
 	def __init__(self, seconds: int, on_tick: Callable[[float], None], recurring = False, name: Optional[str] = None):
+		"""
+		:param seconds: How frequently to do the thing
+		:param on_tick: What the thing is to do; gets passed elapsed time
+		:param recurring: Do the thing just once (False) or at a regular interval (True)
+		:param name: Name for debugging's sake
+		"""
+
 		self.seconds = seconds
 		self.on_tick = on_tick
 		self.last_triggered = None
@@ -23,35 +34,63 @@ class WaitTickListener:
 		self.name = name
 
 	def trigger(self, elapsed: float) -> None:
+		"""
+		Do the thing.
+
+		:param elapsed: How many seconds have passed
+		"""
+
 		self.last_triggered = elapsed
 		self.on_tick(elapsed)
 
 	def __str__(self):
+		"""
+		Gets this listener as a string for debugging's sake; don't parse it.
+
+		:return: self.name if provided, otherwise the base implementation of __str__()
+		"""
+
 		return super().__str__() if self.name is None else self.name
 
-class ShutdownRequestListener:
-	def __init__(self, on_shutdown_requested: Callable[[], None]):
-		self.on_shutdown_requested = on_shutdown_requested
+class BasicListener:
+	def __init__(self, on_triggered: Callable[[], None]):
+		self.on_triggered = on_triggered
 
-	def trigger(self) -> None:
-		self.on_shutdown_requested()
+	def trigger(self):
+		self.on_triggered()
 
-class ResetRequestListener:
-	def __init__(self, on_reset_requested: Callable[[], None]):
-		self.on_reset_requested = on_reset_requested
+class ShutdownRequestListener(BasicListener):
+	"""
+	A listener that, once triggered, indicates the user requested a soft shutdown.
+	"""
 
-	def trigger(self) -> None:
-		self.on_reset_requested()
+	pass
 
-class ActivityListener:
-	def __init__(self, on_activity):
-		self.on_activity = on_activity
+class ResetRequestListener(BasicListener):
+	"""
+	A listener that, once triggered, indicates the user requested a microcontroller reset.
+	"""
 
-	def trigger(self) -> None:
-		self.on_activity()
+	pass
+
+class ActivityListener(BasicListener):
+	"""
+	Do this thing any time there's user input.
+	"""
+
+	pass
 
 class Button(DigitalIO):
+	"""
+	A physical button that's associated to a digital IO pin.
+	"""
+
 	def __init__(self, seesaw_controller: seesaw.Seesaw, pin: int):
+		"""
+		:param seesaw_controller: Seesaw controller with virtual pins
+		:param pin: Virtual pin number on the seesaw controller
+		"""
+
 		self.pin = pin
 		success = False
 		while not success:
@@ -68,8 +107,14 @@ class Button(DigitalIO):
 		self.press_start: float = 0
 		self.is_pressed = False
 
-	# a click (down then up), not just down
 	def was_pressed(self) -> tuple[bool, float]:
+		"""
+		Checks if a button was pressed and then released, and if so, for how long.
+
+		:return: A tuple: first item is True if the button has been pressed and released and False if not, and the
+		second item is for how long the button was held in seconds or 0 if it wasn't.
+		"""
+
 		if not self.value:
 			if not self.is_pressed:
 				self.press_start = time.monotonic()
@@ -84,6 +129,15 @@ class Button(DigitalIO):
 		return False, 0
 
 class RotaryEncoder:
+	"""
+	Abstraction of the rotary encoder that's connected to an I2C seesaw controller:
+	https://www.adafruit.com/product/5740
+
+	Careful! Because this assumes you built a BabyPod using the instructions at
+	https://github.com/skjdghsdjgsdj/babypod-hardware, it also assumes the rotary encoder is rotated 90°! Therefore,
+	UP isn't necessarily UP as it appears on the board, but rather how the board is mounted in the enclosure.
+	"""
+
 	SELECT = 1
 	UP = 3
 	LEFT = 4
@@ -95,6 +149,9 @@ class RotaryEncoder:
 	HOLD_FOR_SHUTDOWN_SECONDS = 2
 
 	def __init__(self, i2c: I2C):
+		"""
+		:param i2c: I2C bus with the rotary encoder
+		"""
 		self.i2c = i2c
 
 		self.on_activity_listeners: List[ActivityListener] = []
@@ -111,12 +168,25 @@ class RotaryEncoder:
 		self.encoder = self.init_rotary_encoder()
 
 	def init_seesaw(self) -> seesaw.Seesaw:
+		"""
+		Connects to the Seesaw controller on the I2C bus at address 0x49 and verifies that it's using the product ID
+		5740.
+
+		:return: Seesaw controller
+		"""
 		seesaw_controller = seesaw.Seesaw(self.i2c, addr = 0x49)
 		product_id = (seesaw_controller.get_version() >> 16) & 0xFFFF
 		assert product_id == 5740
 		return seesaw_controller
 
 	def init_rotary_encoder(self) -> rotaryio.IncrementalEncoder:
+		"""
+		Sets up digital IO wrappers for all of the rotary encoder's buttons and stores its initial rotational
+		position.
+
+		:return: Rotary encoder
+		"""
+
 		# it's physically rotated 90 CW so adjust accordingly
 		buttons = [
 			RotaryEncoder.SELECT,
@@ -138,6 +208,16 @@ class RotaryEncoder:
 		listen_for_rotation: bool = True,
 		extra_wait_tick_listeners: list[WaitTickListener] = None
 	) -> int:
+		"""
+		Waits for the user to make any user input: either for a button press and/or for rotation. While waiting,
+		various listeners may be triggered.
+
+		:param listen_for_buttons: Listen for any button press
+		:param listen_for_rotation: Listen for a rotation in any direction
+		:param extra_wait_tick_listeners: Do these things while waiting for input
+		:return: The button that was pressed or direction of rotation; refer to the class-level fields for constants
+		"""
+
 		assert(listen_for_buttons or listen_for_rotation)
 
 		response = None
@@ -159,6 +239,13 @@ class RotaryEncoder:
 		return response
 
 	def trigger_applicable_listeners(self, extra_wait_tick_listeners: List[WaitTickListener], start: float) -> None:
+		"""
+		Triggers any wait tick listeners that are due to be invoked by now.
+
+		:param extra_wait_tick_listeners: Also trigger these additional listeners if necessary
+		:param start: Monotonic time for when input listening started
+		"""
+
 		now = time.monotonic()
 		elapsed = now - start
 
@@ -173,6 +260,14 @@ class RotaryEncoder:
 					listener.last_triggered = now
 
 	def poll_for_input(self, listen_for_buttons: bool = True, listen_for_rotation: bool = True) -> int:
+		"""
+		Blocks waiting for the user to make any kind of input.
+
+		:param listen_for_buttons: Return once a button is pressed
+		:param listen_for_rotation: Return once rotation is made
+		:return: The button that was pressed or direction of rotation; refer to the class-level fields for constants
+		"""
+
 		response = None
 
 		for key, button in self.buttons.items():
@@ -180,12 +275,12 @@ class RotaryEncoder:
 			if hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
 				if button.pin == RotaryEncoder.SELECT and len(self.on_shutdown_requested_listeners) > 0:
 					for listener in self.on_shutdown_requested_listeners:
-						listener.on_shutdown_requested()
+						listener.trigger()
 					raise RuntimeError("No listeners initiated shutdown!")
 				elif button.pin == RotaryEncoder.DOWN and len(self.on_reset_requested_listeners) > 0:
 					try:
 						for listener in self.on_reset_requested_listeners:
-							listener.on_reset_requested()
+							listener.trigger()
 					finally:
 						microcontroller.reset()
 			if was_pressed and listen_for_buttons:
