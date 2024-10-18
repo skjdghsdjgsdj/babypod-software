@@ -6,7 +6,7 @@ import microcontroller
 from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
 	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest, \
-	ConnectionManager, ConsumeMOTDAPIRequest, FeedingAPIRequest
+	ConnectionManager, ConsumeMOTDAPIRequest, FeedingAPIRequest, APIRequest
 from devices import Devices
 from lcd import LCD, BacklightColors
 from nvram import NVRAMValues
@@ -16,7 +16,7 @@ from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPe
 from setting import Setting
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal, \
 	StatusMessage, NoisyBrightModal, SuccessModal, ErrorModal, UIComponent
-from user_input import ActivityListener, WaitTickListener, ShutdownRequestListener, ResetRequestListener
+from user_input import WaitTickListener
 from util import Util
 
 # noinspection PyBroadException
@@ -34,18 +34,12 @@ class Flow:
 
 		self.suppress_idle_warning = False
 
-		self.devices.rotary_encoder.on_activity_listeners.append(ActivityListener(
-			on_triggered = self.on_user_input
-		))
+		self.devices.rotary_encoder.on_activity_listeners.append(self.on_user_input)
 
 		if self.devices.power_control is not None:
-			self.devices.rotary_encoder.on_shutdown_requested_listeners.append(ShutdownRequestListener(
-				on_triggered = lambda: self.devices.power_control.shutdown()
-			))
+			self.devices.rotary_encoder.on_shutdown_requested_listeners.append(self.devices.power_control.shutdown)
 
-		self.devices.rotary_encoder.on_reset_requested_listeners.append(ResetRequestListener(
-			on_triggered = self.on_reset_requested
-		))
+		self.devices.rotary_encoder.on_reset_requested_listeners.append(self.on_reset_requested)
 
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
@@ -54,7 +48,7 @@ class Flow:
 				name = "Backlight dim idle"
 			),
 			WaitTickListener(
-				on_tick = self.idle_warning,
+				on_tick = self.on_idle_warning,
 				seconds = NVRAMValues.IDLE_WARNING.get(),
 				recurring = True,
 				name = "Idle warning"
@@ -100,7 +94,7 @@ class Flow:
 		if self.devices.lcd.backlight.color == BacklightColors.DEFAULT:
 			self.devices.lcd.backlight.set_color(BacklightColors.DIM)
 
-	def idle_warning(self, _: float) -> None:
+	def on_idle_warning(self, _: float) -> None:
 		if not self.suppress_idle_warning:
 			self.devices.piezo.tone("idle_warning")
 
@@ -248,10 +242,7 @@ class Flow:
 				self.on_error(e)
 
 	def jump_to_running_timer(self) -> None:
-		timer = None
-
-		if not NVRAMValues.OFFLINE:
-			timer = self.check_for_running_timer()
+		timer = None if NVRAMValues.OFFLINE else self.check_for_running_timer()
 
 		if timer is not None:
 			timer_map = {
@@ -265,21 +256,18 @@ class Flow:
 				if timer.name == TimerAPIRequest.get_timer_name(name):
 					try:
 						timer_map[name](timer)
+						break
 					except Exception as e:
 						self.on_error(e)
 
-					break
-
 	def check_for_running_timer(self) -> Optional[Timer]:
-		timer = None
 		try:
 			StatusMessage(devices = self.devices, message = "Checking timers...").render()
-			timers = list(GetAllTimersAPIRequest(limit = 1).get_active_timers())
-			if timers:
-				timer = timers[0]
+			for timer in GetAllTimersAPIRequest(limit = 1).get_active_timers():
+				return timer # don't consume the whole generator
 		except Exception as e:
 			print(f"Failed getting active timers; continuing to main menu: {e}")
-		return timer
+		return None
 
 	def on_error(self, e: Exception) -> None:
 		traceback.print_exception(e)
@@ -462,58 +450,11 @@ class Flow:
 		).render().wait()
 
 		if selected_index is not None:
-			is_wet = selected_index == 0 or selected_index == 2
-			is_solid = selected_index == 1 or selected_index == 2
-
-			request = PostChangeAPIRequest(
+			self.commit(PostChangeAPIRequest(
 				child_id = self.child_id,
-				is_wet = is_wet,
-				is_solid = is_solid
-			)
-			if NVRAMValues.OFFLINE:
-				self.offline_queue.add(request)
-			else:
-				StatusMessage(devices = self.devices, message = "Saving...").render()
-				request.invoke()
-			self.render_success_splash()
-
-	def pumping(self, existing_timer: Optional[Timer] = None) -> None:
-		saved = False
-		while not saved:
-			timer = self.start_or_resume_timer(
-				existing_timer = existing_timer,
-				header_text = "Pumping",
-				timer_name = "pumping",
-				periodic_chime = ConsistentIntervalPeriodicChime(
-					devices = self.devices,
-					chime_at_seconds = 5 * 60
-				)
-			)
-
-			if timer is not None:
-				amount = NumericSelector(
-					header = "How much?",
-					devices = self.devices,
-					minimum = 0,
-					step = 0.5,
-					format_str = "%.1f fl oz"
-				).render().wait()
-
-				if amount is not None:
-					request = PostPumpingAPIRequest(
-						child_id = self.child_id,
-						timer = timer,
-						amount = amount
-					)
-					if NVRAMValues.OFFLINE:
-						self.offline_queue.add(request)
-					else:
-						StatusMessage(devices = self.devices, message = "Saving...").render()
-						request.invoke()
-					self.render_success_splash(is_stopped_timer = True)
-					saved = True
-			else:
-				return
+				is_wet = selected_index == 0 or selected_index == 2,
+				is_solid = selected_index == 1 or selected_index == 2
+			))
 
 	def start_or_resume_timer(self,
 		header_text: str,
@@ -634,27 +575,52 @@ class Flow:
 					method = available_method["method"]
 					break
 
-		request = PostFeedingAPIRequest(
-			child_id = self.child_id,
-			timer = timer,
-			food_type = food_type,
-			method = method
-		)
-		if NVRAMValues.OFFLINE:
-			self.offline_queue.add(request)
-		else:
-			StatusMessage(devices = self.devices, message = "Saving...").render()
-			request.invoke()
-
 		if self.offline_state is not None:
 			self.offline_state.last_feeding = timer.started_at
 			self.offline_state.last_feeding_method = method
 			self.offline_state.to_sdcard()
 			self.use_offline_feeding_stats = True
 
-		self.render_success_splash(is_stopped_timer = True)
+		self.commit(PostFeedingAPIRequest(
+			child_id = self.child_id,
+			timer = timer,
+			food_type = food_type,
+			method = method
+		), timer)
 
 		return True
+
+	def pumping(self, existing_timer: Optional[Timer] = None) -> None:
+		saved = False
+		while not saved:
+			timer = self.start_or_resume_timer(
+				existing_timer = existing_timer,
+				header_text = "Pumping",
+				timer_name = "pumping",
+				periodic_chime = ConsistentIntervalPeriodicChime(
+					devices = self.devices,
+					chime_at_seconds = 5 * 60
+				)
+			)
+
+			if timer is not None:
+				amount = NumericSelector(
+					header = "How much?",
+					devices = self.devices,
+					minimum = 0,
+					step = 0.5,
+					format_str = "%.1f fl oz"
+				).render().wait()
+
+				if amount is not None:
+					self.commit(PostPumpingAPIRequest(
+						child_id = self.child_id,
+						timer = timer,
+						amount = amount
+					), timer)
+					saved = True
+			else:
+				return
 
 	def sleep(self, existing_timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
@@ -664,14 +630,7 @@ class Flow:
 		)
 
 		if timer is not None:
-			request = PostSleepAPIRequest(child_id = self.child_id, timer = timer)
-			if NVRAMValues.OFFLINE:
-				self.offline_queue.add(request)
-			else:
-				StatusMessage(devices = self.devices, message = "Saving...").render()
-				request.invoke()
-
-			self.render_success_splash(is_stopped_timer = True)
+			self.commit(PostSleepAPIRequest(child_id = self.child_id, timer = timer), timer)
 
 	def tummy_time(self, existing_timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
@@ -685,10 +644,13 @@ class Flow:
 		)
 
 		if timer is not None:
-			request = PostTummyTimeAPIRequest(child_id = self.child_id, timer = timer)
-			if NVRAMValues.OFFLINE:
-				self.offline_queue.add(request)
-			else:
-				StatusMessage(devices = self.devices, message = "Saving...").render()
-				request.invoke()
-			self.render_success_splash(is_stopped_timer = True)
+			self.commit(PostTummyTimeAPIRequest(child_id = self.child_id, timer = timer), timer)
+
+	def commit(self, request: APIRequest, timer: Optional[Timer] = None) -> None:
+		if NVRAMValues.OFFLINE:
+			self.offline_queue.add(request)
+		else:
+			StatusMessage(devices = self.devices, message = "Saving...").render()
+			request.invoke()
+
+		self.render_success_splash(is_stopped_timer = timer is not None)

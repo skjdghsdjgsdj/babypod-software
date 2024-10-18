@@ -52,34 +52,6 @@ class WaitTickListener:
 
 		return super().__str__() if self.name is None else self.name
 
-class BasicListener:
-	def __init__(self, on_triggered: Callable[[], None]):
-		self.on_triggered = on_triggered
-
-	def trigger(self):
-		self.on_triggered()
-
-class ShutdownRequestListener(BasicListener):
-	"""
-	A listener that, once triggered, indicates the user requested a soft shutdown.
-	"""
-
-	pass
-
-class ResetRequestListener(BasicListener):
-	"""
-	A listener that, once triggered, indicates the user requested a microcontroller reset.
-	"""
-
-	pass
-
-class ActivityListener(BasicListener):
-	"""
-	Do this thing any time there's user input.
-	"""
-
-	pass
-
 class Button(DigitalIO):
 	"""
 	A physical button that's associated to a digital IO pin.
@@ -154,10 +126,10 @@ class RotaryEncoder:
 		"""
 		self.i2c = i2c
 
-		self.on_activity_listeners: List[ActivityListener] = []
+		self.on_activity_listeners: List[Callable[[], None]] = []
 		self.on_wait_tick_listeners: List[WaitTickListener] = []
-		self.on_shutdown_requested_listeners: List[ShutdownRequestListener] = []
-		self.on_reset_requested_listeners: List[ResetRequestListener] = []
+		self.on_shutdown_requested_listeners: List[Callable[[], None]] = []
+		self.on_reset_requested_listeners: List[Callable[[], None]] = []
 
 		self.last_position = None
 		self.buttons = {}
@@ -231,7 +203,7 @@ class RotaryEncoder:
 			self.trigger_applicable_listeners(extra_wait_tick_listeners, start)
 
 		for activity_listener in self.on_activity_listeners:
-			activity_listener.trigger()
+			activity_listener()
 
 			for wait_tick_listener in self.on_wait_tick_listeners + extra_wait_tick_listeners:
 				wait_tick_listener.last_triggered = None # reset for next call of wait()
@@ -275,12 +247,12 @@ class RotaryEncoder:
 			if hold_time >= RotaryEncoder.HOLD_FOR_SHUTDOWN_SECONDS:
 				if button.pin == RotaryEncoder.SELECT and len(self.on_shutdown_requested_listeners) > 0:
 					for listener in self.on_shutdown_requested_listeners:
-						listener.trigger()
+						listener()
 					raise RuntimeError("No listeners initiated shutdown!")
 				elif button.pin == RotaryEncoder.DOWN and len(self.on_reset_requested_listeners) > 0:
 					try:
 						for listener in self.on_reset_requested_listeners:
-							listener.trigger()
+							listener()
 					finally:
 						microcontroller.reset()
 			if was_pressed and listen_for_buttons:
