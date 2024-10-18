@@ -9,7 +9,7 @@ try:
 except:
 	pass
 
-from api import APIRequest
+from api import APIRequest, TimerAPIRequest, DeleteTimerAPIRequest, Timer
 from sdcard import SDCard
 
 class OfflineEventQueue:
@@ -139,6 +139,9 @@ class OfflineEventQueue:
 		on it. If invoke() succeeds, even if it takes a few attempts, and if delete_on_success is True, then the JSON
 		file is deleted to avoid duplicate playback.
 
+		If the request has timer data and the timer was created when the BabyPod was online, then try to delete the
+		dangling timer by ID, but if that fails, keep going.
+
 		:param full_json_path: Path to the JSON file containing the serialized APIRequest to replay
 		:param delete_on_success: True to delete the file if it is successfully replayed, False to keep it
 		"""
@@ -158,6 +161,19 @@ class OfflineEventQueue:
 				if delete_on_success:
 					print(f"Deleting {full_json_path}")
 					os.unlink(full_json_path)
+
+				# If this request had a timer that has an ID, then it was originally an online request that failed and
+				# the BabyPod went offline and it left behind a dangling timer so it should be deleted. So delete it,
+				# but don't let a deletion failure stop the replay queue in case it was since deleted manually.
+				if isinstance(request, TimerAPIRequest):
+					timer: Timer = getattr(request, "timer", None)
+					if timer is not None and timer.timer_id is not None:
+						# noinspection PyBroadException
+						try:
+							DeleteTimerAPIRequest(timer.timer_id).invoke()
+						except:
+							print(f"Failed to clean up dangling timer with ID {timer.timer_id}; continuing anyway")
+
 				return
 			except Exception as e:
 				print(f"{e} while trying to replay {request}; retrying (count = {retry_count})")
