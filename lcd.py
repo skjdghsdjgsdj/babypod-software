@@ -1,7 +1,9 @@
 import time
 
 from adafruit_character_lcd.character_lcd import Character_LCD
+from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
 
+from devices import I2CDeviceAutoSelector
 from nvram import NVRAMValues
 from sparkfun_serlcd import Sparkfun_SerLCD, Sparkfun_SerLCD_I2C
 
@@ -326,31 +328,12 @@ class LCD:
 		:return: Concrete LCD instance
 		"""
 
-		attempts = 0
-		i2c_address_list = None
-		while attempts <= 20:
-			while not i2c.try_lock():
-				pass
-			i2c_address_list = i2c.scan()
-			i2c.unlock()
-
-			attempts += 1
-
-			if 0x20 in i2c_address_list:
-				from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
-				lcd = Character_LCD_I2C(i2c, LCD.COLUMNS, LCD.LINES)
-				return AdafruitCharacterLCDBackpack(lcd)
-			elif 0x72 in i2c_address_list:
-				lcd = Sparkfun_SerLCD_I2C(i2c)
-				return SparkfunSerLCD(lcd, )
-
-			print("Couldn't find LCD on I2C, retrying")
-			time.sleep(0.2)
-
-		found_count = len(i2c_address_list)
-		found_addresses = ", ".join([hex(device_address) for device_address in i2c_address_list])
-		raise RuntimeError(f"Couldn't find LCD on I2C at 0x20 (Adafruit LCD backpack) or 0x72 (Sparkfun SerLCD): " +
-						   f"only found {found_count} I2C devices at addresses: {found_addresses}")
+		return I2CDeviceAutoSelector(i2c).get_device(
+			address_map = {
+				0x20: lambda _: AdafruitCharacterLCDBackpack(Character_LCD_I2C(i2c, LCD.COLUMNS, LCD.LINES)),
+				0x72: lambda _: SparkfunSerLCD(Sparkfun_SerLCD_I2C(i2c))
+			}
+		)
 
 # https://www.quinapalus.com/hd44780udg.html
 # LCD uses 5x8 pixel chars and supports up to 8 custom chars

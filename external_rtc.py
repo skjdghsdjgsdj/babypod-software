@@ -7,6 +7,7 @@ import adafruit_pcf8523.pcf8523
 from adafruit_datetime import datetime
 from busio import I2C
 
+from devices import I2CDeviceAutoSelector
 from offline_state import OfflineState
 from util import Util
 
@@ -117,9 +118,4 @@ class ExternalRTC:
         :return: True if a compatible RTC was found, False if not
         """
 
-        while not i2c.try_lock():
-            pass
-        i2c_address_list = i2c.scan()
-        i2c.unlock()
-
-        return 0x68 in i2c_address_list
+        return I2CDeviceAutoSelector(i2c).address_exists(0x68)

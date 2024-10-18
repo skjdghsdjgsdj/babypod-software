@@ -7,6 +7,9 @@ from adafruit_max1704x import MAX17048
 from adafruit_lc709203f import LC709203F, LC709203F_CMD_APA
 import supervisor
 
+from devices import I2CDeviceAutoSelector
+
+
 class BatteryMonitor:
 	"""
 	Abstraction for a battery monitor, a.k.a. "fuel gauge", to measure the charge level of the attached battery.
@@ -123,25 +126,17 @@ class BatteryMonitor:
 		:return: Concrete instance of a battery monitor or None if not found
 		"""
 
-		attempts = 0
-		while attempts <= 20:
-			while not i2c.try_lock():
-				pass
-			i2c_address_list = i2c.scan()
-			i2c.unlock()
-
-			attempts += 1
-
-			if 0x0b in i2c_address_list:
-				return LC709203FBatteryMonitor(i2c)
-			elif 0x36 in i2c_address_list:
-				return MAX17048BatteryMonitor(i2c)
-
-			print("Battery monitor I2C device detection found nothing, retrying")
-			time.sleep(0.2)
-
-		print("Couldn't find a battery monitor on I2C bus")
-		return None
+		try:
+			I2CDeviceAutoSelector(
+				i2c = i2c,
+				address_map = {
+					0x0b: lambda _: LC709203FBatteryMonitor(i2c),
+					0x36: lambda _: MAX17048BatteryMonitor(i2c)
+				}
+			).get_device()
+		except Exception as e:
+			print(f"Failed to get battery monitor: {e}")
+			return None
 
 class MAX17048BatteryMonitor(BatteryMonitor):
 	"""
