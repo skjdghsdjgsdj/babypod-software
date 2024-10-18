@@ -641,9 +641,29 @@ class Flow:
 
 	def commit(self, request: APIRequest, timer: Optional[Timer] = None) -> None:
 		if NVRAMValues.OFFLINE:
-			self.offline_queue.add(request)
+			self.commit_offline(request, timer)
 		else:
-			StatusMessage(devices = self.devices, message = "Saving...").render()
-			request.invoke()
+			self.commit_online(request, timer)
 
+	def commit_online(self, request, timer):
+		StatusMessage(devices = self.devices, message = "Saving...").render()
+		try:
+			Util.try_repeatedly(request.invoke)
+			self.render_success_splash(is_stopped_timer = timer is not None)
+		except Exception as e:
+			traceback.print_exception(e)
+
+			if not self.devices.sdcard or not self.devices.rtc:
+				raise e # no offline support available; give up and let the default handler get it
+
+			ErrorModal(
+				devices = self.devices,
+				message = "Failed, going offline!",
+				auto_dismiss_after_seconds = 3
+			).render().wait()
+			self.offline(silent = True)
+			self.commit_offline(request, timer)
+
+	def commit_offline(self, request, timer):
+		self.offline_queue.add(request)
 		self.render_success_splash(is_stopped_timer = timer is not None)
