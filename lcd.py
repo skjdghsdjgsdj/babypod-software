@@ -111,14 +111,16 @@ class Backlight:
 	def __init__(self):
 		self.color: Optional[BacklightColor] = None
 
-	def set_color(self, color: BacklightColor) -> None:
+	def set_color(self, color: BacklightColor, only_if_current_color_is: Optional[BacklightColor] = None) -> None:
 		"""
-		Sets the color of the backlight. Subclasses must implement set_color_impl() that does the hardware calls.
+        Sets the color of the backlight. Subclasses must implement set_color_impl() that does the hardware calls.
 
-		:param color: Color to set
-		"""
-		self.set_color_impl(color)
-		self.color = color
+        :param color: Color to set
+        :param only_if_current_color_is: Only do the color change if the current backlight color is this
+        """
+		if self.color is not None and self.color != only_if_current_color_is:
+			self.set_color_impl(color)
+			self.color = color
 
 	def set_color_impl(self, color: BacklightColor):
 		"""
