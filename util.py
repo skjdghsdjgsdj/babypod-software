@@ -1,4 +1,12 @@
+import time
+
 import adafruit_datetime
+
+# noinspection PyBroadException
+try:
+	from typing import Callable, Optional, Any
+except:
+	pass
 
 class Util:
 	"""
@@ -51,3 +59,28 @@ class Util:
 		:return: Battery percent formatted as a string
 		"""
 		return f"{percent}%"
+
+	@staticmethod
+	def try_repeatedly(method: Callable[[], Any], max_attempts: int = 3, delay_between_attempts: float = 0) -> Any:
+		"""
+		Try doing something a few times in a row and give up if it fails repeatedly.
+
+		:param method: Try doing this thing. If doing the thing fails, this method must throw an exception.
+		:param max_attempts: How many times to try doing the thing until it doesn't throw an exception.
+		:param delay_between_attempts: Wait this many seconds between retry attempts
+		:return: Whatever method returned
+		"""
+
+		assert delay_between_attempts >= 0
+		attempts = 0
+		while True:
+			try:
+				return method()
+			except Exception as e:
+				attempts += 1
+				if attempts > max_attempts:
+					raise e
+
+				print(f"Attempt #{attempts} of {max_attempts} failed, trying again to invoke: {method}")
+				if delay_between_attempts > 0:
+					time.sleep(delay_between_attempts)
