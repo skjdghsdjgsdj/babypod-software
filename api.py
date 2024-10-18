@@ -318,6 +318,9 @@ class APIRequestFailedException(Exception):
 		self.request = request
 		self.http_status_code = http_status_code
 
+class TimerAPIRequest(APIRequest):
+	pass
+
 class GetAPIRequest(APIRequest):
 	"""
 	An HTTP GET request.
@@ -670,7 +673,7 @@ class PostChangeAPIRequest(PostAPIRequest):
 
 		return request.merge_serialized_notes(json_object)
 
-class PostPumpingAPIRequest(PostAPIRequest):
+class PostPumpingAPIRequest(PostAPIRequest, TimerAPIRequest):
 	"""
 	Records a breast pumping session.
 	"""
@@ -706,7 +709,7 @@ class PostPumpingAPIRequest(PostAPIRequest):
 
 		return request.merge_serialized_notes(json_object)
 
-class PostSleepAPIRequest(PostAPIRequest):
+class PostSleepAPIRequest(PostAPIRequest, TimerAPIRequest):
 	"""
 	Records a sleep session, either a nap or overnight sleep. Baby Buddy is authoritative on which one it is; refer to
 	its settings, but it can be overridden.
@@ -743,7 +746,7 @@ class PostSleepAPIRequest(PostAPIRequest):
 
 		return request.merge_serialized_notes(json_object)
 
-class PostTummyTimeAPIRequest(PostAPIRequest):
+class PostTummyTimeAPIRequest(PostAPIRequest, TimerAPIRequest):
 	"""
 	Saves tummy time to Baby Buddy.
 	"""
@@ -840,7 +843,7 @@ class FeedingAPIRequest(APIRequest):
 		}
 	]
 
-class PostFeedingAPIRequest(PostAPIRequest, FeedingAPIRequest):
+class PostFeedingAPIRequest(PostAPIRequest, FeedingAPIRequest, TimerAPIRequest):
 	"""
 	Saves a feeding to Baby Buddy.
 	"""
