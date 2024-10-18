@@ -1,10 +1,11 @@
 import time
 
 import adafruit_datetime
+from busio import I2C
 
 # noinspection PyBroadException
 try:
-	from typing import Callable, Optional, Any
+	from typing import Callable, Optional, Any, List, Dict
 except:
 	pass
 
@@ -84,3 +85,41 @@ class Util:
 				print(f"Attempt #{attempts} of {max_attempts} failed, trying again to invoke: {method}")
 				if delay_between_attempts > 0:
 					time.sleep(delay_between_attempts)
+
+
+class I2CDeviceAutoSelector:
+	def __init__(self, i2c: I2C):
+		self.i2c = i2c
+
+	def known_addresses(self) -> List[int]:
+		while not self.i2c.try_lock():
+			pass
+		i2c_address_list = self.i2c.scan()
+		self.i2c.unlock()
+
+		return i2c_address_list
+
+	def address_exists(self, address: int) -> bool:
+		return address in self.known_addresses()
+
+	def get_device(self,
+		address_map: Dict[int, Callable[[int], Any]],
+		max_attempts: int = 20,
+		delay_between_attempts: float = 0.2
+	) -> Any:
+		return Util.try_repeatedly(
+			max_attempts = max_attempts,
+			delay_between_attempts = delay_between_attempts,
+			method = lambda: self.try_get_device(address_map = address_map)
+		)
+
+	def try_get_device(self, address_map: Dict[int, Callable[[int], Any]]) -> Any:
+		address_list = self.known_addresses()
+
+		for address, method in address_map.items():
+			if address in address_list:
+				device = method(address)
+				print(f"Using {type(device).__name__} on address {hex(address)}")
+				return device
+
+		raise RuntimeError(f"No matching I2C device found")

@@ -1,9 +1,7 @@
-import time
-
 from adafruit_character_lcd.character_lcd import Character_LCD
 from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
 
-from devices import I2CDeviceAutoSelector
+from util import I2CDeviceAutoSelector
 from nvram import NVRAMValues
 from sparkfun_serlcd import Sparkfun_SerLCD, Sparkfun_SerLCD_I2C
 
@@ -87,6 +85,9 @@ class BacklightColor:
 		r, g, b = self.color
 		return f"({r}, {g}, {b})"
 
+	def __eq__(self, other):
+		return self.color == other.color
+
 class BacklightColors:
 	"""
 	Enum-like class of potential backlight colors auto-populated from their settings or defaults if no settings are
@@ -120,7 +121,8 @@ class Backlight:
         :param color: Color to set
         :param only_if_current_color_is: Only do the color change if the current backlight color is this
         """
-		if self.color is not None and self.color != only_if_current_color_is:
+
+		if self.color is None or only_if_current_color_is is None or self.color == only_if_current_color_is:
 			self.set_color_impl(color)
 			self.color = color
 

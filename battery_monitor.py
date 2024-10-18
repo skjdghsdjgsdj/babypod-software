@@ -1,13 +1,11 @@
-import time
-
 import board
 import digitalio
-from busio import I2C
-from adafruit_max1704x import MAX17048
-from adafruit_lc709203f import LC709203F, LC709203F_CMD_APA
 import supervisor
+from adafruit_lc709203f import LC709203F, LC709203F_CMD_APA
+from adafruit_max1704x import MAX17048
+from busio import I2C
 
-from devices import I2CDeviceAutoSelector
+from util import I2CDeviceAutoSelector
 
 
 class BatteryMonitor:
@@ -127,13 +125,10 @@ class BatteryMonitor:
 		"""
 
 		try:
-			I2CDeviceAutoSelector(
-				i2c = i2c,
-				address_map = {
-					0x0b: lambda _: LC709203FBatteryMonitor(i2c),
-					0x36: lambda _: MAX17048BatteryMonitor(i2c)
-				}
-			).get_device()
+			return I2CDeviceAutoSelector(i2c = i2c).get_device(address_map = {
+				0x0b: lambda _: LC709203FBatteryMonitor(i2c),
+				0x36: lambda _: MAX17048BatteryMonitor(i2c)
+			})
 		except Exception as e:
 			print(f"Failed to get battery monitor: {e}")
 			return None

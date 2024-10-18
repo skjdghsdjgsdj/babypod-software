@@ -49,7 +49,7 @@ class Flow:
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
 				on_tick = lambda _: self.devices.lcd.backlight.set_color(BacklightColors.DIM),
-				only_invoke_if = self.devices.lcd.backlight.color == BacklightColors.DEFAULT,
+				only_invoke_if = lambda: self.devices.lcd.backlight.color == BacklightColors.DEFAULT,
 				seconds = NVRAMValues.BACKLIGHT_DIM_TIMEOUT.get(),
 				name = "Backlight dim idle"
 			),

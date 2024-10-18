@@ -10,16 +10,24 @@ microcontroller.watchdog.mode = watchdog.WatchDogMode.RESET
 microcontroller.watchdog.feed()
 
 try:
+	# see if soft power control is available, and if the INT pin is wired to D11, it should read high by default and
+	# low if disconnected
+	import board
+	import digitalio
+	d11 = digitalio.DigitalInOut(board.D11)
+	d11.switch_to_input(digitalio.Pull.DOWN)
+	use_soft_power_control = d11.value
+	d11.deinit()
+	print(f"Soft power control is {'available' if use_soft_power_control else 'unavailable'}")
+
 	# see why it woke up; if it's a TimeAlarm, it's likely because there was a soft shutdown and the battery needs to be
 	# refreshed periodically
 	import alarm
 	from alarm.time import TimeAlarm
 	import os
-	use_soft_power_control = os.getenv("USE_SOFT_POWER_CONTROL")
 	just_refresh_shutdown_screen = use_soft_power_control and isinstance(alarm.wake_alarm, TimeAlarm)
 
 	# init I2C and at a higher frequency than default
-	import board
 	from busio import I2C
 	i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 

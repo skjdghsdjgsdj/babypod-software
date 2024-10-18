@@ -7,9 +7,8 @@ import adafruit_pcf8523.pcf8523
 from adafruit_datetime import datetime
 from busio import I2C
 
-from devices import I2CDeviceAutoSelector
 from offline_state import OfflineState
-from util import Util
+from util import Util, I2CDeviceAutoSelector
 
 # noinspection PyBroadException
 try:
