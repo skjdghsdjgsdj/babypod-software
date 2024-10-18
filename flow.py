@@ -397,13 +397,15 @@ class Flow:
 				value = responses[i]
 				setting.save(value)
 
-	def offline(self):
-		NoisyBrightModal(
-			devices = self.devices,
-			message = "Going offline",
-			piezo_tone = "info", auto_dismiss_after_seconds = 1
-		).render().wait()
+	def offline(self, silent: bool = False):
+		if not silent:
+			NoisyBrightModal(
+				devices = self.devices,
+				message = "Going offline",
+				piezo_tone = "info", auto_dismiss_after_seconds = 1
+			).render().wait()
 		ConnectionManager.disconnect()
+		NVRAMValues.OFFLINE.write(True)
 
 	def back_online(self) -> None:
 		NVRAMValues.OFFLINE.write(False)
