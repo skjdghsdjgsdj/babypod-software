@@ -29,7 +29,7 @@ For offline support to be available, the BabyPod must both have the following ad
 You have two options for controlling power. They are mutually exclusive!
 
 - Connect the `INT` pin on the rotary encoder to `D11`. If these pins aren't wired together, then pressing and holding the center button does nothing and you must have a separate hard power switch.
-- Wire a physical switch across `EN` and `GND`. When `EN` and `GND` are connected, the 3.3V regulator is disabled and power is cut to the Feather's processor. However, STEMMA QT devices stay on! To avoid this, wire the first device normally connected to the STEMMA QT port to `3V` (red), `GND` (black), `SDA` (blue), and `SCL` (yellow).
+- Wire a [physical switch](https://www.adafruit.com/product/3870) across `EN` and `GND`. When `EN` and `GND` are connected, the 3.3V regulator is disabled and power is cut to the Feather's processor. However, STEMMA QT devices stay on! To avoid this, wire the first device normally connected to the STEMMA QT port to `3V` (red), `GND` (black), `SDA` (blue), and `SCL` (yellow).
 
 If you don't wire either if these power options, the BabyPod will stay on until the battery drains! If you wire both, then both will work, but it will be confusing because you can turn off the BabyPod with the hard power switch but it won't turn back on with soft power control.
 
