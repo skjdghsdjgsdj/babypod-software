@@ -19,7 +19,12 @@ class WaitTickListener:
 	Something that happens periodically while waiting for user input.
 	"""
 
-	def __init__(self, seconds: int, on_tick: Callable[[float], None], recurring = False, name: Optional[str] = None):
+	def __init__(self,
+				 seconds: int,
+				 on_tick: Callable[[float], None],
+				 only_invoke_if: Optional[Callable[[], bool]] = None,
+				 recurring = False,
+				 name: Optional[str] = None):
 		"""
 		:param seconds: How frequently to do the thing
 		:param on_tick: What the thing is to do; gets passed elapsed time
@@ -29,19 +34,21 @@ class WaitTickListener:
 
 		self.seconds = seconds
 		self.on_tick = on_tick
+		self.only_invoke_if = only_invoke_if
 		self.last_triggered = None
 		self.recurring = recurring
 		self.name = name
 
 	def trigger(self, elapsed: float) -> None:
 		"""
-		Do the thing.
+		Do the thing if only_invoke_if returns True or is None.
 
 		:param elapsed: How many seconds have passed
 		"""
 
 		self.last_triggered = elapsed
-		self.on_tick(elapsed)
+		if self.only_invoke_if is None or self.only_invoke_if():
+			self.on_tick(elapsed)
 
 	def __str__(self):
 		"""

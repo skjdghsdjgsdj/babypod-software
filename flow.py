@@ -34,7 +34,12 @@ class Flow:
 
 		self.suppress_idle_warning = False
 
-		self.devices.rotary_encoder.on_activity_listeners.append(self.on_user_input)
+		self.devices.rotary_encoder.on_activity_listeners.append(
+			lambda: self.devices.lcd.backlight.set_color(
+				color = BacklightColors.DEFAULT,
+				only_if_current_color_is = BacklightColors.DIM
+			)
+		)
 
 		if self.devices.power_control is not None:
 			self.devices.rotary_encoder.on_shutdown_requested_listeners.append(self.devices.power_control.shutdown)
@@ -43,12 +48,14 @@ class Flow:
 
 		self.devices.rotary_encoder.on_wait_tick_listeners.extend([
 			WaitTickListener(
-				on_tick = self.on_backlight_dim_idle,
+				on_tick = lambda _: self.devices.lcd.backlight.set_color(BacklightColors.DIM),
+				only_invoke_if = self.devices.lcd.backlight.color == BacklightColors.DEFAULT,
 				seconds = NVRAMValues.BACKLIGHT_DIM_TIMEOUT.get(),
 				name = "Backlight dim idle"
 			),
 			WaitTickListener(
-				on_tick = self.on_idle_warning,
+				on_tick = lambda _: self.devices.piezo.tone("idle_warning"),
+				only_invoke_if = lambda: not self.suppress_idle_warning,
 				seconds = NVRAMValues.IDLE_WARNING.get(),
 				recurring = True,
 				name = "Idle warning"
@@ -64,7 +71,8 @@ class Flow:
 		idle_shutdown = NVRAMValues.IDLE_SHUTDOWN.get()
 		if self.devices.power_control and idle_shutdown:
 			listener = WaitTickListener(
-				on_tick = self.idle_shutdown,
+				on_tick = lambda _: self.devices.power_control.shutdown(silent = True),
+				only_invoke_if = lambda: not self.suppress_idle_warning,
 				seconds = idle_shutdown,
 				name = "Idle shutdown"
 			)
@@ -89,23 +97,6 @@ class Flow:
 			auto_dismiss_after_seconds = 2
 		).render().wait()
 		microcontroller.reset()
-
-	def on_backlight_dim_idle(self, _: float) -> None:
-		if self.devices.lcd.backlight.color == BacklightColors.DEFAULT:
-			self.devices.lcd.backlight.set_color(BacklightColors.DIM)
-
-	def on_idle_warning(self, _: float) -> None:
-		if not self.suppress_idle_warning:
-			self.devices.piezo.tone("idle_warning")
-
-	def idle_shutdown(self, _: float) -> None:
-		if not self.suppress_idle_warning:
-			print("Idle; soft shutdown")
-			self.devices.power_control.shutdown(silent = True)
-
-	def on_user_input(self) -> None:
-		if self.devices.lcd.backlight.color == BacklightColors.DIM:
-			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 
 	def refresh_rtc(self) -> None:
 		if NVRAMValues.OFFLINE:
