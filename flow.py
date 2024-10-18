@@ -433,9 +433,9 @@ class Flow:
 		selected_index = VerticalMenu(
 			header = "How was diaper?",
 			options = [
-				"Wet",
-				"Solid",
-				"Both"
+				"Pee",
+				"Poop",
+				"Pee and poop"
 			],
 			devices = self.devices
 		).render().wait()
