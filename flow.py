@@ -286,7 +286,7 @@ class Flow:
 	def render_success_splash(self, message: str = "Saved!", is_stopped_timer: bool = False) -> None:
 		SuccessModal(devices = self.devices, message = message).render().wait()
 
-		if is_stopped_timer and NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED:
+		if is_stopped_timer and NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED and self.devices.power_control is not None:
 			response = Modal(
 				devices = self.devices,
 				message = "Auto shutdown in 10 seconds...",
