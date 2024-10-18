@@ -594,24 +594,24 @@ class Flow:
 				)
 			)
 
-			if timer is not None:
-				amount = NumericSelector(
-					header = "How much?",
-					devices = self.devices,
-					minimum = 0,
-					step = 0.5,
-					format_str = "%.1f fl oz"
-				).render().wait()
-
-				if amount is not None:
-					self.commit(PostPumpingAPIRequest(
-						child_id = self.child_id,
-						timer = timer,
-						amount = amount
-					), timer)
-					saved = True
-			else:
+			if not timer:
 				return
+
+			amount = NumericSelector(
+				header = "How much?",
+				devices = self.devices,
+				minimum = 0,
+				step = 0.5,
+				format_str = "%.1f fl oz"
+			).render().wait()
+
+			if amount is not None:
+				self.commit(PostPumpingAPIRequest(
+					child_id = self.child_id,
+					timer = timer,
+					amount = amount
+				), timer)
+				saved = True
 
 	def sleep(self, existing_timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
