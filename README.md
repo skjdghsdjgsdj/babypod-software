@@ -21,10 +21,17 @@ In scenarios where you're away from your predefined Wi-Fi location, you can go o
 Successful events replays are deleted from the microSD card as each one is successfully replayed when going back online. If a specific event fails to play back, playback will stop at that point in history and subsequent events are kept on the microSD card, and the device stays offline.
 
 #### Hardware requirements
-For offline support to be available, the BabyPod must both have the following additional hardware. The easy way to get both these things is by using an [Adalogger FeatherWing](https://www.adafruit.com/product/2922). However, you can use other breakout boards if you want, so long as they meet the criteria.
+For offline support to be available, the BabyPod must both have the following additional hardware which is assumed in the hardware build documentation:
+
 - A PCF8523-based real-time clock (RTC) at I2C address `0x68`.
 - An SPI-based microSD card reader, or [something that looks like one to CircuitPython](https://www.adafruit.com/product/4899) with the `CS` pin wired to `D10` and a FAT32-formatted microSD card inserted. The capacity and speed are pretty much irrelevant because only a few hundred KB of JSON are likely to be written.
-- If using soft power control, the `INT` pin for the rotary encoder must be wired to `D11`.
+
+You have two options for controlling power. They are mutually exclusive!
+
+- Connect the `INT` pin on the rotary encoder to `D11`. If these pins aren't wired together, then pressing and holding the center button does nothing and you must have a separate hard power switch.
+- Wire a physical switch across `EN` and `GND`. When `EN` and `GND` are connected, the 3.3V regulator is disable and power is cut to the Feather's processor. However, STEMMA QT devices stay on! To avoid this, wire the first device normally connected to the STEMMA QT port to `3V` (red), `GND` (black), `SDA` (blue), and `SCL` (yellow).
+
+If you don't wire either if these power options, the BabyPod will stay on until the battery drains! If you wire both, then both will work, but it will be confusing because you can turn off the BabyPod with the hard power switch but it won't turn back on with soft power control.
 
 If either the RTC isn't available or the microSD reader fails to initialize, offline support is disabled (the user isn't shown the option) and the BabyPod is forced to be online.
 
