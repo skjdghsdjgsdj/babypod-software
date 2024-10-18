@@ -41,9 +41,3 @@ CIRCUITPY_WIFI_INITIAL_CHANNEL=0 # defaults to 0
 CIRCUITPY_WIFI_TIMEOUT=10 # defaults to 10
 # Device name as it should appear in some notes posted to the API; defaults to "BabyPod"
 DEVICE_NAME="" # defaults to "BabyPod"
-# Whether or not this BabyPod uses the rotary encoder to turn on and off the BabyPod.
-# If true (1), then pressing the center button wakes up the BabyPod and holding it for several
-# seconds until a message appears shuts it down. If false (0), the rotary encoder will not control
-# power, and instead you should wire a switch across the Feather's EN and GND pins to act as a
-# power switch.
-USE_SOFT_POWER_CONTROL=1 # defaults to 0
