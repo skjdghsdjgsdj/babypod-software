@@ -88,4 +88,5 @@ class OfflineState:
         }
 
         with open(self.sdcard.get_absolute_path("state.json"), "w") as file:
+            # noinspection PyTypeChecker
             json.dump(serialized, file)

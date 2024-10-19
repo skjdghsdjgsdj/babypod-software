@@ -103,6 +103,7 @@ class OfflineEventQueue:
 		print(f"Serializing {type(request)} to {filename}")
 
 		with open(filename, "w") as file:
+			# noinspection PyTypeChecker
 			json.dump(payload, file)
 			file.flush()
 
