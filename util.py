@@ -5,9 +5,9 @@ from busio import I2C
 
 # noinspection PyBroadException
 try:
-	from typing import Callable, Optional, Any, List, Dict
+	from typing import Callable, Optional, Any, List, Dict, TypeVar
 except:
-	pass
+	TypeVar = lambda: None
 
 class Util:
 	"""
@@ -61,8 +61,13 @@ class Util:
 		"""
 		return f"{percent}%"
 
+	AttemptResponse = TypeVar("AttemptResponse")
 	@staticmethod
-	def try_repeatedly(method: Callable[[], Any], max_attempts: int = 3, delay_between_attempts: float = 0) -> Any:
+	def try_repeatedly(
+			method: Callable[[], AttemptResponse],
+			max_attempts: int = 3,
+			delay_between_attempts: float = 0
+	) -> AttemptResponse:
 		"""
 		Try doing something a few times in a row and give up if it fails repeatedly.
 
