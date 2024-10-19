@@ -658,10 +658,10 @@ class Flow:
 
 			ErrorModal(
 				devices = self.devices,
-				message = "Failed, going offline!",
-				auto_dismiss_after_seconds = 3
+				message = "Save failed!",
+				auto_dismiss_after_seconds = 2
 			).render().wait()
-			self.offline(silent = True)
+			self.offline()
 			self.commit_offline(request, timer)
 
 	def commit_offline(self, request, timer):
