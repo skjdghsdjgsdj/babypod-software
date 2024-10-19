@@ -6,8 +6,11 @@ from busio import I2C
 # noinspection PyBroadException
 try:
 	from typing import Callable, Optional, Any, List, Dict, TypeVar
+	I2CDevice = TypeVar("I2CDevice")
+	AttemptResponse = TypeVar("AttemptResponse")
 except:
 	TypeVar = lambda: None
+	I2CDevice = lambda: None
 
 class Util:
 	"""
@@ -61,7 +64,6 @@ class Util:
 		"""
 		return f"{percent}%"
 
-	AttemptResponse = TypeVar("AttemptResponse")
 	@staticmethod
 	def try_repeatedly(
 			method: Callable[[], AttemptResponse],
@@ -108,17 +110,17 @@ class I2CDeviceAutoSelector:
 		return address in self.known_addresses()
 
 	def get_device(self,
-		address_map: Dict[int, Callable[[int], Any]],
+		address_map: Dict[int, Callable[[int], I2CDevice]],
 		max_attempts: int = 20,
 		delay_between_attempts: float = 0.2
-	) -> Any:
+	) -> I2CDevice:
 		return Util.try_repeatedly(
 			max_attempts = max_attempts,
 			delay_between_attempts = delay_between_attempts,
 			method = lambda: self.try_get_device(address_map = address_map)
 		)
 
-	def try_get_device(self, address_map: Dict[int, Callable[[int], Any]]) -> Any:
+	def try_get_device(self, address_map: Dict[int, Callable[[int], I2CDevice]]) -> I2CDevice:
 		address_list = self.known_addresses()
 
 		for address, method in address_map.items():
