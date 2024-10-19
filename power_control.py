@@ -152,3 +152,8 @@ class PowerControl:
 
 		self.lcd_shutdown()
 		self.enter_deep_sleep()
+
+	@staticmethod
+	def is_available():
+		import os
+		return bool(os.getenv("USE_SOFT_POWER_CONTROL"))

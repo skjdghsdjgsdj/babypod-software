@@ -12,12 +12,8 @@ microcontroller.watchdog.feed()
 try:
 	# see if soft power control is available, and if the INT pin is wired to D11, it should read high by default and
 	# low if disconnected
-	import board
-	import digitalio
-	d11 = digitalio.DigitalInOut(board.D11)
-	d11.switch_to_input(digitalio.Pull.DOWN)
-	use_soft_power_control = d11.value
-	d11.deinit()
+	from power_control import PowerControl
+	use_soft_power_control = PowerControl.is_available()
 	print(f"Soft power control is {'available' if use_soft_power_control else 'unavailable'}")
 
 	# see why it woke up; if it's a TimeAlarm, it's likely because there was a soft shutdown and the battery needs to be
@@ -29,6 +25,7 @@ try:
 
 	# init I2C and at a higher frequency than default
 	from busio import I2C
+	import board
 	i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
 
 	# set up piezo, but only play the sound if this is a normal startup
@@ -61,7 +58,6 @@ try:
 
 	# set up soft power control if enabled in settings.toml; otherwise assume a hard power switch across EN and GND
 	if use_soft_power_control:
-		from power_control import PowerControl
 		power_control = PowerControl(piezo, lcd, rotary_encoder, battery_monitor)
 	else:
 		power_control = None
