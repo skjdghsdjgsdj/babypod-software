@@ -2,6 +2,7 @@ import json
 import os
 
 from external_rtc import ExternalRTC
+from util import Util
 
 # noinspection PyBroadException
 try:
@@ -153,30 +154,18 @@ class OfflineEventQueue:
 		request = self.init_api_request(item["type"], item["payload"])
 		print(f"Replaying {request}: {full_json_path}")
 
-		retry_count = 0
-		while retry_count <= 5:
-			try:
-				retry_count += 1
-				request.invoke()
-				print(f"Replay of {request} successful")
-				if delete_on_success:
-					print(f"Deleting {full_json_path}")
-					os.unlink(full_json_path)
+		Util.try_repeatedly(request.invoke, delay_between_attempts = 2)
+		if delete_on_success:
+			os.unlink(full_json_path)
 
-				# If this request had a timer that has an ID, then it was originally an online request that failed and
-				# the BabyPod went offline and it left behind a dangling timer so it should be deleted. So delete it,
-				# but don't let a deletion failure stop the replay queue in case it was since deleted manually.
-				if isinstance(request, TimerAPIRequest):
-					timer: Timer = getattr(request, "timer", None)
-					if timer is not None and timer.timer_id is not None:
-						# noinspection PyBroadException
-						try:
-							DeleteTimerAPIRequest(timer.timer_id).invoke()
-						except:
-							print(f"Failed to clean up dangling timer with ID {timer.timer_id}; continuing anyway")
-
-				return
-			except Exception as e:
-				print(f"{e} while trying to replay {request}; retrying (count = {retry_count})")
-				if retry_count > 5:
-					raise e
+		# If this request had a timer that has an ID, then it was originally an online request that failed and
+		# the BabyPod went offline and it left behind a dangling timer so it should be deleted. So delete it,
+		# but don't let a deletion failure stop the replay queue in case it was since deleted manually.
+		if isinstance(request, TimerAPIRequest):
+			timer: Timer = getattr(request, "timer", None)
+			if timer is not None and timer.timer_id is not None:
+				# noinspection PyBroadException
+				try:
+					DeleteTimerAPIRequest(timer.timer_id).invoke()
+				except:
+					print(f"Failed to clean up dangling timer with ID {timer.timer_id}; continuing anyway")
