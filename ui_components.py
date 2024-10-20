@@ -338,7 +338,8 @@ class ProgressBar(UIComponent):
 		super().__init__(
 			devices = devices,
 			allow_cancel = False,
-			header = header
+			header = header,
+			save_text = None
 		)
 
 		self.count = count
