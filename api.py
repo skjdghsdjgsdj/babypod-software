@@ -580,7 +580,7 @@ class Timer:
 			"end": self.ended_at.isoformat()
 		}
 		if self.timer_id is not None:
-			payload["timer_id"] = self.timer_id
+			payload["timer"] = self.timer_id
 
 		return payload
 
