@@ -177,7 +177,64 @@ class Flow:
 
 		while True:
 			try:
-				self.main_menu()
+				if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
+					last_feeding = self.offline_state.last_feeding
+					method = self.offline_state.last_feeding_method
+
+					# reapply the value which could have been changed by feeding saved just now
+					self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
+				else:
+					StatusMessage(devices = self.devices, message = "Getting feeding...").render()
+					try:
+						last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
+					except Exception as e:
+						print(f"Failed getting last feeding: {e}")
+						traceback.print_exception(e)
+						last_feeding = None
+						method = None
+
+					if self.offline_state is not None and \
+							(self.offline_state.last_feeding != last_feeding or
+							 self.offline_state.last_feeding_method != method):
+						self.offline_state.last_feeding = last_feeding
+						self.offline_state.last_feeding_method = method
+						self.offline_state.to_sdcard()
+
+				if last_feeding is not None:
+					last_feeding_str = "Feed " + Util.datetime_to_time_str(last_feeding)
+
+					if method == "right breast":
+						last_feeding_str += " R"
+					elif method == "left breast":
+						last_feeding_str += " L"
+					elif method == "both breasts":
+						last_feeding_str += " RL"
+					elif method == "bottle":
+						last_feeding_str += " B"
+				else:
+					last_feeding_str = "Feeding"
+
+				menu_items = [
+					(last_feeding_str, self.feeding),
+					("Diaper change", self.diaper),
+					("Sleep", self.sleep),
+					("Pumping", self.pumping)
+				]
+
+				selected_index = VerticalMenu(
+					header = "Main menu",
+					options = [item[0] for item in menu_items],
+					devices = self.devices,
+					cancel_align = UIComponent.RIGHT,
+					cancel_text = self.devices.lcd[LCD.UNCHECKED if NVRAMValues.OFFLINE else LCD.CHECKED],
+					save_text = None
+				).render().wait()
+
+				if selected_index is None:
+					self.settings()
+				else:
+					_, method = menu_items[selected_index]
+					method()
 			except Exception as e:
 				self.on_error(e)
 
@@ -295,66 +352,6 @@ class Flow:
 
 			if not response:
 				self.devices.power_control.shutdown(silent = True)
-
-	def main_menu(self) -> None:
-		if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
-			last_feeding = self.offline_state.last_feeding
-			method = self.offline_state.last_feeding_method
-
-			# reapply the value which could have been changed by feeding saved just now
-			self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
-		else:
-			StatusMessage(devices = self.devices, message = "Getting feeding...").render()
-			try:
-				last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
-			except Exception as e:
-				print(f"Failed getting last feeding: {e}")
-				traceback.print_exception(e)
-				last_feeding = None
-				method = None
-
-			if self.offline_state is not None and \
-					(self.offline_state.last_feeding != last_feeding or
-					self.offline_state.last_feeding_method != method):
-				self.offline_state.last_feeding = last_feeding
-				self.offline_state.last_feeding_method = method
-				self.offline_state.to_sdcard()
-
-		if last_feeding is not None:
-			last_feeding_str = "Feed " + Util.datetime_to_time_str(last_feeding)
-
-			if method == "right breast":
-				last_feeding_str += " R"
-			elif method == "left breast":
-				last_feeding_str += " L"
-			elif method == "both breasts":
-				last_feeding_str += " RL"
-			elif method == "bottle":
-				last_feeding_str += " B"
-		else:
-			last_feeding_str = "Feeding"
-
-		menu_items = [
-			(last_feeding_str, self.feeding),
-			("Diaper change", self.diaper),
-			("Sleep", self.sleep),
-			("Pumping", self.pumping)
-		]
-
-		selected_index = VerticalMenu(
-			header = "Main menu",
-			options = [item[0] for item in menu_items],
-			devices = self.devices,
-			cancel_align = UIComponent.RIGHT,
-			cancel_text = self.devices.lcd[LCD.UNCHECKED if NVRAMValues.OFFLINE else LCD.CHECKED],
-			save_text = None
-		).render().wait()
-
-		if selected_index is None:
-			self.settings()
-		else:
-			_, method = menu_items[selected_index]
-			method()
 
 	def settings(self) -> None:
 		all_settings = [
