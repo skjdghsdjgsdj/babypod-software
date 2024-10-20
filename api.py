@@ -261,7 +261,7 @@ class APIRequest:
 
 		raise NotImplementedError()
 
-	def invoke(self):
+	def invoke(self, prefer_online_timers: bool = True):
 		"""
 		Sends this request to Baby Buddy and returns its JSON response. Also feeds the microcontroller watchdog before
 		sending the request and after getting and validating the response in case it happens to take a long time and
@@ -272,6 +272,13 @@ class APIRequest:
 
 		:return: JSON response from Baby Buddy, or None if the status code is 204 and no content is expected
 		"""
+
+		# remove manual start/end times from payloads if they also refer to a timer ID; just preserve the timer ID
+		if prefer_online_timers and self.payload is not None and "timer" in self.payload:
+			if "start" in self.payload:
+				del self.payload["start"]
+			if "end" in self.payload:
+				del self.payload["end"]
 
 		full_url = self.build_full_url()
 		print(f"{self.get_verb()} {full_url}, timeout {ConnectionManager.timeout}", end = "")
