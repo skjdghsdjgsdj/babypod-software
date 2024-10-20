@@ -365,7 +365,7 @@ class Flow:
 				is_available = lambda: self.devices.power_control is not None
 			),
 			Setting(
-				name = "Play sounds",
+				name = "Sounds",
 				backing_nvram_value = NVRAMValues.PIEZO
 			),
 			Setting(
