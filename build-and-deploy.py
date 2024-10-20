@@ -56,17 +56,17 @@ def get_base_path():
     return os.path.abspath(os.path.dirname(__file__))
 
 def reboot():
-    ttys = glob.glob("/dev/tty.usbmodem*")
-    if not ttys:
-        raise ValueError("Couldn't find any device named /dev/tty.usbmodem*")
+    devices = glob.glob("/dev/cu.usbmodem*")
+    if not devices:
+        raise ValueError("Couldn't find any device named /dev/cu.usbmodem*")
 
-    if len(ttys) > 1:
-        raise ValueError("Multiple devices named /dev/tty.usbmodem* found")
+    if len(devices) > 1:
+        raise ValueError("Multiple devices named /dev/cu.usbmodem* found")
 
-    tty = ttys[0]
+    device = devices[0]
 
-    subprocess.Popen(f"expect -c \"send \003;\" > {tty}", shell = True).communicate()
-    subprocess.Popen(f"expect -c \"send \004;\" > {tty}", shell = True).communicate()
+    subprocess.Popen(f"expect -c \"send \003;\" > {device}", shell = True).communicate()
+    subprocess.Popen(f"expect -c \"send \004;\" > {device}", shell = True).communicate()
 
 def clean(clean_path: str):
     lib = f"{clean_path}/lib"
