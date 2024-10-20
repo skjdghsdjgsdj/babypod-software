@@ -85,7 +85,8 @@ class Util:
 	def try_repeatedly(
 			method: Callable[[], AttemptResponse],
 			max_attempts: int = 3,
-			delay_between_attempts: float = 0
+			delay_between_attempts: float = 0,
+			quiet: bool = False
 	) -> AttemptResponse:
 		"""
 		Try doing something a few times in a row and give up if it fails repeatedly.
@@ -106,8 +107,9 @@ class Util:
 				if attempts > max_attempts:
 					raise e
 
-				print(f"Attempt #{attempts} of {max_attempts} failed with {type(e).__name__}, trying again to invoke: {method}")
-				traceback.print_exception(e)
+				if not quiet:
+					print(f"Attempt #{attempts} of {max_attempts} failed with {type(e).__name__}, trying again to invoke: {method}")
+					traceback.print_exception(e)
 				if delay_between_attempts > 0:
 					time.sleep(delay_between_attempts)
 
@@ -135,7 +137,8 @@ class I2CDeviceAutoSelector:
 		return Util.try_repeatedly(
 			max_attempts = max_attempts,
 			delay_between_attempts = delay_between_attempts,
-			method = lambda: self.try_get_device(address_map = address_map)
+			method = lambda: self.try_get_device(address_map = address_map),
+			quiet = True
 		)
 
 	def try_get_device(self, address_map: Dict[int, Callable[[int], I2CDevice]]) -> I2CDevice:
