@@ -154,7 +154,7 @@ class APIRequest:
 		:param value: Value to escape
 		:return: Escaped value
 		"""
-		safe_chars = re.compile(r"[A-Za-z0-9]")
+		safe_chars = re.compile(r"[A-Za-z0-9-]")
 		escaped = ""
 		for char in str(value):
 			escaped += f"%{ord(char):x}" if safe_chars.match(char) is None else char
