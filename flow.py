@@ -423,7 +423,6 @@ class Flow:
 				progress_bar.set_index(index)
 
 		def on_failed_event(request: Optional[APIRequest]) -> bool:
-
 			message = "Failed event"
 			if request is not None:
 				names = {
