@@ -463,22 +463,6 @@ class ActiveTimer(UIComponent):
 				super().__init__(seconds = 1, on_tick = self.render_elapsed_time, recurring = True)
 				self.render_elapsed_time(start)
 
-			@staticmethod
-			def format_elapsed_time(elapsed: float) -> str:
-				"""
-				Takes a duration and makes a human-readable version of it.
-
-				:param elapsed: Seconds elapsed
-				:return: Like "1h 23m 56s" for 5,036 seconds
-				"""
-
-				if elapsed < 60:
-					return f"{elapsed:.0f} sec"
-				elif elapsed < 60 * 60:
-					return f"{(elapsed // 60):.0f} min {(int(elapsed) % 60):.0f} sec"
-				else:
-					return f"{(elapsed // 60 // 60):.0f} hr {(elapsed // 60 % 60):.0f} min {(int(elapsed) % 60):.0f} sec"
-
 			def render_elapsed_time(self, _: float) -> None:
 				"""
 				Updates the elapsed time shown.
@@ -486,7 +470,7 @@ class ActiveTimer(UIComponent):
 				:param _: Ignored
 				"""
 
-				message = ActiveTimerWaitTickListener.format_elapsed_time(time.monotonic() - self.start)
+				message = Util.format_elapsed_time(time.monotonic() - self.start)
 				self.devices.lcd.write_centered(
 					text = message,
 					erase_if_shorter_than = None if self.last_message is None else len(self.last_message)
