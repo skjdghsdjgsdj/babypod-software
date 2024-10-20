@@ -247,10 +247,15 @@ class LCD:
 		:param y_delta: Adjust the y position by this amount, like 1 to move down by one line from centered
 		"""
 		if erase_if_shorter_than is not None and len(text) < erase_if_shorter_than:
-			self.write_centered(" " * erase_if_shorter_than, y_delta = y_delta)
+			self.write(" " * erase_if_shorter_than, LCD.get_centered_coords(erase_if_shorter_than))
 
-		coords = (max(int(LCD.COLUMNS / 2 - len(text) / 2), 0), max(int(LCD.LINES / 2) - 1 + y_delta, 0))
+		coords = self.get_centered_coords(len(text), y_delta)
 		self.write(text, coords)
+
+	@staticmethod
+	def get_centered_coords(char_count: int, y_delta: int = 0):
+		coords = (max(int(LCD.COLUMNS / 2 - char_count / 2), 0), max(int(LCD.LINES / 2) - 1 + y_delta, 0))
+		return coords
 
 	def write_right_aligned(self, text: str, y: int = 0) -> None:
 		"""

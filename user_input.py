@@ -279,7 +279,4 @@ class RotaryEncoder:
 
 		microcontroller.watchdog.feed()
 
-		if response is None:
-			time.sleep(0.1)
-
 		return response

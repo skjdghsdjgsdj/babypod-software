@@ -10,7 +10,7 @@ try:
 except:
 	pass
 
-from api import APIRequest, TimerAPIRequest, DeleteTimerAPIRequest, Timer
+from api import APIRequest, TimerAPIRequest, GetAllTimersAPIRequest
 from sdcard import SDCard
 
 class OfflineEventQueue:
@@ -101,7 +101,7 @@ class OfflineEventQueue:
 		}
 
 		filename = self.build_json_filename()
-		print(f"Serializing {type(request)} to {filename}")
+		print(f"Serializing {type(request).__name__} to {filename}")
 
 		with open(filename, "w") as file:
 			# noinspection PyTypeChecker
@@ -136,47 +136,32 @@ class OfflineEventQueue:
 			raise NotImplementedError(f"Don't know how to deserialize a {class_name}")
 
 	def replay_all(self,
-		on_replay_started: Callable[[int, int], None] = None,
+		on_replay: Callable[[int, int], None] = None,
 		delete_on_success: bool = True
 	) -> None:
 		index = 0
 		files = self.get_json_files()
-		for file in files:
-			if on_replay_started is not None:
-				on_replay_started(index, len(files))
-			self.replay(full_json_path = file, delete_on_success = delete_on_success)
+		if not files:
+			return # nothing to do
 
-	def replay(self, full_json_path: str, delete_on_success: bool = True) -> None:
-		"""
-		Replays a single event from the queue by deserializing it back to a concrete APIRequest and calling invoke()
-		on it. If invoke() succeeds, even if it takes a few attempts, and if delete_on_success is True, then the JSON
-		file is deleted to avoid duplicate playback.
+		# check for existing timers in case an API payload refers to an ID that doesn't exist
+		existing_timer_ids = [int(timer.timer_id) for timer in GetAllTimersAPIRequest().get_active_timers()]
 
-		If the request has timer data and the timer was created when the BabyPod was online, then try to delete the
-		dangling timer by ID, but if that fails, keep going.
+		for full_json_path in files:
+			if on_replay is not None:
+				on_replay(index, len(files))
+			with open(full_json_path, "r") as file:
+				item = json.load(file)
 
-		:param full_json_path: Path to the JSON file containing the serialized APIRequest to replay
-		:param delete_on_success: True to delete the file if it is successfully replayed, False to keep it
-		"""
+			request = self.init_api_request(item["type"], item["payload"])
+			print(f"Replaying {request}: {full_json_path}")
 
-		with open(full_json_path, "r") as file:
-			item = json.load(file)
+			if isinstance(request, TimerAPIRequest):
+				# does this API request refer to a timer that no longer exists?
+				if "timer_id" in request.payload and int(request.payload["timer_id"]) not in existing_timer_ids:
+					# get rid of the ID reference and use start/end times instead
+					del request.payload["timer_id"]
 
-		request = self.init_api_request(item["type"], item["payload"])
-		print(f"Replaying {request}: {full_json_path}")
-
-		Util.try_repeatedly(request.invoke, delay_between_attempts = 2)
-		if delete_on_success:
-			os.unlink(full_json_path)
-
-		# If this request had a timer that has an ID, then it was originally an online request that failed and
-		# the BabyPod went offline and it left behind a dangling timer so it should be deleted. So delete it,
-		# but don't let a deletion failure stop the replay queue in case it was since deleted manually.
-		if isinstance(request, TimerAPIRequest):
-			timer: Timer = getattr(request, "timer", None)
-			if timer is not None and timer.timer_id is not None:
-				# noinspection PyBroadException
-				try:
-					DeleteTimerAPIRequest(timer.timer_id).invoke()
-				except:
-					print(f"Failed to clean up dangling timer with ID {timer.timer_id}; continuing anyway")
+			request.invoke()
+			if delete_on_success:
+				os.unlink(full_json_path)

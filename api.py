@@ -281,25 +281,21 @@ class APIRequest:
 		microcontroller.watchdog.feed()
 
 		start = time.monotonic()
-		try:
-			with self.get_connection_method()(
-				url = full_url,
-				json = self.payload,
-				headers = {
-					"Authorization": f"Token {APIRequest.API_KEY}"
-				},
-				timeout = ConnectionManager.timeout
-			) as response:
-				end = time.monotonic()
-				microcontroller.watchdog.feed()
-				print(f"HTTP {response.status_code}, {end - start} sec")
-				self.validate_response(response)
+		with self.get_connection_method()(
+			url = full_url,
+			json = self.payload,
+			headers = {
+				"Authorization": f"Token {APIRequest.API_KEY}"
+			},
+			timeout = ConnectionManager.timeout
+		) as response:
+			end = time.monotonic()
+			microcontroller.watchdog.feed()
+			print(f"HTTP {response.status_code}, {end - start} sec")
+			self.validate_response(response)
 
-				# HTTP 204 is No Content so there shouldn't be a response payload
-				response_json = None if response.status_code is 204 else response.json()
-		except Exception as e:
-			print(type(e).__name__)
-			raise e
+			# HTTP 204 is No Content so there shouldn't be a response payload
+			response_json = None if response.status_code is 204 else response.json()
 
 		return response_json
 
@@ -565,9 +561,8 @@ class Timer:
 
 	def as_payload(self) -> dict[str, Any]:
 		"""
-		Expresses this timer as a partial JSON payload to be merged into API requests that expect a timer. For online
-		requests, just the timer ID is provided. For offline timers where this payload will later be merged with a
-		deserialized request and no timer was created in Baby Buddy itself, just start and end dates/times are provided.
+		Expresses this timer as a partial JSON payload to be merged into API requests that expect a timer. The start
+		and end dates/times are always included. Online timers also get the ID merged.
 
 		:return: A partial JSON payload that can be merged into API requests
 		"""
@@ -576,17 +571,17 @@ class Timer:
 			if self.started_at is None:
 				raise ValueError("Timer was never started or resumed")
 
-			if self.ended_at is None and self.rtc is not None:
-				self.ended_at = self.rtc.now()
+		if self.ended_at is None and self.rtc is not None:
+			self.ended_at = self.rtc.now()
 
-			return {
-				"start": self.started_at.isoformat(),
-				"end": self.ended_at.isoformat()
-			}
-		else:
-			return {
-				"timer": self.timer_id
-			}
+		payload = {
+			"start": self.started_at.isoformat(),
+			"end": self.ended_at.isoformat()
+		}
+		if self.timer_id is not None:
+			payload["timer_id"] = self.timer_id
+
+		return payload
 
 	@staticmethod
 	def from_payload(name: str, payload: dict[str, Any]):
@@ -1001,7 +996,7 @@ class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
 
 		super().__init__(uri = "timers", tag_name = tag_name, limit = limit)
 
-	def get_active_timers(self) -> Generator[Timer]:
+	def get_active_timers(self, rtc: Optional[ExternalRTC] = None) -> Generator[Timer]:
 		"""
 		Yields Timer instances that match the given request.
 
@@ -1015,7 +1010,8 @@ class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
 			if name is not None and name.startswith(prefix):
 				timer = Timer(
 					name = name,
-					offline = False
+					offline = False,
+					rtc = rtc
 				)
 				timer.started_at = Util.to_datetime(result["start"])
 				timer.timer_id = result["id"]
