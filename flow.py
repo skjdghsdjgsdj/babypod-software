@@ -437,6 +437,12 @@ class Flow:
 						message = f"Failed {name}"
 						break
 
+			ErrorModal(
+				devices = self.devices,
+				message = f"{message}!",
+				auto_dismiss_after_seconds = 2
+			).render().wait()
+
 			response = BooleanPrompt(
 				devices = self.devices,
 				header = message,
