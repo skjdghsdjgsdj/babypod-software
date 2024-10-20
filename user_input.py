@@ -3,6 +3,8 @@ import time
 import microcontroller
 from busio import I2C
 
+from util import Util
+
 # noinspection PyBroadException
 try:
 	from typing import List, Optional, Callable, Any
@@ -69,22 +71,21 @@ class Button(DigitalIO):
 		:param seesaw_controller: Seesaw controller with virtual pins
 		:param pin: Virtual pin number on the seesaw controller
 		"""
+		super().__init__(seesaw_controller, pin)
 
 		self.pin = pin
-		success = False
-		while not success:
-			try:
-				super().__init__(seesaw_controller, pin)
-				self.direction = digitalio.Direction.INPUT
-				self.pull = digitalio.Pull.UP
-
-				success = True
-			except OSError as e:
-				print(f"Failed to set up rotary encoder button, trying again: {e}")
-				time.sleep(0.2)
-
+		self.seesaw_controller = seesaw_controller
+		Util.try_repeatedly(
+			method = self.init_rotary_encoder,
+			max_attempts = 20
+		)
 		self.press_start: float = 0
 		self.is_pressed = False
+
+	def init_rotary_encoder(self):
+		super().__init__(self.seesaw_controller, self.pin)
+		self.direction = digitalio.Direction.INPUT
+		self.pull = digitalio.Pull.UP
 
 	def was_pressed(self) -> tuple[bool, float]:
 		"""
