@@ -173,7 +173,12 @@ class Flow:
 		self.init_child_id()
 		self.jump_to_running_timer()
 		self.check_motd()
-		self.loop()
+
+		while True:
+			try:
+				self.main_menu()
+			except Exception as e:
+				self.on_error(e)
 
 	def check_motd(self) -> None:
 		if self.devices.rtc and not NVRAMValues.OFFLINE:
@@ -511,77 +516,72 @@ class Flow:
 				)
 			)
 
-			if timer is not None:
-				saved = self.save_feeding(timer)
+			if timer is None:
+				return
+
+			enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
+
+			options = []
+			for food_type in FeedingAPIRequest.FOOD_TYPES:
+				if food_type["mask"] & enabled_food_types:
+					options.append(food_type)
+
+			if not options:
+				raise ValueError(f"All food types excluded by ENABLED_FOOD_TYPES_MASK bitmask {enabled_food_types}")
+
+			if len(options) == 1:
+				food_type_metadata = options[0]
 			else:
-				return # canceled the timer
+				selected_index: Optional[int] = VerticalMenu(
+					header = "What was fed?",
+					devices = self.devices,
+					options = list(map(lambda item: item["name"], options))
+				).render().wait()
 
-	def save_feeding(self, timer: Timer) -> bool:
-		enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
+				if selected_index is None:
+					saved = False
 
-		options = []
-		for food_type in FeedingAPIRequest.FOOD_TYPES:
-			if food_type["mask"] & enabled_food_types:
-				options.append(food_type)
+				food_type_metadata = options[selected_index]
 
-		if not options:
-			raise ValueError(f"All food types excluded by ENABLED_FOOD_TYPES_MASK bitmask {enabled_food_types}")
+			food_type = food_type_metadata["type"]
 
-		if len(options) == 1:
-			food_type_metadata = options[0]
-		else:
-			selected_index: Optional[int] = VerticalMenu(
-				header = "What was fed?",
-				devices = self.devices,
-				options = list(map(lambda item: item["name"], options))
-			).render().wait()
+			method = None
+			if len(food_type_metadata["methods"]) == 1:
+				method = food_type_metadata["methods"][0]
+			else:
+				method_names = []
+				for available_method in FeedingAPIRequest.FEEDING_METHODS:
+					for allowed_method in food_type_metadata["methods"]:
+						if available_method["method"] == allowed_method:
+							method_names.append(available_method["name"])
 
-			if selected_index is None:
-				return False
+				selected_index = VerticalMenu(
+					header = "How was this fed?",
+					devices = self.devices,
+					options = method_names
+				).render().wait()
 
-			food_type_metadata = options[selected_index]
+				if selected_index is None:
+					saved = False
 
-		food_type = food_type_metadata["type"]
+				selected_method_name = method_names[selected_index]
+				for available_method in FeedingAPIRequest.FEEDING_METHODS:
+					if available_method["name"] == selected_method_name:
+						method = available_method["method"]
+						break
 
-		method = None
-		if len(food_type_metadata["methods"]) == 1:
-			method = food_type_metadata["methods"][0]
-		else:
-			method_names = []
-			for available_method in FeedingAPIRequest.FEEDING_METHODS:
-				for allowed_method in food_type_metadata["methods"]:
-					if available_method["method"] == allowed_method:
-						method_names.append(available_method["name"])
+			if self.offline_state is not None:
+				self.offline_state.last_feeding = timer.started_at
+				self.offline_state.last_feeding_method = method
+				self.offline_state.to_sdcard()
+				self.use_offline_feeding_stats = True
 
-			selected_index = VerticalMenu(
-				header = "How was this fed?",
-				devices = self.devices,
-				options = method_names
-			).render().wait()
-
-			if selected_index is None:
-				return False
-
-			selected_method_name = method_names[selected_index]
-			for available_method in FeedingAPIRequest.FEEDING_METHODS:
-				if available_method["name"] == selected_method_name:
-					method = available_method["method"]
-					break
-
-		if self.offline_state is not None:
-			self.offline_state.last_feeding = timer.started_at
-			self.offline_state.last_feeding_method = method
-			self.offline_state.to_sdcard()
-			self.use_offline_feeding_stats = True
-
-		self.commit(PostFeedingAPIRequest(
-			child_id = self.child_id,
-			timer = timer,
-			food_type = food_type,
-			method = method
-		), timer)
-
-		return True
+			self.commit(PostFeedingAPIRequest(
+				child_id = self.child_id,
+				timer = timer,
+				food_type = food_type,
+				method = method
+			), timer)
 
 	def pumping(self, existing_timer: Optional[Timer] = None) -> None:
 		saved = False
