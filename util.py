@@ -1,6 +1,7 @@
 import time
 
 import adafruit_datetime
+import traceback
 from busio import I2C
 
 # noinspection PyBroadException
@@ -105,7 +106,8 @@ class Util:
 				if attempts > max_attempts:
 					raise e
 
-				print(f"Attempt #{attempts} of {max_attempts} failed, trying again to invoke: {method}")
+				print(f"Attempt #{attempts} of {max_attempts} failed with {type(e).__name__}, trying again to invoke: {method}")
+				traceback.print_exception(e)
 				if delay_between_attempts > 0:
 					time.sleep(delay_between_attempts)
 

@@ -254,7 +254,7 @@ class Flow:
 	def check_for_running_timer(self) -> Optional[Timer]:
 		try:
 			StatusMessage(devices = self.devices, message = "Checking timers...").render()
-			for timer in GetAllTimersAPIRequest(limit = 1).get_active_timers():
+			for timer in GetAllTimersAPIRequest(limit = 1).get_active_timers(rtc = self.devices.rtc):
 				return timer # don't consume the whole generator
 		except Exception as e:
 			print(f"Failed getting active timers; continuing to main menu: {e}")
@@ -471,6 +471,7 @@ class Flow:
 			timer = Timer(
 				name = timer_name,
 				offline = False,
+				rtc = self.devices.rtc,
 				battery = self.devices.battery_monitor
 			)
 			timer.start_or_resume()
@@ -647,7 +648,7 @@ class Flow:
 	def commit_online(self, request, timer):
 		StatusMessage(devices = self.devices, message = "Saving...").render()
 		try:
-			Util.try_repeatedly(request.invoke)
+			request.invoke()
 			self.render_success_splash(is_stopped_timer = timer is not None)
 		except Exception as e:
 			traceback.print_exception(e)
