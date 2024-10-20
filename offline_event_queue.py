@@ -1,12 +1,12 @@
 import json
 import os
+import traceback
 
 from external_rtc import ExternalRTC
-from util import Util
 
 # noinspection PyBroadException
 try:
-	from typing import List, Callable
+	from typing import List, Callable, Optional
 except:
 	pass
 
@@ -137,6 +137,7 @@ class OfflineEventQueue:
 
 	def replay_all(self,
 		on_replay: Callable[[int, int], None] = None,
+		on_failed_event: Callable[[Optional[APIRequest]], bool] = None,
 		delete_on_success: bool = True
 	) -> None:
 		index = 0
@@ -153,15 +154,23 @@ class OfflineEventQueue:
 			with open(full_json_path, "r") as file:
 				item = json.load(file)
 
-			request = self.init_api_request(item["type"], item["payload"])
-			print(f"Replaying {request}: {full_json_path}")
+			delete = delete_on_success
+			request = None
+			try:
+				request = self.init_api_request(item["type"], item["payload"])
+				print(f"Replaying {request}: {full_json_path}")
 
-			if isinstance(request, TimerAPIRequest):
-				# does this API request refer to a timer that no longer exists?
-				if "timer_id" in request.payload and int(request.payload["timer_id"]) not in existing_timer_ids:
-					# get rid of the ID reference and use start/end times instead
-					del request.payload["timer_id"]
-
-			request.invoke()
-			if delete_on_success:
+				if isinstance(request, TimerAPIRequest):
+					# does this API request refer to a timer that no longer exists?
+					if "timer_id" in request.payload and int(request.payload["timer_id"]) not in existing_timer_ids:
+						# get rid of the ID reference and use start/end times instead
+						del request.payload["timer_id"]
+				request.invoke()
+			except Exception as e:
+				traceback.print_exception(e)
+				if on_failed_event is not None:
+					delete = on_failed_event(request)
+				else:
+					raise e
+			if delete:
 				os.unlink(full_json_path)

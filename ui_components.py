@@ -789,6 +789,26 @@ class VerticalMenu(UIComponent):
 
 		self.selected_row_index = row_index
 
+class BooleanPrompt(VerticalMenu):
+	def __init__(self,
+		devices: Devices,
+		header: str,
+		yes_text: str = "Yes",
+		no_text: str = "No",
+		save_text: str = "Save"
+	) -> None:
+		super().__init__(
+			devices = devices,
+			options = [yes_text, no_text],
+			allow_cancel = False,
+			save_text = save_text,
+			header = header
+		)
+
+	def wait(self) -> bool:
+		response = super().wait()
+		return response == 0
+
 class VerticalCheckboxes(VerticalMenu):
 	"""
 	Like VerticalMenu, but each item is a checkbox that can be toggled.

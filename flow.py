@@ -15,7 +15,7 @@ from offline_state import OfflineState
 from periodic_chime import EscalatingIntervalPeriodicChime, ConsistentIntervalPeriodicChime, PeriodicChime
 from setting import Setting
 from ui_components import NumericSelector, VerticalMenu, VerticalCheckboxes, ActiveTimer, ProgressBar, Modal, \
-	StatusMessage, NoisyBrightModal, SuccessModal, ErrorModal, UIComponent
+	StatusMessage, NoisyBrightModal, SuccessModal, ErrorModal, UIComponent, BooleanPrompt
 from user_input import WaitTickListener
 from util import Util
 
@@ -230,13 +230,6 @@ class Flow:
 			NVRAMValues.CHILD_ID.write(child_id)
 		self.child_id = child_id
 
-	def loop(self) -> None:
-		while True:
-			try:
-				self.main_menu()
-			except Exception as e:
-				self.on_error(e)
-
 	def jump_to_running_timer(self) -> None:
 		timer = None if NVRAMValues.OFFLINE else self.check_for_running_timer()
 
@@ -417,7 +410,7 @@ class Flow:
 		self.auto_connect()
 
 		progress_bar: Optional[ProgressBar] = None
-		def update_replay_status(index: int, count: int):
+		def update_replay_status(index: int, count: int) -> None:
 			nonlocal progress_bar
 			if progress_bar is None:
 				progress_bar = ProgressBar(
@@ -429,8 +422,38 @@ class Flow:
 			else:
 				progress_bar.set_index(index)
 
+		def on_failed_event(request: Optional[APIRequest]) -> bool:
+
+			message = "Failed event"
+			if request is not None:
+				names = {
+					PostFeedingAPIRequest: "feeding",
+					PostPumpingAPIRequest: "pumping",
+					PostTummyTimeAPIRequest: "tm. time",
+					PostSleepAPIRequest: "sleep"
+				}
+				for request_type, name in names.items():
+					if isinstance(request, request_type):
+						message = f"Failed {name}"
+						break
+
+			response = BooleanPrompt(
+				devices = self.devices,
+				header = message,
+				yes_text = "Delete",
+				no_text = "Skip"
+			).render().wait()
+
+			nonlocal progress_bar
+			progress_bar.render()
+
+			return response
+
 		try:
-			self.offline_queue.replay_all(on_replay = update_replay_status)
+			self.offline_queue.replay_all(
+				on_replay = update_replay_status,
+				on_failed_event = on_failed_event
+			)
 		except Exception as e:
 			NVRAMValues.OFFLINE.write(True)
 			raise e
@@ -661,8 +684,15 @@ class Flow:
 				message = "Save failed!",
 				auto_dismiss_after_seconds = 2
 			).render().wait()
-			self.offline()
-			self.commit_offline(request, timer)
+
+			if BooleanPrompt(
+				devices = self.devices,
+				header = "Save failed!",
+				yes_text = "Go offline",
+				no_text = "Ignore"
+			).render().wait():
+				self.offline()
+				self.commit_offline(request, timer)
 
 	def commit_offline(self, request, timer):
 		self.offline_queue.add(request)
