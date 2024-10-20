@@ -1,6 +1,5 @@
 import json
 import os
-import pathlib
 import traceback
 
 from external_rtc import ExternalRTC
@@ -158,7 +157,8 @@ class OfflineEventQueue:
 			delete = delete_on_success
 			request = None
 			try:
-				print(f"Replaying {full_json_path}: " + pathlib.Path(full_json_path).read_text())
+				with open(full_json_path, "r") as file:
+					print(f"Replaying {full_json_path}: {file.read()}")
 				request = self.init_api_request(item["type"], item["payload"])
 
 				if isinstance(request, TimerAPIRequest):
