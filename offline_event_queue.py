@@ -1,5 +1,6 @@
 import json
 import os
+import pathlib
 import traceback
 
 from external_rtc import ExternalRTC
@@ -157,8 +158,8 @@ class OfflineEventQueue:
 			delete = delete_on_success
 			request = None
 			try:
+				print(f"Replaying {full_json_path}: " + pathlib.Path(full_json_path).read_text())
 				request = self.init_api_request(item["type"], item["payload"])
-				print(f"Replaying {request}: {full_json_path}")
 
 				if isinstance(request, TimerAPIRequest):
 					# does this API request refer to a timer that no longer exists?
