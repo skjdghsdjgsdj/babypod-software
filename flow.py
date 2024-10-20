@@ -21,7 +21,7 @@ from util import Util
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, cast
+	from typing import Optional, cast, Dict
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -111,6 +111,7 @@ class Flow:
 			self.devices.rtc.sync(self.requests)
 			if old_now is not None:
 				print(f"RTC drift since last sync: {old_now - self.devices.rtc.now()}")
+			print(f"RTC synced: {self.devices.rtc.now()}")
 		except Exception as e:
 			print(f"{e} when syncing RTC; forcing sync on next online boot")
 			NVRAMValues.FORCE_RTC_UPDATE.write(True)
@@ -530,8 +531,7 @@ class Flow:
 		return timer
 
 	def feeding(self, existing_timer: Optional[Timer] = None) -> None:
-		saved = False
-		while not saved:
+		while True:
 			timer = self.start_or_resume_timer(
 				existing_timer = existing_timer,
 				header_text = "Feeding",
@@ -547,56 +547,22 @@ class Flow:
 			if timer is None:
 				return
 
-			enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
+			food_type, food_type_metadata = self.get_food_type_selection()
+			if food_type is None:
+				continue
 
-			options = []
-			for food_type in FeedingAPIRequest.FOOD_TYPES:
-				if food_type["mask"] & enabled_food_types:
-					options.append(food_type)
-
-			if not options:
-				raise ValueError(f"All food types excluded by ENABLED_FOOD_TYPES_MASK bitmask {enabled_food_types}")
-
-			if len(options) == 1:
-				food_type_metadata = options[0]
-			else:
-				selected_index: Optional[int] = VerticalMenu(
-					header = "What was fed?",
-					devices = self.devices,
-					options = list(map(lambda item: item["name"], options))
-				).render().wait()
-
-				if selected_index is None:
-					saved = False
-
-				food_type_metadata = options[selected_index]
-
-			food_type = food_type_metadata["type"]
-
-			method = None
 			if len(food_type_metadata["methods"]) == 1:
 				method = food_type_metadata["methods"][0]
 			else:
-				method_names = []
-				for available_method in FeedingAPIRequest.FEEDING_METHODS:
-					for allowed_method in food_type_metadata["methods"]:
-						if available_method["method"] == allowed_method:
-							method_names.append(available_method["name"])
+				method = self.get_feeding_method_selection(food_type_metadata)
 
-				selected_index = VerticalMenu(
-					header = "How was this fed?",
-					devices = self.devices,
-					options = method_names
-				).render().wait()
+			if method is None:
+				continue
 
-				if selected_index is None:
-					saved = False
-
-				selected_method_name = method_names[selected_index]
-				for available_method in FeedingAPIRequest.FEEDING_METHODS:
-					if available_method["name"] == selected_method_name:
-						method = available_method["method"]
-						break
+			for available_method in FeedingAPIRequest.FEEDING_METHODS:
+				if available_method["name"] == method:
+					method = available_method["method"]
+					break
 
 			if self.offline_state is not None:
 				self.offline_state.last_feeding = timer.started_at
@@ -610,6 +576,47 @@ class Flow:
 				food_type = food_type,
 				method = method
 			), timer)
+			break
+
+	def get_feeding_method_selection(self, food_type_metadata: dict[str, str]) -> Optional[str]:
+		method_names = []
+		for available_method in FeedingAPIRequest.FEEDING_METHODS:
+			for allowed_method in food_type_metadata["methods"]:
+				if available_method["method"] == allowed_method:
+					method_names.append(available_method["name"])
+		selected_index = VerticalMenu(
+			header = "How was this fed?",
+			devices = self.devices,
+			options = method_names
+		).render().wait()
+		if selected_index is None:
+			return None
+
+		return method_names[selected_index]
+
+	def get_food_type_selection(self) -> tuple[Optional[str], Optional[Dict[str, str]]]:
+		enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
+		options = []
+		for food_type in FeedingAPIRequest.FOOD_TYPES:
+			if food_type["mask"] & enabled_food_types:
+				options.append(food_type)
+		if not options:
+			raise ValueError(f"All food types excluded by ENABLED_FOOD_TYPES_MASK bitmask {enabled_food_types}")
+		if len(options) == 1:
+			food_type_metadata = options[0]
+		else:
+			selected_index: Optional[int] = VerticalMenu(
+				header = "What was fed?",
+				devices = self.devices,
+				options = list(map(lambda item: item["name"], options))
+			).render().wait()
+
+			if selected_index is None:
+				return None, None
+
+			food_type_metadata = options[selected_index]
+		food_type = food_type_metadata["type"]
+		return food_type, food_type_metadata
 
 	def pumping(self, existing_timer: Optional[Timer] = None) -> None:
 		saved = False
