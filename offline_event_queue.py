@@ -6,7 +6,7 @@ from util import Util
 
 # noinspection PyBroadException
 try:
-	from typing import List
+	from typing import List, Callable
 except:
 	pass
 
@@ -134,6 +134,17 @@ class OfflineEventQueue:
 			return PostSleepAPIRequest.deserialize_from_json(payload)
 		else:
 			raise NotImplementedError(f"Don't know how to deserialize a {class_name}")
+
+	def replay_all(self,
+		on_replay_started: Callable[[int, int], None] = None,
+		delete_on_success: bool = True
+	) -> None:
+		index = 0
+		files = self.get_json_files()
+		for file in files:
+			if on_replay_started is not None:
+				on_replay_started(index, len(files))
+			self.replay(full_json_path = file, delete_on_success = delete_on_success)
 
 	def replay(self, full_json_path: str, delete_on_success: bool = True) -> None:
 		"""

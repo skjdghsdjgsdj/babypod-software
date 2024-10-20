@@ -410,26 +410,25 @@ class Flow:
 	def back_online(self) -> None:
 		NVRAMValues.OFFLINE.write(False)
 		self.auto_connect()
-		files = self.offline_queue.get_json_files()
-		if len(files) > 0:
-			print(f"Replaying offline-serialized {len(files)} requests")
 
-			self.devices.lcd.clear()
-
-			progress_bar = ProgressBar(devices = self.devices, count = len(files), message = "Syncing changes...")
-			progress_bar.render()
-
-			index = 0
-			for filename in files:
+		progress_bar: Optional[ProgressBar] = None
+		def update_replay_status(index: int, count: int):
+			nonlocal progress_bar
+			if progress_bar is None:
+				progress_bar = ProgressBar(
+					devices = self.devices,
+					count = count,
+					message = "Syncing changes..."
+				)
+				progress_bar.render()
+			else:
 				progress_bar.set_index(index)
-				try:
-					self.offline_queue.replay(filename)
-				except Exception as e:
-					NVRAMValues.OFFLINE.write(True)
-					raise e
-				index += 1
 
-			self.render_success_splash("Change synced!" if len(files) == 1 else f"{len(files)} changes synced!")
+		try:
+			self.offline_queue.replay_all(on_replay = update_replay_status)
+		except Exception as e:
+			NVRAMValues.OFFLINE.write(True)
+			raise e
 
 	def diaper(self) -> None:
 		selected_index = VerticalMenu(
