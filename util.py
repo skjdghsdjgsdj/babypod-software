@@ -1,8 +1,6 @@
 import time
 
 import adafruit_datetime
-import digitalio
-import microcontroller
 from busio import I2C
 
 # noinspection PyBroadException
@@ -110,19 +108,6 @@ class Util:
 				print(f"Attempt #{attempts} of {max_attempts} failed, trying again to invoke: {method}")
 				if delay_between_attempts > 0:
 					time.sleep(delay_between_attempts)
-
-	@staticmethod
-	def is_pin_connected(pin: microcontroller.Pin) -> bool:
-		dio = digitalio.DigitalInOut(pin)
-		dio.switch_to_input(pull = digitalio.Pull.DOWN)
-		value_as_down = dio.value
-
-		dio.switch_to_input(pull = digitalio.Pull.UP)
-		value_as_up = dio.value
-
-		dio.deinit()
-
-		return value_as_down == value_as_up
 
 
 class I2CDeviceAutoSelector:

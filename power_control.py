@@ -11,7 +11,6 @@ from lcd import LCD
 from nvram import NVRAMValues
 from piezo import Piezo
 from user_input import RotaryEncoder
-from util import Util
 
 # noinspection PyBroadException
 try:
@@ -156,4 +155,5 @@ class PowerControl:
 
 	@staticmethod
 	def is_available():
-		return Util.is_pin_connected(board.D11)
+		import os
+		return bool(os.getenv("USE_SOFT_POWER_CONTROL"))
