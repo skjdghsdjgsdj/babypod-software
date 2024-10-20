@@ -273,7 +273,7 @@ class APIRequest:
 		"""
 
 		full_url = self.build_full_url()
-		print(f"HTTP {self.get_verb()}: {full_url}, timeout {ConnectionManager.timeout}", end = "")
+		print(f"{self.get_verb()} {full_url}, timeout {ConnectionManager.timeout}", end = "")
 		if self.payload is not None:
 			print(f"; payload: {self.payload}", end = "")
 		print("...", end = "")
@@ -282,26 +282,24 @@ class APIRequest:
 
 		start = time.monotonic()
 		try:
-			response = self.get_connection_method()(
+			with self.get_connection_method()(
 				url = full_url,
 				json = self.payload,
 				headers = {
 					"Authorization": f"Token {APIRequest.API_KEY}"
 				},
 				timeout = ConnectionManager.timeout
-			)
-			end = time.monotonic()
-			self.validate_response(response)
+			) as response:
+				end = time.monotonic()
+				microcontroller.watchdog.feed()
+				print(f"HTTP {response.status_code}, {end - start} sec")
+				self.validate_response(response)
+
+				# HTTP 204 is No Content so there shouldn't be a response payload
+				response_json = None if response.status_code is 204 else response.json()
 		except Exception as e:
-			print("failed!")
+			print(type(e).__name__)
 			raise e
-		print(f"{response.status_code}, {end - start} sec")
-
-		microcontroller.watchdog.feed()
-
-		# HTTP 204 is No Content so there shouldn't be a response payload
-		response_json = None if response.status_code is 204 else response.json()
-		response.close()
 
 		return response_json
 
