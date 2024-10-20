@@ -1,3 +1,4 @@
+import json
 import time
 
 import adafruit_datetime
@@ -602,7 +603,7 @@ class Timer:
 			timer.started_at = Util.to_datetime(payload["start"])
 			timer.ended_at = Util.to_datetime(payload["end"])
 		else:
-			raise ValueError("Don't know how to create a timer from this payload")
+			raise ValueError("Don't know how to create a timer from this payload: " + json.dumps(payload))
 
 		return timer
 
