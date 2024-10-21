@@ -683,7 +683,7 @@ class Flow:
 
 		timer = self.start_or_resume_timer(
 			existing_timer = timer,
-			header_text = "Sleep",
+			header_text = "Sleep" + subtext,
 			timer_name = "sleep",
 			after_idle_for = after_idle_for
 		)

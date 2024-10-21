@@ -2,6 +2,7 @@ import math
 
 from devices import Devices
 from lcd import LCD, BacklightColors, BacklightColor
+from nvram import NVRAMValues
 from periodic_chime import PeriodicChime
 from user_input import RotaryEncoder, WaitTickListener
 import time
