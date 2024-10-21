@@ -403,14 +403,14 @@ class ActiveTimer(UIComponent):
 	"""
 
 	def __init__(self,
-		devices: Devices,
-		allow_cancel: bool = True,
-		cancel_text: str = None,
-		periodic_chime: PeriodicChime = None,
-		start_at: float = 0,
-		header: Optional[str] = None,
-		save_text: Optional[str] = "Save",
-		invoke_after_delay: Optional[tuple[int, Callable[[], None]]] = None
+				 devices: Devices,
+				 allow_cancel: bool = True,
+				 cancel_text: str = None,
+				 periodic_chime: PeriodicChime = None,
+				 start_at: float = 0,
+				 header: Optional[str] = None,
+				 save_text: Optional[str] = "Save",
+				 after_idle_for: Optional[tuple[int, Callable[[float], None]]] = None
 	):
 		"""
 		:param devices: Devices dependency injection
@@ -420,7 +420,7 @@ class ActiveTimer(UIComponent):
 		:param start_at: Starting time in seconds of the timer, or 0 to start fresh
 		:param header: UI header text
 		:param save_text: Save widget text or None to omit
-		:param invoke_after_delay: Do this thing after this many seconds have elapsed; only triggers once
+		:param after_idle_for: Do this thing after this many seconds have elapsed from inactivity; only triggers once
 		"""
 
 		super().__init__(
@@ -435,7 +435,7 @@ class ActiveTimer(UIComponent):
 		self.periodic_chime = periodic_chime
 		self.start_at = start_at
 		self.save_text = save_text
-		self.invoke_after_delay = invoke_after_delay
+		self.after_idle_for = after_idle_for
 
 	def wait(self) -> Optional[bool]:
 		"""
@@ -455,8 +455,7 @@ class ActiveTimer(UIComponent):
 			def __init__(self,
 						 devices: Devices,
 						 start: float,
-						 periodic_chime: Optional[PeriodicChime],
-						 invoke_after_delay: Optional[tuple[int, Callable[[], None]]] = None
+						 periodic_chime: Optional[PeriodicChime]
 			):
 				"""
 				:param devices: Devices dependency injection
@@ -468,7 +467,6 @@ class ActiveTimer(UIComponent):
 				self.last_message = None
 				self.devices = devices
 				self.periodic_chime = periodic_chime
-				self.invoke_after_delay = invoke_after_delay
 				super().__init__(seconds = 1, on_tick = self.render_elapsed_time, recurring = True)
 				self.render_elapsed_time(start)
 
@@ -490,23 +488,25 @@ class ActiveTimer(UIComponent):
 				if self.periodic_chime is not None:
 					self.periodic_chime.chime_if_needed()
 
-				if self.invoke_after_delay is not None:
-					interval, callback = self.invoke_after_delay
-					if elapsed > interval:
-						self.invoke_after_delay = None
-						callback()
-
-		wait_tick_listener = ActiveTimerWaitTickListener(
+		listeners = [ActiveTimerWaitTickListener(
 			devices = self.devices,
 			start = self.start - self.start_at,
-			periodic_chime = self.periodic_chime,
-			invoke_after_delay = self.invoke_after_delay
-		)
+			periodic_chime = self.periodic_chime
+		)]
+
+		if self.after_idle_for is not None and self.devices.power_control and NVRAMValues.TIMERS_AUTO_OFF:
+			seconds, callback = self.after_idle_for
+			if seconds > 0:
+				listeners.append(WaitTickListener(
+					seconds = seconds,
+					on_tick = callback,
+					name = "Soft shutdown idle timeout"
+				))
 
 		while True:
 			button = self.devices.rotary_encoder.wait(
 				listen_for_rotation = False,
-				extra_wait_tick_listeners = [wait_tick_listener]
+				extra_wait_tick_listeners = listeners
 			)
 			if button == RotaryEncoder.LEFT and self.allow_cancel:
 				return None

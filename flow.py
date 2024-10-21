@@ -492,12 +492,12 @@ class Flow:
 			))
 
 	def start_or_resume_timer(self,
-		header_text: str,
-		timer_name: str,
-		periodic_chime: PeriodicChime = None,
-		existing_timer: Optional[Timer] = None,
-		invoke_after_delay: Optional[tuple[int, Callable[[], None]]] = None
-	) -> Optional[Timer]:
+							  header_text: str,
+							  timer_name: str,
+							  periodic_chime: PeriodicChime = None,
+							  existing_timer: Optional[Timer] = None,
+							  after_idle_for: Optional[tuple[int, Callable[[float], None]]] = None
+  	) -> Optional[Timer]:
 		if existing_timer is not None:
 			timer = existing_timer
 			timer.start_or_resume(self.devices.rtc)
@@ -536,7 +536,7 @@ class Flow:
 			devices = self.devices,
 			periodic_chime = periodic_chime,
 			start_at = timer.resume_from_duration,
-			invoke_after_delay = invoke_after_delay
+			after_idle_for = after_idle_for
 		).render().wait()
 		self.suppress_idle_warning = False
 
@@ -675,15 +675,17 @@ class Flow:
 				saved = True
 
 	def sleep(self, timer: Optional[Timer] = None) -> None:
-		invoke_after_delay = None
+		after_idle_for = None
+		subtext = None
 		if NVRAMValues.TIMERS_AUTO_OFF and self.devices.power_control:
-			invoke_after_delay = 30, self.devices.power_control.shutdown
+			after_idle_for = 30, lambda _: self.devices.power_control.shutdown()
+			subtext = f": off in {NVRAMValues.TIMERS_AUTO_OFF}s"
 
 		timer = self.start_or_resume_timer(
 			existing_timer = timer,
 			header_text = "Sleep",
 			timer_name = "sleep",
-			invoke_after_delay = invoke_after_delay
+			after_idle_for = after_idle_for
 		)
 
 		if timer is not None:
