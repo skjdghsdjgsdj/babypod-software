@@ -511,7 +511,7 @@ class Flow:
 					battery = self.devices.battery_monitor
 				)
 				timer.started_at = self.devices.rtc.now()
-				timer.start_or_resume()
+				timer.start_or_resume(self.devices.rtc)
 		else:
 			StatusMessage(devices = self.devices, message = "Checking timers...").render()
 			timer = Timer(
