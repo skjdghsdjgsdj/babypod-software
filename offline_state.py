@@ -2,8 +2,8 @@ import json
 import os
 from adafruit_datetime import datetime
 
+from api import Timer
 from sdcard import SDCard
-from util import Util
 
 # noinspection PyBroadException
 try:
@@ -12,6 +12,23 @@ except:
     pass
 
 class OfflineState:
+    from_datetime = lambda value: datetime.fromisoformat(value)
+    to_datetime = lambda value: value.isoformat()
+    passthrough = lambda value: value
+
+    state_definition = {
+        "last_feeding": (from_datetime, to_datetime),
+        "last_feeding_method": (passthrough, passthrough),
+        "last_rtc_set": (from_datetime, to_datetime),
+        "rtc_utc_offset": (lambda value: float(value), passthrough),
+        "last_motd_check": (from_datetime, to_datetime),
+        "active_timer_name": (passthrough, passthrough),
+        "active_timer": (
+            lambda payload: Timer.from_payload(name = None, payload = payload),
+            lambda timer: timer.as_payload()
+        )
+    }
+
     """
     Stores some state information in a JSON file for offline use. This is separate from the OfflineEventQueue which
     stores a list of serialized APIRequest instances to be replayed in sequence once back online.
@@ -23,12 +40,19 @@ class OfflineState:
         """
         :param sdcard: Where to save the state
         """
+        self.sdcard = sdcard
+
         self.last_feeding: Optional[datetime] = None
         self.last_feeding_method: Optional[str] = None
         self.last_rtc_set: Optional[datetime] = None
         self.rtc_utc_offset: Optional[float] = None
         self.last_motd_check: Optional[datetime] = None
-        self.sdcard = sdcard
+        self.active_timer_name: Optional[str] = None
+        self.active_timer: Optional[Timer] = None
+
+    @staticmethod
+    def load_state():
+        pass
 
     @staticmethod
     def from_sdcard(sdcard: SDCard):
@@ -54,20 +78,16 @@ class OfflineState:
                 serialized = json.load(file)
                 print(serialized)
 
-            if "last_feeding" in serialized and serialized["last_feeding"] is not None:
-                state.last_feeding = Util.to_datetime(serialized["last_feeding"])
+            for key, metadata in OfflineState.state_definition.items():
+                if key in serialized:
+                    deserializer, _ = metadata
+                    value = serialized[key]
+                    print(f"Deserializing {key} from: \"{value}\"...", end = "")
+                    setattr(state, key, deserializer(value))
+                    print(f"done, got {type(getattr(state, key)).__name__}")
 
-            if "last_feeding_method" in serialized:
-                state.last_feeding_method = serialized["last_feeding_method"]
-
-            if "last_rtc_set" in serialized and serialized["last_rtc_set"] is not None:
-                state.last_rtc_set = Util.to_datetime(serialized["last_rtc_set"])
-
-            if "last_motd_check" in serialized and serialized["last_motd_check"] is not None:
-                state.last_motd_check = Util.to_datetime(serialized["last_motd_check"])
-
-            if "rtc_utc_offset" in serialized and serialized["rtc_utc_offset"] is not None:
-                state.rtc_utc_offset = float(serialized["rtc_utc_offset"])
+            if state.active_timer is not None:
+                state.active_timer.name = state.active_timer_name
         else:
             print("No existing serialized state")
             state.to_sdcard()
@@ -79,13 +99,12 @@ class OfflineState:
         Stores offline state back to the SD card.
         """
 
-        serialized = {
-            "last_feeding": self.last_feeding.isoformat() if self.last_feeding else None,
-            "last_feeding_method": self.last_feeding_method,
-            "last_rtc_set": self.last_rtc_set.isoformat() if self.last_rtc_set else None,
-            "last_motd_check": self.last_motd_check.isoformat() if self.last_motd_check else None,
-            "rtc_utc_offset": self.rtc_utc_offset,
-        }
+        serialized = {}
+        for key, metadata in self.state_definition.items():
+            _, serializer = metadata
+            value = getattr(self, key)
+            serialized[key] = None if value is None else serializer(getattr(self, key))
+            print(f"Serialized {key} ({type(value).__name__}) to: \"{serialized[key]}\"")
 
         with open(self.sdcard.get_absolute_path("state.json"), "w") as file:
             # noinspection PyTypeChecker
