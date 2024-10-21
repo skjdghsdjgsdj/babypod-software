@@ -10,7 +10,7 @@ try:
 except:
 	pass
 
-from api import APIRequest, TimerAPIRequest, GetAllTimersAPIRequest
+from api import APIRequest, GetAllTimersAPIRequest
 from sdcard import SDCard
 
 class OfflineEventQueue:
@@ -101,12 +101,14 @@ class OfflineEventQueue:
 		}
 
 		filename = self.build_json_filename()
-		print(f"Serializing {type(request).__name__} to {filename}")
 
 		with open(filename, "w") as file:
 			# noinspection PyTypeChecker
 			json.dump(payload, file)
 			file.flush()
+
+		with open(filename, "r") as file:
+			print(f"Serialized {type(request).__name__} to {filename}: {file.read()}")
 
 	# TODO making this dynamic with reflection would be nice but I don't think CircuitPython can
 	def init_api_request(self, class_name: str, payload) -> APIRequest:
@@ -161,11 +163,16 @@ class OfflineEventQueue:
 					print(f"Replaying {full_json_path}: {file.read()}")
 				request = self.init_api_request(item["type"], item["payload"])
 
-				if isinstance(request, TimerAPIRequest):
-					# does this API request refer to a timer that no longer exists?
-					if "timer_id" in request.payload and int(request.payload["timer_id"]) not in existing_timer_ids:
-						# get rid of the ID reference and use start/end times instead
-						del request.payload["timer_id"]
+				if request.payload is not None and "timer" in request.payload:
+					timer_id = request.payload["timer"]
+					if timer_id not in existing_timer_ids:
+						print(f"Removing obsolete reference to timer ID {timer_id}")
+						del request.payload["timer"]
+					elif "start" in request.payload and "end" in request.payload:
+						print(f"Timer ID {timer_id} is still active, removing references to start/end")
+						del request.payload["start"]
+						del request.payload["end"]
+
 				request.invoke()
 			except Exception as e:
 				traceback.print_exception(e)

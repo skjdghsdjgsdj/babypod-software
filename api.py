@@ -503,24 +503,6 @@ class Timer:
 		self.starting_battery_percent = None
 		self.resume_from_duration = None
 
-	@staticmethod
-	def duration_to_seconds(duration: str) -> int:
-		"""
-		Takes a duration in the form h:mm:ss and converts to a total number of seconds. If there are milliseconds, they
-		are truncated.
-
-		:param duration: Duration as a string
-		:return: Duration as total number of seconds
-		"""
-
-		duration_parts = duration.split(":")
-
-		hours = int(duration_parts[0])
-		minutes = int(duration_parts[1])
-		seconds = int(float(duration_parts[2]))
-
-		return (hours * 60 * 60) + (minutes * 60) + seconds
-
 	def start_or_resume(self) -> None:
 		"""
 		Starts this timer, or if one already exists with this one's name, resumes it.
@@ -545,16 +527,14 @@ class Timer:
 					max_id = timer_result["id"]
 					timer = timer_result
 
-			if timer is not None:
-				self.timer_id = timer["id"]
-				elapsed = Timer.duration_to_seconds(timer["duration"])
-
+			if timer is None:
+				timer = CreateTimerAPIRequest(self.name).invoke()
+			else:
+				elapsed = Util.duration_to_seconds(timer["duration"])
 				if elapsed > 0:
 					self.starting_battery_percent = None
-			else:
-				timer = CreateTimerAPIRequest(self.name).invoke()
-				self.timer_id = timer["id"]
 
+			self.timer_id = timer["id"]
 			self.started_at = Util.to_datetime(timer["start"])
 
 		self.resume_from_duration = elapsed
@@ -582,12 +562,19 @@ class Timer:
 		if self.ended_at is None and self.rtc is not None:
 			self.ended_at = self.rtc.now()
 
-		payload = {
-			"start": self.started_at.isoformat(),
-			"end": self.ended_at.isoformat()
-		}
+		payload = {}
+
 		if self.timer_id is not None:
 			payload["timer"] = self.timer_id
+
+		if self.started_at is not None and self.ended_at is not None:
+			payload["start"] = self.started_at.isoformat()
+			payload["end"] = self.ended_at.isoformat()
+
+		if not payload:
+			raise ValueError("Not enough info to create a timer payload")
+
+		print(f"Created payload for {self} of: {payload}")
 
 		return payload
 
@@ -629,7 +616,7 @@ class Timer:
 			value += f" ID {self.timer_id}"
 
 		if self.started_at:
-			value += f"{self.started_at} ->"
+			value += f" {self.started_at} ->"
 
 		if self.ended_at:
 			value += f" {self.ended_at}"
@@ -1023,7 +1010,7 @@ class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
 				)
 				timer.started_at = Util.to_datetime(result["start"])
 				timer.timer_id = result["id"]
-				timer.resume_from_duration = Timer.duration_to_seconds(result["duration"])
+				timer.resume_from_duration = Util.duration_to_seconds(result["duration"])
 
 				yield timer
 

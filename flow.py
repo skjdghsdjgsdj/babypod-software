@@ -483,7 +483,6 @@ class Flow:
 		header_text: str,
 		timer_name: str,
 		periodic_chime: PeriodicChime = None,
-		subtext: str = None,
 		existing_timer: Optional[Timer] = None,
 	) -> Optional[Timer]:
 		if existing_timer is not None:
@@ -507,9 +506,6 @@ class Flow:
 			)
 			timer.start_or_resume()
 
-		if subtext is not None:
-			self.devices.lcd.write(message = subtext, coords = (0, 2))
-
 		self.suppress_idle_warning = True
 		response = ActiveTimer(
 			header = header_text,
@@ -524,6 +520,8 @@ class Flow:
 				StatusMessage(devices = self.devices, message = "Stopping timer...").render()
 			timer.cancel()
 			return None # canceled
+
+		print(f"Started/resumed timer: {timer}")
 
 		return timer
 

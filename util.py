@@ -82,6 +82,24 @@ class Util:
 		return f"{percent}%"
 
 	@staticmethod
+	def duration_to_seconds(duration: str) -> int:
+		"""
+		Takes a duration in the form h:mm:ss and converts to a total number of seconds. If there are milliseconds, they
+		are truncated.
+
+		:param duration: Duration as a string
+		:return: Duration as total number of seconds
+		"""
+
+		duration_parts = duration.split(":")
+
+		hours = int(duration_parts[0])
+		minutes = int(duration_parts[1])
+		seconds = int(float(duration_parts[2]))
+
+		return (hours * 60 * 60) + (minutes * 60) + seconds
+
+	@staticmethod
 	def try_repeatedly(
 			method: Callable[[], AttemptResponse],
 			max_attempts: int = 3,
