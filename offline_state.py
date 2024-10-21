@@ -79,7 +79,7 @@ class OfflineState:
                 print(serialized)
 
             for key, metadata in OfflineState.state_definition.items():
-                if key in serialized:
+                if key in serialized and serialized[key] is not None:
                     deserializer, _ = metadata
                     value = serialized[key]
                     setattr(state, key, deserializer(value))
