@@ -1,15 +1,14 @@
-import json
+import binascii
+import os
+import re
 import time
 
+import adafruit_connection_manager
 import adafruit_datetime
 import adafruit_requests
 import microcontroller
 import wifi
-import os
 from adafruit_datetime import datetime
-import binascii
-import adafruit_connection_manager
-import re
 
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC

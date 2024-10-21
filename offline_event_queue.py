@@ -10,7 +10,7 @@ try:
 except:
 	pass
 
-from api import APIRequest, GetAllTimersAPIRequest, TimerAPIRequest
+from api import APIRequest, GetAllTimersAPIRequest
 from sdcard import SDCard
 
 class OfflineEventQueue:
