@@ -520,23 +520,17 @@ class Timer:
 			if self.name is None:
 				raise ValueError("No timer name provided")
 
-			if self.started_at is None or self.timer_id is None:
+			if self.timer_id is None:
 				timers = GetNamedTimerAPIRequest(self.name).invoke()
-				max_id = None
-				timer_data = None
-
-				for timer_result in timers["results"]:
-					if max_id is None or timer_result["id"] > max_id:
-						max_id = timer_result["id"]
-						timer_data = timer_result
+				timer_data = None if not timers["results"] else timers["results"][0]
 
 				if timer_data is None:
 					timer_data = CreateTimerAPIRequest(self.name).invoke()
-					self.timer_id = timer_data["id"]
-					self.started_at = Util.to_datetime(timer_data["start"])
-					elapsed = Util.duration_to_seconds(timer_data["duration"])
-					if elapsed > 0:
-						self.starting_battery_percent = None
+				self.started_at = Util.to_datetime(timer_data["start"])
+				elapsed = Util.duration_to_seconds(timer_data["duration"])
+				if elapsed > 0:
+					self.starting_battery_percent = None
+				self.timer_id = timer_data["id"]
 
 		if self.started_at is not None and rtc:
 			delta = rtc.now() - self.started_at
