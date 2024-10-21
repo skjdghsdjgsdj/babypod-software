@@ -552,10 +552,10 @@ class Flow:
 
 		return timer
 
-	def feeding(self, existing_timer: Optional[Timer] = None) -> None:
+	def feeding(self, timer: Optional[Timer] = None) -> None:
 		while True:
 			timer = self.start_or_resume_timer(
-				existing_timer = existing_timer,
+				existing_timer = timer,
 				header_text = "Feeding",
 				timer_name = "feeding",
 				periodic_chime = EscalatingIntervalPeriodicChime(
@@ -640,11 +640,11 @@ class Flow:
 		food_type = food_type_metadata["type"]
 		return food_type, food_type_metadata
 
-	def pumping(self, existing_timer: Optional[Timer] = None) -> None:
+	def pumping(self, timer: Optional[Timer] = None) -> None:
 		saved = False
 		while not saved:
 			timer = self.start_or_resume_timer(
-				existing_timer = existing_timer,
+				existing_timer = timer,
 				header_text = "Pumping",
 				timer_name = "pumping",
 				periodic_chime = ConsistentIntervalPeriodicChime(
@@ -672,9 +672,9 @@ class Flow:
 				), timer)
 				saved = True
 
-	def sleep(self, existing_timer: Optional[Timer] = None) -> None:
+	def sleep(self, timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
-			existing_timer = existing_timer,
+			existing_timer = timer,
 			header_text = "Sleep",
 			timer_name = "sleep"
 		)
@@ -682,9 +682,9 @@ class Flow:
 		if timer is not None:
 			self.commit(PostSleepAPIRequest(child_id = self.child_id, timer = timer), timer)
 
-	def tummy_time(self, existing_timer: Optional[Timer] = None) -> None:
+	def tummy_time(self, timer: Optional[Timer] = None) -> None:
 		timer = self.start_or_resume_timer(
-			existing_timer = existing_timer,
+			existing_timer = timer,
 			header_text = "Tummy time",
 			timer_name = "tummy_time",
 			periodic_chime = ConsistentIntervalPeriodicChime(
