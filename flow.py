@@ -354,7 +354,7 @@ class Flow:
 	def render_success_splash(self, message: str = "Saved!", is_stopped_timer: bool = False) -> None:
 		SuccessModal(devices = self.devices, message = message).render().wait()
 
-		if is_stopped_timer and NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED and self.devices.power_control is not None:
+		if is_stopped_timer and NVRAMValues.TIMERS_AUTO_OFF and self.devices.power_control is not None:
 			response = Modal(
 				devices = self.devices,
 				message = "Auto shutdown in 10 seconds...",
@@ -369,7 +369,7 @@ class Flow:
 		all_settings = [
 			Setting(
 				name = "Off after timers",
-				backing_nvram_value = NVRAMValues.AUTO_OFF_AFTER_TIMER_SAVED,
+				backing_nvram_value = NVRAMValues.TIMERS_AUTO_OFF,
 				is_available = lambda: self.devices.power_control is not None
 			),
 			Setting(
@@ -535,7 +535,8 @@ class Flow:
 			header = header_text,
 			devices = self.devices,
 			periodic_chime = periodic_chime,
-			start_at = timer.resume_from_duration
+			start_at = timer.resume_from_duration,
+			invoke_after_delay = invoke_after_delay
 		).render().wait()
 		self.suppress_idle_warning = False
 
@@ -674,10 +675,15 @@ class Flow:
 				saved = True
 
 	def sleep(self, timer: Optional[Timer] = None) -> None:
+		invoke_after_delay = None
+		if NVRAMValues.TIMERS_AUTO_OFF and self.devices.power_control:
+			invoke_after_delay = 30, self.devices.power_control.shutdown
+
 		timer = self.start_or_resume_timer(
 			existing_timer = timer,
 			header_text = "Sleep",
-			timer_name = "sleep"
+			timer_name = "sleep",
+			invoke_after_delay = invoke_after_delay
 		)
 
 		if timer is not None:
