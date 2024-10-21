@@ -734,5 +734,8 @@ class Flow:
 				self.commit_offline(request, timer)
 
 	def commit_offline(self, request, timer):
+		if timer.started_at and not timer.ended_at:
+			timer.ended_at = self.devices.rtc.now()
+
 		self.offline_queue.add(request)
 		self.render_success_splash(is_stopped_timer = timer is not None)

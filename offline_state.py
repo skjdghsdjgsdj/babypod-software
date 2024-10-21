@@ -103,6 +103,8 @@ class OfflineState:
             value = getattr(self, key)
             serialized[key] = None if value is None else serializer(getattr(self, key))
 
+        print(f"Saving offline state: {serialized}")
+
         with open(self.sdcard.get_absolute_path("state.json"), "w") as file:
             # noinspection PyTypeChecker
             json.dump(serialized, file)

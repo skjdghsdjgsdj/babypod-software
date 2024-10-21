@@ -10,7 +10,7 @@ try:
 except:
 	pass
 
-from api import APIRequest, GetAllTimersAPIRequest
+from api import APIRequest, GetAllTimersAPIRequest, TimerAPIRequest
 from sdcard import SDCard
 
 class OfflineEventQueue:
@@ -92,7 +92,7 @@ class OfflineEventQueue:
 		"""
 		Adds an event to the queue.
 
-		:param request: Request to serialize to replay layer
+		:param request: Request to serialize to replay later
 		"""
 
 		payload = {

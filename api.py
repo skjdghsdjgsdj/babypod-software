@@ -571,8 +571,9 @@ class Timer:
 		if self.timer_id is not None:
 			payload["timer"] = self.timer_id
 
-		if self.started_at is not None and self.ended_at is not None:
+		if self.started_at is not None:
 			payload["start"] = self.started_at.isoformat()
+		if self.ended_at is not None:
 			payload["end"] = self.ended_at.isoformat()
 
 		if not payload:
@@ -594,12 +595,12 @@ class Timer:
 		if "timer" in payload:
 			timer = Timer(name = name, offline = False)
 			timer.timer_id = payload["timer"]
-		elif "start" in payload and "end" in payload:
-			timer = Timer(name = name, offline = True)
-			timer.started_at = Util.to_datetime(payload["start"])
-			timer.ended_at = Util.to_datetime(payload["end"])
 		else:
-			raise ValueError("Don't know how to create a timer from this payload: " + json.dumps(payload))
+			timer = Timer(name = name, offline = True)
+			if "start" in payload:
+				timer.started_at = Util.to_datetime(payload["start"])
+			if "end" in payload:
+				timer.ended_at = Util.to_datetime(payload["end"])
 
 		return timer
 
