@@ -503,7 +503,7 @@ class Timer:
 		self.starting_battery_percent = None
 		self.resume_from_duration = None
 
-	def start_or_resume(self) -> None:
+	def start_or_resume(self, rtc: Optional[ExternalRTC] = None) -> None:
 		"""
 		Starts this timer, or if one already exists with this one's name, resumes it.
 		"""
@@ -539,6 +539,10 @@ class Timer:
 
 			self.timer_id = timer["id"]
 			self.started_at = Util.to_datetime(timer["start"])
+		elif self.started_at is not None and rtc:
+			delta = rtc.now() - self.started_at
+			# noinspection PyUnresolvedReferences
+			elapsed = (delta.days * 24 * 60 * 60) + delta.seconds
 
 		self.resume_from_duration = elapsed
 
@@ -562,9 +566,6 @@ class Timer:
 			if self.started_at is None:
 				raise ValueError("Timer was never started or resumed")
 
-		if self.ended_at is None and self.rtc is not None:
-			self.ended_at = self.rtc.now()
-
 		payload = {}
 
 		if self.timer_id is not None:
@@ -576,8 +577,6 @@ class Timer:
 
 		if not payload:
 			raise ValueError("Not enough info to create a timer payload")
-
-		print(f"Created payload for {self} of: {payload}")
 
 		return payload
 

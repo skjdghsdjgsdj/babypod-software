@@ -5,7 +5,7 @@ import microcontroller
 
 from api import GetFirstChildIDAPIRequest, GetLastFeedingAPIRequest, PostChangeAPIRequest, Timer, \
 	PostFeedingAPIRequest, PostPumpingAPIRequest, PostTummyTimeAPIRequest, PostSleepAPIRequest, \
-	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, TimerAPIRequest, \
+	APIRequestFailedException, GetAPIRequest, PostAPIRequest, DeleteAPIRequest, GetAllTimersAPIRequest, \
 	ConnectionManager, ConsumeMOTDAPIRequest, FeedingAPIRequest, APIRequest
 from devices import Devices
 from lcd import LCD, BacklightColors
@@ -84,6 +84,8 @@ class Flow:
 		else:
 			self.offline_state = OfflineState.from_sdcard(self.devices.sdcard)
 			self.devices.rtc.offline_state = self.offline_state
+			if self.offline_state.active_timer:
+				self.offline_state.active_timer.rtc = self.devices.rtc
 
 			self.offline_queue = OfflineEventQueue.from_sdcard(self.devices.sdcard, self.devices.rtc)
 
@@ -289,7 +291,7 @@ class Flow:
 		self.child_id = child_id
 
 	def jump_to_running_timer(self) -> None:
-		timer = None if NVRAMValues.OFFLINE else self.check_for_running_timer()
+		timer = self.check_for_running_timer()
 
 		if timer is not None:
 			timer_map = {
@@ -299,22 +301,32 @@ class Flow:
 				"pumping": self.pumping
 			}
 
+			found = False
 			for name, _ in timer_map.items():
-				if timer.name == TimerAPIRequest.get_timer_name(name):
+				if timer.name == name:
 					try:
+						print(f"Jumping to active {name} timer")
 						timer_map[name](timer)
+						found = True
 						break
 					except Exception as e:
 						self.on_error(e)
 
+			if not found:
+				print(f"Don't know how to resume a {timer.name} timer")
+
 	def check_for_running_timer(self) -> Optional[Timer]:
-		try:
-			StatusMessage(devices = self.devices, message = "Checking timers...").render()
-			for timer in GetAllTimersAPIRequest(limit = 1).get_active_timers(rtc = self.devices.rtc):
-				return timer # don't consume the whole generator
-		except Exception as e:
-			print(f"Failed getting active timers; continuing to main menu: {e}")
-		return None
+		if NVRAMValues.OFFLINE:
+			if self.offline_state and self.offline_state.active_timer is not None:
+				return self.offline_state.active_timer
+		else:
+			try:
+				StatusMessage(devices = self.devices, message = "Checking timers...").render()
+				for timer in GetAllTimersAPIRequest(limit = 1).get_active_timers(rtc = self.devices.rtc):
+					return timer # don't consume the whole generator
+			except Exception as e:
+				print(f"Failed getting active timers; continuing to main menu: {e}")
+			return None
 
 	def on_error(self, e: Exception) -> None:
 		traceback.print_exception(e)
@@ -487,15 +499,19 @@ class Flow:
 	) -> Optional[Timer]:
 		if existing_timer is not None:
 			timer = existing_timer
+			timer.start_or_resume(self.devices.rtc)
 		elif NVRAMValues.OFFLINE:
-			timer = Timer(
-				name = timer_name,
-				offline = True,
-				rtc = self.devices.rtc,
-				battery = self.devices.battery_monitor
-			)
-			timer.started_at = self.devices.rtc.now()
-			timer.start_or_resume()
+			if self.offline_state and self.offline_state.active_timer_name == timer_name and self.offline_state.active_timer is not None:
+				timer = self.offline_state.active_timer
+			else:
+				timer = Timer(
+					name = timer_name,
+					offline = True,
+					rtc = self.devices.rtc,
+					battery = self.devices.battery_monitor
+				)
+				timer.started_at = self.devices.rtc.now()
+				timer.start_or_resume()
 		else:
 			StatusMessage(devices = self.devices, message = "Checking timers...").render()
 			timer = Timer(
@@ -505,6 +521,13 @@ class Flow:
 				battery = self.devices.battery_monitor
 			)
 			timer.start_or_resume()
+
+		print(f"Started/resumed timer: {timer}")
+
+		if self.offline_state:
+			self.offline_state.active_timer = timer
+			self.offline_state.active_timer_name = timer.name
+			self.offline_state.to_sdcard()
 
 		self.suppress_idle_warning = True
 		response = ActiveTimer(
@@ -519,6 +542,12 @@ class Flow:
 			if not NVRAMValues.OFFLINE:
 				StatusMessage(devices = self.devices, message = "Stopping timer...").render()
 			timer.cancel()
+
+			if self.offline_state:
+				self.offline_state.active_timer = None
+				self.offline_state.active_timer_name = None
+				self.offline_state.to_sdcard()
+
 			return None # canceled
 
 		return timer
@@ -672,6 +701,11 @@ class Flow:
 			self.commit_offline(request, timer)
 		else:
 			self.commit_online(request, timer)
+
+		if self.offline_state:
+			self.offline_state.active_timer = None
+			self.offline_state.active_timer_name = None
+			self.offline_state.to_sdcard()
 
 	def commit_online(self, request, timer):
 		StatusMessage(devices = self.devices, message = "Saving...").render()
