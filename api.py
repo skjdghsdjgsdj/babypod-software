@@ -518,6 +518,9 @@ class Timer:
 				print(f"Got {e} while checking starting battery percent; not tracking battery usage for this timer")
 
 		if not self.offline:
+			if self.name is None:
+				raise ValueError("No timer name provided")
+
 			timers = GetNamedTimerAPIRequest(self.name).invoke()
 			max_id = None
 			timer = None
@@ -579,7 +582,7 @@ class Timer:
 		return payload
 
 	@staticmethod
-	def from_payload(name: str, payload: dict[str, Any]):
+	def from_payload(name: Optional[str], payload: dict[str, Any]):
 		"""
 		Creates a new Timer instance with the given information.
 
