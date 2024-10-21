@@ -930,29 +930,7 @@ class GetFirstChildIDAPIRequest(GetAPIRequest):
 			return response["results"][0]["id"]
 
 class TimerAPIRequest:
-	"""
-	Abstract base class for Baby Buddy timer-related requests.
-	"""
-
-	@staticmethod
-	def get_timer_basename() -> str:
-		"""
-		Gets the prefix that gets added to all timer names for Baby Buddy so BabyPod timers don't step on others.
-
-		:return: "babypod-" by default, but don't rely on that. Call this method instead.
-		"""
-		return "babypod-"
-
-	@staticmethod
-	def get_timer_name(name: str):
-		"""
-		Given a timer name, "normalizes" it to include any applicable prefix. The net result is a timer name that
-		actually applies to API requests.
-
-		:param name: Timer name without any prefix
-		:return: Timer name with prefix suitable for API requests
-		"""
-		return TimerAPIRequest.get_timer_basename() + name
+	pass
 
 class CreateTimerAPIRequest(PostAPIRequest, TimerAPIRequest):
 	"""
@@ -964,7 +942,7 @@ class CreateTimerAPIRequest(PostAPIRequest, TimerAPIRequest):
 		:param name: Timer name, like "feeding"
 		"""
 		super().__init__(uri = "timers", payload = {
-			"name": self.get_timer_name(name)
+			"name": name
 		})
 
 class GetNamedTimerAPIRequest(GetAPIRequest, TimerAPIRequest):
@@ -978,7 +956,7 @@ class GetNamedTimerAPIRequest(GetAPIRequest, TimerAPIRequest):
 		"""
 
 		super().__init__(uri = "timers", uri_args = {
-			"name": self.get_timer_name(name)
+			"name": name
 		})
 
 class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
@@ -1002,10 +980,9 @@ class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
 		"""
 
 		response = self.invoke()
-		prefix = TimerAPIRequest.get_timer_basename()
 		for result in response["results"]:
 			name: str = result["name"]
-			if name is not None and name.startswith(prefix):
+			if name is not None:
 				timer = Timer(
 					name = name,
 					offline = False,
