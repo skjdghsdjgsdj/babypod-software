@@ -472,14 +472,13 @@ class ActiveTimer(UIComponent):
 				super().__init__(seconds = 1, on_tick = self.render_elapsed_time, recurring = True)
 				self.render_elapsed_time(start)
 
-			def render_elapsed_time(self, _: float) -> None:
+			def render_elapsed_time(self, elapsed: float) -> None:
 				"""
 				Updates the elapsed time shown.
 
-				:param _: Ignored
+				:param elapsed: time elapsed in seconds
 				"""
 
-				elapsed = time.monotonic() - self.start
 				message = Util.format_elapsed_time(elapsed)
 				self.devices.lcd.write_centered(
 					text = message,
