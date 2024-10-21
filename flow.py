@@ -21,7 +21,7 @@ from util import Util
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, cast, Dict
+	from typing import Optional, cast, Dict, Callable
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -496,6 +496,7 @@ class Flow:
 		timer_name: str,
 		periodic_chime: PeriodicChime = None,
 		existing_timer: Optional[Timer] = None,
+		invoke_after_delay: Optional[tuple[int, Callable[[], None]]] = None
 	) -> Optional[Timer]:
 		if existing_timer is not None:
 			timer = existing_timer

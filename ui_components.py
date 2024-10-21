@@ -409,7 +409,8 @@ class ActiveTimer(UIComponent):
 		periodic_chime: PeriodicChime = None,
 		start_at: float = 0,
 		header: Optional[str] = None,
-		save_text: Optional[str] = "Save"
+		save_text: Optional[str] = "Save",
+		invoke_after_delay: Optional[tuple[int, Callable[[], None]]] = None
 	):
 		"""
 		:param devices: Devices dependency injection
@@ -419,6 +420,7 @@ class ActiveTimer(UIComponent):
 		:param start_at: Starting time in seconds of the timer, or 0 to start fresh
 		:param header: UI header text
 		:param save_text: Save widget text or None to omit
+		:param invoke_after_delay: Do this thing after this many seconds have elapsed; only triggers once
 		"""
 
 		super().__init__(
@@ -433,6 +435,7 @@ class ActiveTimer(UIComponent):
 		self.periodic_chime = periodic_chime
 		self.start_at = start_at
 		self.save_text = save_text
+		self.invoke_after_delay = invoke_after_delay
 
 	def wait(self) -> Optional[bool]:
 		"""
@@ -449,7 +452,12 @@ class ActiveTimer(UIComponent):
 			"""
 			A listener that updates the time as it increments.
 			"""
-			def __init__(self, devices: Devices, start: float, periodic_chime: Optional[PeriodicChime]):
+			def __init__(self,
+						 devices: Devices,
+						 start: float,
+						 periodic_chime: Optional[PeriodicChime],
+						 invoke_after_delay: Optional[tuple[int, Callable[[], None]]] = None
+			):
 				"""
 				:param devices: Devices dependency injection
 				:param start: Start at this many seconds
@@ -460,6 +468,7 @@ class ActiveTimer(UIComponent):
 				self.last_message = None
 				self.devices = devices
 				self.periodic_chime = periodic_chime
+				self.invoke_after_delay = invoke_after_delay
 				super().__init__(seconds = 1, on_tick = self.render_elapsed_time, recurring = True)
 				self.render_elapsed_time(start)
 
@@ -470,7 +479,8 @@ class ActiveTimer(UIComponent):
 				:param _: Ignored
 				"""
 
-				message = Util.format_elapsed_time(time.monotonic() - self.start)
+				elapsed = time.monotonic() - self.start
+				message = Util.format_elapsed_time(elapsed)
 				self.devices.lcd.write_centered(
 					text = message,
 					erase_if_shorter_than = None if self.last_message is None else len(self.last_message)
@@ -480,10 +490,17 @@ class ActiveTimer(UIComponent):
 				if self.periodic_chime is not None:
 					self.periodic_chime.chime_if_needed()
 
+				if self.invoke_after_delay is not None:
+					interval, callback = self.invoke_after_delay
+					if elapsed > interval:
+						self.invoke_after_delay = None
+						callback()
+
 		wait_tick_listener = ActiveTimerWaitTickListener(
 			devices = self.devices,
 			start = self.start - self.start_at,
-			periodic_chime = self.periodic_chime
+			periodic_chime = self.periodic_chime,
+			invoke_after_delay = self.invoke_after_delay
 		)
 
 		while True:
