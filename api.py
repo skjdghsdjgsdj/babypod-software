@@ -281,7 +281,7 @@ class APIRequest:
 				del self.payload["end"]
 
 		full_url = self.build_full_url()
-		print(f"{self.get_verb()} {full_url}", end = "")
+		print(f"{self.get_verb()} {full_url} ", end = "")
 		if self.payload is not None:
 			print(f"; payload: {self.payload}", end = "")
 		print("...", end = "")
