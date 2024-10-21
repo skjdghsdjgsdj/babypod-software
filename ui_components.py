@@ -410,6 +410,7 @@ class ActiveTimer(UIComponent):
 				 periodic_chime: PeriodicChime = None,
 				 start_at: float = 0,
 				 header: Optional[str] = None,
+				 subtext: Optional[str] = None,
 				 save_text: Optional[str] = "Save",
 				 after_idle_for: Optional[tuple[int, Callable[[float], None]]] = None
 	):
@@ -437,6 +438,13 @@ class ActiveTimer(UIComponent):
 		self.start_at = start_at
 		self.save_text = save_text
 		self.after_idle_for = after_idle_for
+		self.subtext = subtext
+
+	def render(self) -> UIComponent:
+		super().render()
+		if self.subtext is not None:
+			self.devices.lcd.write_centered(self.subtext, y_delta = 1)
+		return self
 
 	def wait(self) -> Optional[bool]:
 		"""

@@ -494,6 +494,7 @@ class Flow:
 	def start_or_resume_timer(self,
 							  header_text: str,
 							  timer_name: str,
+							  subtext: Optional[str] = None,
 							  periodic_chime: PeriodicChime = None,
 							  existing_timer: Optional[Timer] = None,
 							  after_idle_for: Optional[tuple[int, Callable[[float], None]]] = None
@@ -533,6 +534,7 @@ class Flow:
 		self.suppress_idle_warning = True
 		response = ActiveTimer(
 			header = header_text,
+			subtext = subtext,
 			devices = self.devices,
 			periodic_chime = periodic_chime,
 			start_at = timer.resume_from_duration,
@@ -678,12 +680,14 @@ class Flow:
 		after_idle_for = None
 		subtext = None
 		if NVRAMValues.TIMERS_AUTO_OFF and self.devices.power_control:
-			after_idle_for = 30, lambda _: self.devices.power_control.shutdown()
-			subtext = f": off in {NVRAMValues.TIMERS_AUTO_OFF}s"
+			timeout = 30
+			after_idle_for = timeout, lambda _: self.devices.power_control.shutdown()
+			subtext = f"Auto off in {timeout} sec"
 
 		timer = self.start_or_resume_timer(
 			existing_timer = timer,
-			header_text = "Sleep" + subtext,
+			header_text = "Sleep",
+			subtext = subtext,
 			timer_name = "sleep",
 			after_idle_for = after_idle_for
 		)
