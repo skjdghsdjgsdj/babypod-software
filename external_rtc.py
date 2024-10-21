@@ -7,7 +7,6 @@ import adafruit_pcf8523.pcf8523
 from adafruit_datetime import datetime
 from busio import I2C
 
-from offline_state import OfflineState
 from util import Util, I2CDeviceAutoSelector
 
 # noinspection PyBroadException
@@ -30,6 +29,7 @@ class ExternalRTC:
         """
 
         self.device = adafruit_pcf8523.pcf8523.PCF8523(i2c)
+        from offline_state import OfflineState
         self.offline_state: Optional[OfflineState] = None
 
     def sync(self, requests: adafruit_requests.Session) -> None:
