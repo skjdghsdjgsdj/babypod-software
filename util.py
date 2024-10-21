@@ -112,6 +112,7 @@ class Util:
 		:param method: Try doing this thing. If doing the thing fails, this method must throw an exception.
 		:param max_attempts: How many times to try doing the thing until it doesn't throw an exception.
 		:param delay_between_attempts: Wait this many seconds between retry attempts
+		:param quiet: Don't print anything if an attempt fails
 		:return: Whatever method returned
 		"""
 
