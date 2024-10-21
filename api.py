@@ -281,7 +281,7 @@ class APIRequest:
 				del self.payload["end"]
 
 		full_url = self.build_full_url()
-		print(f"{self.get_verb()} {full_url}, timeout {ConnectionManager.timeout}", end = "")
+		print(f"{self.get_verb()} {full_url}", end = "")
 		if self.payload is not None:
 			print(f"; payload: {self.payload}", end = "")
 		print("...", end = "")
@@ -299,7 +299,7 @@ class APIRequest:
 		) as response:
 			end = time.monotonic()
 			microcontroller.watchdog.feed()
-			print(f"HTTP {response.status_code}, {end - start} sec")
+			print(f"HTTP {response.status_code}, {round(end - start, 2)} sec")
 			self.validate_response(response)
 
 			# HTTP 204 is No Content so there shouldn't be a response payload

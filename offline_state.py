@@ -82,9 +82,7 @@ class OfflineState:
                 if key in serialized:
                     deserializer, _ = metadata
                     value = serialized[key]
-                    print(f"Deserializing {key} from: \"{value}\"...", end = "")
                     setattr(state, key, deserializer(value))
-                    print(f"done, got {type(getattr(state, key)).__name__}")
 
             if state.active_timer is not None:
                 state.active_timer.name = state.active_timer_name
@@ -104,7 +102,6 @@ class OfflineState:
             _, serializer = metadata
             value = getattr(self, key)
             serialized[key] = None if value is None else serializer(getattr(self, key))
-            print(f"Serialized {key} ({type(value).__name__}) to: \"{serialized[key]}\"")
 
         with open(self.sdcard.get_absolute_path("state.json"), "w") as file:
             # noinspection PyTypeChecker

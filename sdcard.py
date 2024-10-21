@@ -22,8 +22,6 @@ class SDCard:
         self.vfs = storage.VfsFat(self.device)
         storage.mount(self.vfs, self.mount_point)
 
-        #print(f"Mounted SD card to {self.mount_point}")
-
     def get_absolute_path(self, filename: str) -> str:
         """
         Given a filename or relative path, gets the full path of a file.

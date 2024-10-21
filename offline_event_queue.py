@@ -107,9 +107,6 @@ class OfflineEventQueue:
 			json.dump(payload, file)
 			file.flush()
 
-		with open(filename, "r") as file:
-			print(f"Serialized {type(request).__name__} to {filename}: {file.read()}")
-
 	# TODO making this dynamic with reflection would be nice but I don't think CircuitPython can
 	def init_api_request(self, class_name: str, payload) -> APIRequest:
 		"""

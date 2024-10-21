@@ -521,8 +521,6 @@ class Flow:
 			timer.cancel()
 			return None # canceled
 
-		print(f"Started/resumed timer: {timer}")
-
 		return timer
 
 	def feeding(self, existing_timer: Optional[Timer] = None) -> None:
