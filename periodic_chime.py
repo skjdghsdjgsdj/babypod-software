@@ -2,6 +2,12 @@ import time
 
 from devices import Devices
 
+# noinspection PyBroadException
+try:
+	from abc import abstractmethod
+except:
+	pass
+
 class PeriodicChime:
 	"""
 	Metadata for when and how often to play a chime as a timer is running.
@@ -38,6 +44,7 @@ class PeriodicChime:
 			self.last_chime = time.monotonic()
 			self.devices.piezo.tone("chime")
 
+	@abstractmethod
 	def is_chime_time(self, elapsed: float) -> bool:
 		"""
 		Logic for if, now that the given number of seconds have elapsed, a chime should be played. Abstract method;

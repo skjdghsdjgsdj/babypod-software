@@ -7,6 +7,11 @@ from busio import I2C
 
 from util import I2CDeviceAutoSelector
 
+# noinspection PyBroadException
+try:
+	from abc import abstractmethod
+except:
+	pass
 
 class BatteryMonitor:
 	"""
@@ -47,6 +52,7 @@ class BatteryMonitor:
 		if self.device is None:
 			self.device = self.init_raw_device()
 
+	@abstractmethod
 	def init_raw_device(self):
 		"""
 		Initializes the underlying hardware device used by this instance. In this abstract class, this method raises a
@@ -81,6 +87,7 @@ class BatteryMonitor:
 
 		return False
 
+	@abstractmethod
 	def get_current_percent(self) -> float:
 		"""
 		Gets the charge percent of the battery (0..100). In this abstract class, raises NotImplementedError() and must

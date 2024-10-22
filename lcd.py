@@ -8,6 +8,7 @@ from sparkfun_serlcd import Sparkfun_SerLCD, Sparkfun_SerLCD_I2C
 # noinspection PyBroadException
 try:
 	from typing import List
+	from abc import abstractmethod
 except:
 	pass
 
@@ -126,6 +127,7 @@ class Backlight:
 			self.set_color_impl(color)
 			self.color = color
 
+	@abstractmethod
 	def set_color_impl(self, color: BacklightColor):
 		"""
 		Set the color of the backlight in hardware. In this abstract class, throws NotImplementedError()
@@ -228,6 +230,7 @@ class LCD:
 		LCD.validate_coords(coords)
 		self.write_impl(message, coords)
 
+	@abstractmethod
 	def write_impl(self, message: str, coords: tuple[int, int]) -> None:
 		"""
 		To be implemented by subclasses to write to the LCD hardware. Abstract implementation raises
@@ -287,6 +290,7 @@ class LCD:
 		"""
 		self.write(text, (0, LCD.LINES - 1 - y_delta))
 
+	@abstractmethod
 	def clear(self) -> None:
 		"""
 		Clears the display. Abstract method and must be overridden by child classes.
@@ -301,6 +305,7 @@ class LCD:
 		"""
 		return chr(special_char)
 
+	@abstractmethod
 	def create_special_char(self, special_char: int, data: List[int]) -> None:
 		"""
 		Initializes a special character in the LCD device to a given bitmap (of sorts). Abstract method and must be

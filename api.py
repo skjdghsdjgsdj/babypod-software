@@ -17,6 +17,7 @@ from util import Util
 # noinspection PyBroadException
 try:
 	from typing import Optional, List, Any, Generator, Callable, Dict
+	from abc import abstractmethod
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -241,6 +242,7 @@ class APIRequest:
 
 		return None
 
+	@abstractmethod
 	def get_verb(self) -> str:
 		"""
 		What verb this HTTP request is, like "GET." Base implementation raises NotImplementedError().
@@ -250,6 +252,7 @@ class APIRequest:
 
 		raise NotImplementedError()
 
+	@abstractmethod
 	def get_connection_method(self) -> Callable[..., adafruit_requests.Response]:
 		"""
 		Gets a method that can invoke this request on an adafruit_requests.Session object, like

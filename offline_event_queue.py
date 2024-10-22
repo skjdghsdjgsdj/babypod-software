@@ -132,7 +132,7 @@ class OfflineEventQueue:
 			from api import PostSleepAPIRequest
 			return PostSleepAPIRequest.deserialize_from_json(payload)
 		else:
-			raise NotImplementedError(f"Don't know how to deserialize a {class_name}")
+			raise ValueError(f"Don't know how to deserialize a {class_name}")
 
 	def replay_all(self,
 		on_replay: Callable[[int, int], None] = None,

@@ -1,3 +1,9 @@
+# noinspection PyBroadException
+try:
+    from abc import abstractmethod
+except:
+    pass
+
 import microcontroller
 
 class NVRAMValue:
@@ -19,6 +25,7 @@ class NVRAMValue:
         self.has_read = False
         self.name = name
 
+    @abstractmethod
     def nvram_to_native(self, nvram_value: int):
         """
         Gets a native Python value of what's stored in NVRAM as the given NVRAM byte. Abstract method; must be
@@ -30,6 +37,7 @@ class NVRAMValue:
 
         raise NotImplementedError()
 
+    @abstractmethod
     def native_to_nvram(self, native_value) -> int:
         """
         Gets an NVRAM byte used to store the given native Python value. Abstract method; must be overridden by child
