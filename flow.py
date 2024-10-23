@@ -629,7 +629,7 @@ class Flow:
 		enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
 		options = []
 		for food_type in FeedingAPIRequest.FOOD_TYPES:
-			if food_type["mask"] & enabled_food_types:
+			if food_type["mask"] & enabled_food_types == food_type["mask"]:
 				options.append(food_type)
 		if not options:
 			raise ValueError(f"All food types excluded by ENABLED_FOOD_TYPES_MASK bitmask {enabled_food_types}")
