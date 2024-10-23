@@ -1,4 +1,5 @@
 import binascii
+import json
 import os
 import re
 import time
@@ -16,7 +17,7 @@ from util import Util
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, List, Any, Generator, Callable, Dict
+	from typing import Optional, List, Any, Generator, Callable, Dict, Iterable
 	from abc import abstractmethod, ABC
 except:
 	# noinspection PyUnusedLocal
@@ -47,19 +48,30 @@ class ConnectionManager:
 		if ConnectionManager.requests is None:
 			ConnectionManager.set_timeout()
 
-			ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
-			password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
+			all_credentials = list(ConnectionManager.get_credentials())
 
-			channel = os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL")
-			channel = int(channel) if channel else 0
+			if len(all_credentials) == 0:
+				raise ValueError("No credentials defined in settings.toml nor wifi.json")
+
+			print(f"{len(all_credentials)} preferred SSIDs: {', '.join([credential[0] for credential in all_credentials])}")
+
+			if len(all_credentials) == 1:
+				ssid, password, channel = all_credentials[0]
+			else:
+				ssid, password, channel = ConnectionManager.scan_for_best_credentials(all_credentials)
 
 			ConnectionManager.mac_id = binascii.hexlify(wifi.radio.mac_address).decode("ascii")
 			wifi.radio.enabled = True
 			wifi.radio.hostname = f"babypod-{ConnectionManager.mac_id}"
 
 			try:
-				print(f"Connecting to {ssid}, timeout {ConnectionManager.timeout}...", end = "")
-				wifi.radio.connect(ssid = ssid, password = password, channel = channel, timeout = ConnectionManager.timeout)
+				print(f"Connecting to {ssid}, channel {'(any)' if channel is None else channel}, timeout {ConnectionManager.timeout}...", end = "")
+				wifi.radio.connect(
+					ssid = ssid,
+					password = password,
+					channel = 0 if channel is None else channel,
+					timeout = ConnectionManager.timeout
+				)
 				ssl_context = adafruit_connection_manager.get_radio_ssl_context(wifi.radio)
 				pool = adafruit_connection_manager.get_radio_socketpool(wifi.radio)
 				ConnectionManager.requests = adafruit_requests.Session(pool, ssl_context)
@@ -69,6 +81,99 @@ class ConnectionManager:
 				raise e
 
 		return ConnectionManager.requests
+
+	@staticmethod
+	def scan_for_best_credentials(all_credentials: Iterable[tuple[str, str, Optional[int]]]) -> tuple[str, str, Optional[int]]:
+		all_credentials = list(all_credentials)
+
+		# if all listed credentials are only under one channel, only scan that channel
+		only_channel = None
+		for credentials in all_credentials:
+			_, _, channel = credentials
+
+			# this SSID allows any channel so all must be scanned
+			if channel is None:
+				only_channel = None
+				break
+
+			# first channel listed; see if all others equal this
+			if only_channel is not None:
+				only_channel = channel
+				continue
+
+			# two SSIDs have different channel requirements so all must be scanned
+			if only_channel != channel:
+				only_channel = None
+				break
+
+		available_networks = list(wifi.radio.start_scanning_networks(
+			start_channel = 1 if only_channel is None else only_channel,
+			stop_channel = 11 if only_channel is None else only_channel
+		))
+		wifi.radio.stop_scanning_networks()
+
+		if not available_networks:
+			if only_channel is None:
+				raise ValueError("No Wi-Fi networks found on any channel")
+
+			raise ValueError(f"No Wi-Fi networks found on channel {only_channel}")
+
+		print(f"Found networks: {', '.join(network.ssid for network in available_networks)}")
+
+		# return the first network that matches given credentials (JSON is ordered by connection priority)
+		for credentials in all_credentials:
+			ssid, password, channel = credentials
+			for network in available_networks:
+				if network.ssid == ssid:
+					return ssid, password, channel
+
+		raise ValueError(f"{len(available_networks)} Wi-Fi networks found but none match available credentials")
+
+	@staticmethod
+	def get_settings_credentials() -> Optional[tuple[str, str, Optional[int]]]:
+		ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
+		password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
+
+		if ssid and password:
+			channel = os.getenv("CIRCUITPY_WIFI_INITIAL_CHANNEL")
+			return ssid, password, int(channel) if channel else 0
+
+		return None
+
+	@staticmethod
+	def has_json_credentials() -> bool:
+		# noinspection PyBroadException
+		try:
+			os.stat("/wifi.json")
+			return True
+		except:
+			return False
+
+	@staticmethod
+	def get_json_credentials() -> Iterable[tuple[str, str, Optional[int]]]:
+		if not ConnectionManager.has_json_credentials():
+			return []
+
+		with open("/wifi.json", "r") as file:
+			credentials = json.load(file)
+
+		for item in credentials:
+			ssid = item["ssid"]
+			password = item["password"]
+			channel = item["channel"] if "channel" in item else None
+
+			yield ssid, password, channel
+
+	@staticmethod
+	def get_credentials() -> Iterable[tuple[str, str, Optional[int]]]:
+		settings_credentials = ConnectionManager.get_settings_credentials()
+		if settings_credentials:
+			yield settings_credentials
+
+		json_credentials = ConnectionManager.get_json_credentials()
+		for ssid, password, channel in json_credentials:
+			if not settings_credentials or ssid != settings_credentials[0]:
+				yield ssid, password, channel
 
 	@staticmethod
 	def disconnect() -> None:
@@ -90,6 +195,7 @@ class ConnectionManager:
 			timeout = os.getenv("CIRCUITPY_WIFI_TIMEOUT")
 
 		ConnectionManager.timeout = 10 if (timeout is None or not timeout) else int(timeout)
+
 
 class APIRequest:
 	"""
