@@ -6,7 +6,9 @@ from devices import Devices
 try:
 	from abc import abstractmethod
 except:
-	pass
+	# noinspection PyUnusedLocal
+	def abstractmethod(*args, **kwargs):
+		pass
 
 class PeriodicChime:
 	"""
