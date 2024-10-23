@@ -177,6 +177,8 @@ class Flow:
 		self.jump_to_running_timer()
 		self.check_motd()
 
+		last_selected_index = 0
+
 		while True:
 			try:
 				if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
@@ -229,7 +231,8 @@ class Flow:
 					devices = self.devices,
 					cancel_align = UIComponent.RIGHT,
 					cancel_text = self.devices.lcd[LCD.UNCHECKED if NVRAMValues.OFFLINE else LCD.CHECKED],
-					save_text = None
+					save_text = None,
+					initial_selection = last_selected_index
 				).render().wait()
 
 				if selected_index is None:
@@ -237,6 +240,8 @@ class Flow:
 				else:
 					_, method = menu_items[selected_index]
 					method()
+
+				last_selected_index = selected_index
 			except Exception as e:
 				self.on_error(e)
 
