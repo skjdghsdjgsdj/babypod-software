@@ -17,7 +17,7 @@ from util import Util
 # noinspection PyBroadException
 try:
 	from typing import Optional, List, Any, Generator, Callable, Dict
-	from abc import abstractmethod
+	from abc import abstractmethod, ABCMeta
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -322,7 +322,8 @@ class APIRequestFailedException(Exception):
 		self.request = request
 		self.http_status_code = http_status_code
 
-class TimerAPIRequest(APIRequest):
+@abstractmethod
+class TimerAPIRequest(APIRequest, metaclass = ABCMeta):
 	pass
 
 class GetAPIRequest(APIRequest):
@@ -765,7 +766,8 @@ class PostTummyTimeAPIRequest(PostAPIRequest, TimerAPIRequest):
 
 		return request.merge_serialized_notes(json_object)
 
-class FeedingAPIRequest(APIRequest):
+@abstractmethod
+class FeedingAPIRequest(APIRequest, metaclass = ABCMeta):
 	"""
 	Base class for all feeding requests.
 

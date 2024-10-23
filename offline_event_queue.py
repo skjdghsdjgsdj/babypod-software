@@ -108,7 +108,8 @@ class OfflineEventQueue:
 			file.flush()
 
 	# TODO making this dynamic with reflection would be nice but I don't think CircuitPython can
-	def init_api_request(self, class_name: str, payload) -> APIRequest:
+	@staticmethod
+	def init_api_request(class_name: str, payload) -> APIRequest:
 		"""
 		Creates a concrete APIRequest instance given the JSON payload of an event in the queue
 		:param class_name: Class name of the APIRequest concrete type, like "PostFeedingAPIRequest"
