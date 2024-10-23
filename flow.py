@@ -205,6 +205,8 @@ class Flow:
 				last_feeding_str += " RL"
 			elif method == "bottle":
 				last_feeding_str += " B"
+			elif method == "parent fed" or method == "self fed":
+				last_feeding_str += " S"
 		else:
 			last_feeding_str = "Feeding"
 
