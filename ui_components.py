@@ -752,7 +752,7 @@ class VerticalMenu(UIComponent):
 			self.devices.lcd.write(item_str, (1, self.index_to_row(i)))
 			i += 1
 
-		self.move_arrow(self.initial_selection)
+		self.move_arrow(0 if self.initial_selection is None else self.initial_selection)
 
 		return self
 
