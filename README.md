@@ -298,7 +298,6 @@ Please contribute and submit pull requests if you can help! But some of these th
 - Support multiple children, although if there's only one, don't require the user to select him/her. Right now, the API is queried for the list of children, but if there's more than one, only the first is used.
 - Have the build process burn all the code into the CircuitPython image, and the imports go from slow to near-instant. That's no small feat but could be really useful.
 - Better error handling and recovery.
-- Allow defining multiple Wi-Fi networks when travelling between trusted networks, like your own home and a family member's, and when attempting to connect, first try the last successful one.
 - Remember the last item selected in vertical menus.
 - Use interrupts for rotary encoder events instead of polling in a loop. I really want this one, but CircuitPython's design seems antithetical to interrupts. The encoder breakout board does support interrupts, but you still need to poll for one instead of just being...well, interrupted.
 - On devices with multiple CPU cores, use secondary cores for multithreading to do things in the background, like API requests. Same caveat as above: I don't think it'll happen.
