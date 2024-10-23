@@ -128,6 +128,8 @@ Rather than defining the various Wi-Fi settings in `settings.toml`, you can inst
 ```
 List the networks in order of connection preference. The channel number is optional; specify it to only connect on the given channel or omit it entirely for any channel. If both the values in `settings.toml` and the file `/wifi.json` are provided, then the former is attempted first, then the latter.
 
+If you have multiple Wi-Fi networks defined, that implies you're using the BabyPod in multiple physical locations. That further implies that your Baby Buddy instance is accessible on the internet given a LAN address at home won't work when you're at work, for example, short of a VPN or other setup. Keep that in mind if you intend on using your BabyPod in multiple locations.
+
 ### Requirements
 
 These instructions assume you've already built a BabyPod per the instructions at [the hardware repository](https://github.com/skjdghsdjgsdj/babypod-hardware/), including copying a release to the `CIRCUITPY` drive along with setting up `settings.toml`. That is, you have a functioning BabyPod already, and now you want to change the code on it.
