@@ -21,7 +21,7 @@ from util import Util
 
 # noinspection PyBroadException
 try:
-	from typing import Optional, cast, Dict, Callable
+	from typing import Optional, cast, Dict, Callable, Final
 except:
 	pass
 	# ignore, just for IDE's sake, not supported on board
@@ -170,6 +170,46 @@ class Flow:
 					color = BacklightColors.ERROR,
 					auto_dismiss_after_seconds = 2).render().wait()
 
+	def build_feeding_menu_name(self):
+		if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
+			last_feeding = self.offline_state.last_feeding
+			method = self.offline_state.last_feeding_method
+
+			# reapply the value which could have been changed by feeding saved just now
+			self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
+		else:
+			StatusMessage(devices = self.devices, message = "Getting feeding...").render()
+			try:
+				last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
+			except Exception as e:
+				print(f"Failed getting last feeding: {e}")
+				traceback.print_exception(e)
+				last_feeding = None
+				method = None
+
+			if self.offline_state is not None and \
+					(self.offline_state.last_feeding != last_feeding or
+					 self.offline_state.last_feeding_method != method):
+				self.offline_state.last_feeding = last_feeding
+				self.offline_state.last_feeding_method = method
+				self.offline_state.to_sdcard()
+
+		if last_feeding is not None:
+			last_feeding_str = "Feed " + Util.datetime_to_time_str(last_feeding)
+
+			if method == "right breast":
+				last_feeding_str += " R"
+			elif method == "left breast":
+				last_feeding_str += " L"
+			elif method == "both breasts":
+				last_feeding_str += " RL"
+			elif method == "bottle":
+				last_feeding_str += " B"
+		else:
+			last_feeding_str = "Feeding"
+
+		return last_feeding_str
+
 	def start(self) -> None:
 		self.device_startup()
 
@@ -179,52 +219,28 @@ class Flow:
 
 		last_selected_index = 0
 
+		available_menu_items: Final[dict[int, tuple[str, Callable[[], None]]]] = {
+			0x1: ("Feeding", self.feeding),
+			0x2: ("Diaper change", self.diaper),
+			0x4: ("Pumping", self.pumping),
+			0x8: ("Sleep", self.sleep),
+			0x16: ("Tummy time", self.tummy_time)
+		}
+
+		menu_items: list[tuple[str, Callable[[], None]]] = []
+		for mask, properties in available_menu_items.items():
+			name, method = properties
+			if mask & NVRAMValues.ENABLED_MAIN_MENU_ITEMS.get() == mask:
+				# feeding gets a special menu
+				if mask & 0x1:
+					name = self.build_feeding_menu_name()
+				menu_items.append((name, method))
+
+		if len(menu_items) == 0:
+			raise ValueError(f"Enabled menu items mask of {hex(NVRAMValues.ENABLED_MAIN_MENU_ITEMS.get())} excluded all items")
+
 		while True:
 			try:
-				if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
-					last_feeding = self.offline_state.last_feeding
-					method = self.offline_state.last_feeding_method
-
-					# reapply the value which could have been changed by feeding saved just now
-					self.use_offline_feeding_stats = bool(NVRAMValues.OFFLINE)
-				else:
-					StatusMessage(devices = self.devices, message = "Getting feeding...").render()
-					try:
-						last_feeding, method = GetLastFeedingAPIRequest(self.child_id).get_last_feeding()
-					except Exception as e:
-						print(f"Failed getting last feeding: {e}")
-						traceback.print_exception(e)
-						last_feeding = None
-						method = None
-
-					if self.offline_state is not None and \
-							(self.offline_state.last_feeding != last_feeding or
-							 self.offline_state.last_feeding_method != method):
-						self.offline_state.last_feeding = last_feeding
-						self.offline_state.last_feeding_method = method
-						self.offline_state.to_sdcard()
-
-				if last_feeding is not None:
-					last_feeding_str = "Feed " + Util.datetime_to_time_str(last_feeding)
-
-					if method == "right breast":
-						last_feeding_str += " R"
-					elif method == "left breast":
-						last_feeding_str += " L"
-					elif method == "both breasts":
-						last_feeding_str += " RL"
-					elif method == "bottle":
-						last_feeding_str += " B"
-				else:
-					last_feeding_str = "Feeding"
-
-				menu_items = [
-					(last_feeding_str, self.feeding),
-					("Diaper change", self.diaper),
-					("Sleep", self.sleep),
-					("Pumping", self.pumping)
-				]
-
 				selected_index = VerticalMenu(
 					header = "Main menu",
 					options = [item[0] for item in menu_items],
@@ -235,11 +251,8 @@ class Flow:
 					initial_selection = last_selected_index
 				).render().wait()
 
-				if selected_index is None:
-					self.settings()
-				else:
-					_, method = menu_items[selected_index]
-					method()
+				method = self.settings if selected_index is None else menu_items[selected_index][1]
+				method()
 
 				last_selected_index = selected_index
 			except Exception as e:

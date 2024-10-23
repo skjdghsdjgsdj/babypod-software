@@ -225,3 +225,7 @@ class NVRAMValues:
     IDLE_SHUTDOWN = NVRAMIntegerValue(11, 60 * 3 - 5, "IDLE_SHUTDOWN") # -5 seconds to avoid the warning triggering right at shutdown
     # For soft power control, auto shutdown after saving a timer. Also shut down soon after starting a sleep timer.
     TIMERS_AUTO_OFF = NVRAMBooleanValue(12, False, "AUTO_OFF_AFTER_TIMER_SAVED")
+    # What options to show on the main menu (bitmask); defaults to Feeding, Diaper change, Pumping, and Sleep. If you
+    # omit feeding, then the main menu loads faster because it doesn't need to check when the last feeding was.
+    # Remember to only enable up to four items because menus only show up to four items.
+    ENABLED_MAIN_MENU_ITEMS = NVRAMIntegerValue(13, 0x1 + 0x2 + 0x4 + 0x8, "ENABLED_MAIN_MENU_ITEMS")
