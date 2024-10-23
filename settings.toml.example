@@ -21,6 +21,9 @@ CIRCUITPY_WIFI_PASSWORD_DEFER=""
 BABYBUDDY_BASE_URL="https://.../api/"
 # Baby Buddy's API user's authorization token: https://docs.baby-buddy.net/api/#authentication
 BABYBUDDY_AUTH_TOKEN=""
+# Increase the CircuitPython stack size; must be a multiple of 4 and larger than the default of
+# 1536. Try 1600. If you still get "pystack exhausted" errors, nudge this up slowly.
+CIRCUITPY_PYSTACK_SIZE=1600
 
 # Required settings if your BabyPod has an RTC
 
