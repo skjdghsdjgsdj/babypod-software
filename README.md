@@ -136,8 +136,8 @@ To make code changes, you need to do the following to build and deploy them.
 
 1. Clone BabyPod's software GitHub repository first: `git clone https://github.com/skjdghsdjgsdj/babypod-software.git`
 	
-2. Compile your own `mpy-cross` executable and put it in your `$PATH`. As of this documentation, there's no prebuilt `mpy-cross` for CircuitPython 9, and older releases are not backwards-compatible. Fortunately you only need to build `mpy-cross` once because it takes a long time. To do this:
-	1. [Download and build CircuitPython 9](https://learn.adafruit.com/building-circuitpython), including building submodules. Note you have to do a full clone; you can't do `git clone --depth` or you'll miss tags and the build will fail. Be sure to use the exact same version that's flashed to the Feather.
+2. If there is a version of `mpy-cross` compatible with your version of CircuitPython available to [download](https://adafruit-circuit-python.s3.amazonaws.com/index.html?prefix=bin/mpy-cross/), you can use that. If not, compile your own `mpy-cross` executable and put it in your `$PATH`:
+	1. [Download and build CircuitPython 9](https://learn.adafruit.com/building-circuitpython), including building submodules. You have to do a full clone; you can't do `git clone --depth` or you'll miss tags and the build will fail. Be sure to use the exact same version that's flashed to the Feather.
 	2. [Build `mpy-cross`](https://learn.adafruit.com/building-circuitpython?view=all#build-circuitpython) and put the resulting binary that ends up in `circuitpython/mpy-cross/build/mpy-cross` in your `$PATH`, like copying it to `/usr/local/bin`.
 	3. You can delete the cloned `circuitpython` repository if you don't plan on building `mpy-cross` again or doing CircuitPython upgrades.
 
