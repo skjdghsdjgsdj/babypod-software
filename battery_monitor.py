@@ -11,7 +11,8 @@ from util import I2CDeviceAutoSelector
 try:
 	from abc import abstractmethod
 except:
-	pass
+	def abstractmethod(*args, **kwargs):
+		pass
 
 class BatteryMonitor:
 	"""

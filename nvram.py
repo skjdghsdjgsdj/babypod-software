@@ -2,7 +2,9 @@
 try:
     from abc import abstractmethod
 except:
-    pass
+    # noinspection PyUnusedLocal
+    def abstractmethod(*args, **kwargs):
+        pass
 
 import microcontroller
 

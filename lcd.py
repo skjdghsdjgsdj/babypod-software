@@ -10,7 +10,9 @@ try:
 	from typing import List
 	from abc import abstractmethod
 except:
-	pass
+	# noinspection PyUnusedLocal
+	def abstractmethod(*args, **kwargs):
+		pass
 
 from busio import I2C
 
