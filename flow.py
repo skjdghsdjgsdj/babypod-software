@@ -226,21 +226,22 @@ class Flow:
 			0x8: ("Sleep", self.sleep),
 			0x16: ("Tummy time", self.tummy_time)
 		}
-
-		menu_items: list[tuple[str, Callable[[], None]]] = []
-		for mask, properties in available_menu_items.items():
-			name, method = properties
-			if mask & NVRAMValues.ENABLED_MAIN_MENU_ITEMS.get() == mask:
-				# feeding gets a special menu
-				if mask & 0x1:
-					name = self.build_feeding_menu_name()
-				menu_items.append((name, method))
-
-		if len(menu_items) == 0:
-			raise ValueError(f"Enabled menu items mask of {hex(NVRAMValues.ENABLED_MAIN_MENU_ITEMS.get())} excluded all items")
-
 		while True:
 			try:
+				# regenerate each time in case they changed, like a recent feeding
+				menu_items: list[tuple[str, Callable[[], None]]] = []
+				for mask, properties in available_menu_items.items():
+					name, method = properties
+					if mask & NVRAMValues.ENABLED_MAIN_MENU_ITEMS.get() == mask:
+						# feeding gets a special menu
+						if mask & 0x1:
+							name = self.build_feeding_menu_name()
+						menu_items.append((name, method))
+
+				if len(menu_items) == 0:
+					raise ValueError(
+						f"Enabled menu items mask of {hex(NVRAMValues.ENABLED_MAIN_MENU_ITEMS.get())} excluded all items")
+
 				selected_index = VerticalMenu(
 					header = "Main menu",
 					options = [item[0] for item in menu_items],
