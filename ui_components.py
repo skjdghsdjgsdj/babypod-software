@@ -12,11 +12,16 @@ from util import Util
 # noinspection PyBroadException
 try:
 	from typing import Optional, Callable
+	from abc import ABC, abstractmethod
 except:
-	pass
-	# ignore, just for IDE's sake, not supported on board
+	class ABC:
+		pass
 
-class UIComponent:
+	# noinspection PyUnusedLocal
+	def abstractmethod(*args, **kwargs):
+		pass
+
+class UIComponent(ABC):
 	"""
 	Abstract class that represents a full screen user interface.
 	"""
@@ -50,7 +55,7 @@ class UIComponent:
 
 	def render(self):
 		"""
-		Renders the UI. Child classes will greatly extend this abstract method but should always call the base method.
+		Renders the UI. Child classes will greatly extend this method but should always call the base method.
 
 		The base method:
 		* Clears the screen

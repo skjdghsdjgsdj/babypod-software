@@ -17,13 +17,10 @@ from util import Util
 # noinspection PyBroadException
 try:
 	from typing import Optional, List, Any, Generator, Callable, Dict
-	from abc import abstractmethod, ABCMeta, ABC
+	from abc import abstractmethod, ABC
 except:
 	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
-		pass
-
-	class ABCMeta:
 		pass
 
 	class ABC:

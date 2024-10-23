@@ -9,12 +9,16 @@ from util import I2CDeviceAutoSelector
 
 # noinspection PyBroadException
 try:
-	from abc import abstractmethod
+	from abc import abstractmethod, ABC
 except:
+	class ABC:
+		pass
+
+	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
 		pass
 
-class BatteryMonitor:
+class BatteryMonitor(ABC):
 	"""
 	Abstraction for a battery monitor, a.k.a. "fuel gauge", to measure the charge level of the attached battery.
 	Supports both LC709203F and MAX17048 battery monitors, although the latter is more common. A battery size of

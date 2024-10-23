@@ -8,8 +8,11 @@ from sparkfun_serlcd import Sparkfun_SerLCD, Sparkfun_SerLCD_I2C
 # noinspection PyBroadException
 try:
 	from typing import List
-	from abc import abstractmethod
+	from abc import abstractmethod, ABC
 except:
+	class ABC:
+		pass
+
 	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
 		pass
@@ -109,7 +112,7 @@ class BacklightColors:
 	SUCCESS = BacklightColor.from_setting("BACKLIGHT_COLOR_SUCCESS", (0, 255, 0))
 	OFF = BacklightColor((0, 0, 0))
 
-class Backlight:
+class Backlight(ABC):
 	"""
 	Abstract class to control the LCD's backlight.
 	"""

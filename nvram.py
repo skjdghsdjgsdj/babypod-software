@@ -1,14 +1,17 @@
 # noinspection PyBroadException
 try:
-    from abc import abstractmethod
+    from abc import abstractmethod, ABC
 except:
+    class ABC:
+        pass
+
     # noinspection PyUnusedLocal
     def abstractmethod(*args, **kwargs):
         pass
 
 import microcontroller
 
-class NVRAMValue:
+class NVRAMValue(ABC):
     """
     Wraps a native Python type with a value that can be stored in NVRAM. Abstract class; construct a child class to use
     this.
