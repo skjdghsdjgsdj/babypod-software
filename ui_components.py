@@ -642,7 +642,8 @@ class VerticalMenu(UIComponent):
 				 cancel_align: int = None,
 				 cancel_text: str = None,
 				 header: Optional[str] = None,
-				 save_text: Optional[str] = "Save"):
+				 save_text: Optional[str] = "Save",
+				 initial_selection: int = 0):
 		"""
 		:param devices: Devices dependency injection
 		:param options: List of values to present to the user; do not exceed 4 because the list doesn't scroll by design
@@ -651,6 +652,7 @@ class VerticalMenu(UIComponent):
 		:param cancel_align: Alignment (UIComponent.LEFT or .RIGHT) of the Cancel widget
 		:param header: UI header text
 		:param save_text: Text of the Save widget or None to omit
+		:param initial_selection: Index of the initial item to select
 		"""
 
 		if len(options) <= 0:
@@ -673,6 +675,7 @@ class VerticalMenu(UIComponent):
 
 		self.options = options
 		self.selected_row_index = None
+		self.initial_selection = initial_selection
 
 	def index_to_row(self, i: int) -> int:
 		"""
@@ -744,7 +747,7 @@ class VerticalMenu(UIComponent):
 			self.devices.lcd.write(item_str, (1, self.index_to_row(i)))
 			i += 1
 
-		self.move_arrow(0)
+		self.move_arrow(self.initial_selection)
 
 		return self
 
