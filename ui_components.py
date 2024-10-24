@@ -41,8 +41,12 @@ class UIComponent(ABC):
 		"""
 		:param devices: Devices dependency injection
 		:param allow_cancel: True to allow the user to cancel (go back) from this component, False if not
-		:param cancel_text: UI hint to show to the user for cancelling this action
+		:param cancel_text: UI hint to show to the user for cancelling this action; None for a default value
+		:param header: Text to show at the top-left of the screen. This might not appear in some cases, like
+		in menus where there's not enough room.
 		:param cancel_align: Left (UIComponent.LEFT) or right (UIComponent.RIGHT) alignment of the cancel text
+		:param save_text: UI hint to show to the user for saving this action or None to not show the widget
+		:param save_text_y_delta: Move the Save widget up this many lines from the bottom
 		"""
 
 		self.devices = devices
