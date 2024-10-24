@@ -650,7 +650,8 @@ class Timer:
 			# noinspection PyUnresolvedReferences
 			elapsed = (delta.days * 24 * 60 * 60) + delta.seconds
 
-		self.resume_from_duration = elapsed
+		if self.resume_from_duration <= 0 < elapsed:
+			self.resume_from_duration = elapsed
 
 	def cancel(self) -> None:
 		"""
