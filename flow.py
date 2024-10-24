@@ -343,8 +343,9 @@ class Flow:
 		else:
 			try:
 				StatusMessage(devices = self.devices, message = "Checking timers...").render()
-				for timer in GetAllTimersAPIRequest(limit = 1).get_active_timers(rtc = self.devices.rtc):
-					return timer # don't consume the whole generator
+				for timer in GetAllTimersAPIRequest().get_active_timers(rtc = self.devices.rtc):
+					if timer.name is not None:
+						return timer
 			except Exception as e:
 				print(f"Failed getting active timers; continuing to main menu: {e}")
 			return None
