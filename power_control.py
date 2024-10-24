@@ -1,3 +1,7 @@
+"""
+Soft power control (deep sleep). Hard power control is a switch wired across EN and GND.
+"""
+
 import time
 
 import alarm
@@ -155,5 +159,10 @@ class PowerControl:
 
 	@staticmethod
 	def is_available():
+		"""
+		Checks if this device supports soft power control.
+
+		:return: True if USE_SOFT_POWER_CONTROL in settings.toml evaluates to True
+		"""
 		import os
 		return bool(os.getenv("USE_SOFT_POWER_CONTROL"))

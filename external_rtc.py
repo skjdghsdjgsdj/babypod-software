@@ -1,3 +1,7 @@
+"""
+Abstraction of an external hardware real-time clock (RTC).
+"""
+
 from time import struct_time
 
 import adafruit_datetime

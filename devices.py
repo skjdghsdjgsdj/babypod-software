@@ -1,3 +1,7 @@
+"""
+Bundles the various hardware devices into one object to pass around.
+"""
+
 from battery_monitor import BatteryMonitor
 from external_rtc import ExternalRTC
 from lcd import LCD

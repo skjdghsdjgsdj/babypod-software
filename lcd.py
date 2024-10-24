@@ -1,3 +1,7 @@
+"""
+Abstraction of the character LCD.
+"""
+
 from adafruit_character_lcd.character_lcd import Character_LCD
 from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
 
@@ -11,10 +15,18 @@ try:
 	from abc import abstractmethod, ABC
 except:
 	class ABC:
+		"""
+		Placeholder for CircuitPython.
+		"""
 		pass
 
 	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
+		"""
+		Placeholder for CircuitPython.
+		:param args: Ignored
+		:param kwargs: Ignored
+		"""
 		pass
 
 from busio import I2C
@@ -262,6 +274,15 @@ class LCD:
 
 	@staticmethod
 	def get_centered_coords(char_count: int, y_delta: int = 0):
+		"""
+		Given a string of a certain number of characters long and optionally offset vertically a certain amount, get
+		the coordinates on the LCD where to render that string.
+
+		:param char_count: Number of characters long for the string (<= 20)
+		:param y_delta: Move up (a negative number) or down (a positive number) by this many lines
+		:return: (x, y) on the screen where to render the string
+		"""
+
 		coords = (max(int(LCD.COLUMNS / 2 - char_count / 2), 0), max(int(LCD.LINES / 2) - 1 + y_delta, 0))
 		return coords
 

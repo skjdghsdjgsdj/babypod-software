@@ -1,3 +1,7 @@
+"""
+Piezo tones.
+"""
+
 import simpleio
 import board
 import time

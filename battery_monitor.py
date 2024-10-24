@@ -1,3 +1,7 @@
+"""
+Abstraction of various I2C battery "fuel gauges."
+"""
+
 import board
 import digitalio
 import supervisor
@@ -12,10 +16,18 @@ try:
 	from abc import abstractmethod, ABC
 except:
 	class ABC:
+		"""
+		Placeholder for CircuitPython
+		"""
 		pass
 
 	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
+		"""
+		Placeholder for CircuitPython
+		:param args: Ignored
+		:param kwargs: Ignored
+		"""
 		pass
 
 class BatteryMonitor(ABC):

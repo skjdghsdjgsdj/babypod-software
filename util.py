@@ -1,3 +1,7 @@
+"""
+Static utility methods.
+"""
+
 import time
 
 import adafruit_datetime
@@ -134,10 +138,22 @@ class Util:
 
 
 class I2CDeviceAutoSelector:
+	"""
+	Finds and returns devices on the I2C bus.
+	"""
+
 	def __init__(self, i2c: I2C):
+		"""
+		:param i2c: I2C bus
+		"""
 		self.i2c = i2c
 
 	def known_addresses(self) -> List[int]:
+		"""
+		Lists all known addresses on the I2C bus by locking, scanning, and unlocking it.
+		:return: All discovered addresses on I2C bus
+		"""
+
 		while not self.i2c.try_lock():
 			pass
 		i2c_address_list = self.i2c.scan()
@@ -146,6 +162,15 @@ class I2CDeviceAutoSelector:
 		return i2c_address_list
 
 	def address_exists(self, address: int) -> bool:
+		"""
+		Checks if the I2C bus has a device with the given address.
+
+		TODO this should use busio.I2C.probe() in CircuitPython 9.2
+
+		:param address: Device's address
+		:return: True if such a device exists and responds
+		"""
+
 		return address in self.known_addresses()
 
 	def get_device(self,
@@ -153,6 +178,16 @@ class I2CDeviceAutoSelector:
 		max_attempts: int = 20,
 		delay_between_attempts: float = 0.2
 	) -> I2CDevice:
+		"""
+		Searches the I2C bus for a set of known addresses and, once one is found on the bus that is in the list provided,
+		initializes an object given that address.
+		:param address_map: Map of I2C addresses to methods that, given that address, can construct an I2CDevice
+		:param max_attempts: If the address isn't found or fails to initialize, try again this many times before giving
+		up and raising an exception.
+		:param delay_between_attempts: Wait this many seconds between attempts to create the I2CDevice
+		:return: An initialized I2CDevice for the first address found
+		"""
+
 		return Util.try_repeatedly(
 			max_attempts = max_attempts,
 			delay_between_attempts = delay_between_attempts,
@@ -161,6 +196,14 @@ class I2CDeviceAutoSelector:
 		)
 
 	def try_get_device(self, address_map: Dict[int, Callable[[int], I2CDevice]]) -> I2CDevice:
+		"""
+		Attempt to initialize an I2C device given a list of addresses and means of constructing devices. This is a
+		one shot method that raises a RuntimeError no device with the given address exists.
+
+		:param address_map: Map of I2C addresses to methods that, given that address, can construct an I2CDevice
+		:return: Initialized I2CDevice for the first address found
+		"""
+
 		address_list = self.known_addresses()
 
 		for address, method in address_map.items():

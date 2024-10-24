@@ -1,3 +1,7 @@
+"""
+Schedules for playing piezo tones.
+"""
+
 import time
 
 from devices import Devices
@@ -8,6 +12,11 @@ try:
 except:
 	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
+		"""
+		Placeholder for CircuitPython.
+		:param args: Ignored
+		:param kwargs: Ignored
+		"""
 		pass
 
 class PeriodicChime:

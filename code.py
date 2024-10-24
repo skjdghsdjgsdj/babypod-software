@@ -1,3 +1,7 @@
+"""
+Entry point.
+"""
+
 # don't reboot when USB storage is changed
 import supervisor
 supervisor.runtime.autoreload = False

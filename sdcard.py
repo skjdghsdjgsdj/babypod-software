@@ -1,3 +1,7 @@
+"""
+Abstraction of an SD card, or something that looks logically like one.
+"""
+
 import board
 import sdcardio
 import storage

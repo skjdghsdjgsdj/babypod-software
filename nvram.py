@@ -1,12 +1,24 @@
+"""
+Values persisted in non-volatile RAM (NVRAM) that persist across reboots and power cycles.
+"""
+
 # noinspection PyBroadException
 try:
     from abc import abstractmethod, ABC
 except:
     class ABC:
+        """
+		Placeholder for CircuitPython.
+		"""
         pass
 
     # noinspection PyUnusedLocal
     def abstractmethod(*args, **kwargs):
+        """
+		Placeholder for CircuitPython.
+		:param args: Ignored
+		:param kwargs: Ignored
+		"""
         pass
 
 import microcontroller

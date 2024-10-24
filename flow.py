@@ -1,3 +1,7 @@
+"""
+Drives the UX.
+"""
+
 import os
 import traceback
 

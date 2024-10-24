@@ -1,3 +1,7 @@
+"""
+Wi-Fi management and requests to Baby Buddy.
+"""
+
 import binascii
 import json
 import os
@@ -22,9 +26,17 @@ try:
 except:
 	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
+		"""
+		Placeholder for CircuitPython
+		:param args: Ignored
+		:param kwargs: Ignored
+		"""
 		pass
 
 	class ABC:
+		"""
+		Placeholder for CircuitPython
+		"""
 		pass
 
 class ConnectionManager:

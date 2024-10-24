@@ -1,3 +1,7 @@
+"""
+User-controllable settings that are exposed in the UI.
+"""
+
 from nvram import NVRAMBooleanValue
 
 # noinspection PyBroadException

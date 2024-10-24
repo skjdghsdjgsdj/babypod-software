@@ -1,3 +1,7 @@
+"""
+Components used to render the UI.
+"""
+
 import math
 
 from devices import Devices
@@ -15,10 +19,18 @@ try:
 	from abc import ABC, abstractmethod
 except:
 	class ABC:
+		"""
+		Placeholder for CircuitPython.
+		"""
 		pass
 
 	# noinspection PyUnusedLocal
 	def abstractmethod(*args, **kwargs):
+		"""
+		Placeholder for CircuitPython.
+		:param args: Ignored
+		:param kwargs: Ignored
+		"""
 		pass
 
 class UIComponent(ABC):
@@ -205,6 +217,10 @@ class Modal(UIComponent):
 		"""
 
 		class ModalDialogExpiredException(Exception):
+			"""
+			Raised when a modal dialog times out. This gets caught internally so you should never see it.
+			"""
+
 			pass
 
 		class AutoDismissWaitTickListener(WaitTickListener):

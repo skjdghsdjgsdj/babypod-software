@@ -1,3 +1,8 @@
+"""
+Stores values that are too big or complex for NVRAM that persist across reboots and power cycles. Not to be confused
+with the offline event queue which is a list of individual events to replay later.
+"""
+
 import json
 import os
 from adafruit_datetime import datetime
@@ -12,6 +17,13 @@ except:
     pass
 
 class OfflineState:
+    """
+    Stores some state information in a JSON file for offline use. This is separate from the OfflineEventQueue which
+    stores a list of serialized APIRequest instances to be replayed in sequence once back online.
+
+    Use get_instance() to get a fully initialized instance, not the constructor.
+    """
+
     from_datetime = lambda value: datetime.fromisoformat(value)
     to_datetime = lambda value: value.isoformat()
     passthrough = lambda value: value
@@ -28,13 +40,6 @@ class OfflineState:
             lambda timer: timer.as_payload()
         )
     }
-
-    """
-    Stores some state information in a JSON file for offline use. This is separate from the OfflineEventQueue which
-    stores a list of serialized APIRequest instances to be replayed in sequence once back online.
-
-    Use get_instance() to get a fully initialized instance, not the constructor.
-    """
 
     def __init__(self, sdcard: SDCard):
         """

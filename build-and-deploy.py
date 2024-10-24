@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+"""
+Bundles the app for use on an actual hardware CircuitPython device.
+"""
+
 import argparse
 import glob
 import subprocess
@@ -12,7 +17,7 @@ import tempfile
 
 CIRCUITPY_PATH: Final = "/Volumes/CIRCUITPY"
 
-parser = argparse.ArgumentParser(description = "Build and deploy CircuitPython files to ESP32")
+parser = argparse.ArgumentParser(description = "Build and deploy CircuitPython files to a hardware device")
 parser.add_argument(
     "--no-compile",
     action = "store_true",
@@ -52,10 +57,20 @@ parser.add_argument(
     help = "Builds a zip suitable for deployment to GitHub to this zip filename; overrides other arguments"
 )
 
-def get_base_path():
+def get_base_path() -> str:
+    """
+    Gets the base path of this script
+    :return: Base path of this script
+    """
+
     return os.path.abspath(os.path.dirname(__file__))
 
-def reboot():
+def reboot() -> None:
+    """
+    Attempts to connect to the first device found in /dev/ beginning with "cu.usbmodem" and sends Ctrl-C then Ctrl-D to
+    it, which interrupts the current code and then sends EOF to signal a reboot.
+    """
+
     devices = glob.glob("/dev/cu.usbmodem*")
     if not devices:
         raise ValueError("Couldn't find any device named /dev/cu.usbmodem*")
@@ -68,7 +83,12 @@ def reboot():
     subprocess.Popen(f"expect -c \"send \003;\" > {device}", shell = True).communicate()
     subprocess.Popen(f"expect -c \"send \004;\" > {device}", shell = True).communicate()
 
-def clean(clean_path: str):
+def clean(clean_path: str) -> None:
+    """
+    Deletes everything from /lib/ on the device and repopulates it with what's in /lib/ locally.
+    :param clean_path: Device base path, like /Volumes/CIRCUITPY, without trailing slash
+    """
+
     lib = f"{clean_path}/lib"
     print(f"Purging everything from {lib}...", end = "", flush = True)
     shutil.rmtree(lib, ignore_errors = True)
@@ -80,6 +100,16 @@ def clean(clean_path: str):
     print("done")
 
 def build_and_deploy(source_module: str, module_output_path: str, compile_to_mpy: bool = True) -> str:
+    """
+    For a given module, optionally compiles the module and then copies either the compiled output or the original
+    source code to the hardware device.
+    :param source_module: Source module to deploy; use "code" for code.py or the filename of the module sans extension
+    like "nvram" for nvram.py
+    :param module_output_path: Base path to the device, like /Volumes/CIRCUITPY, without trailing slash
+    :param compile_to_mpy: True to run mpy-cross on the module first then copy the resulting .mpy to the device or False
+    to just copy the original .py source code.
+    :return: Path to the file that ended up on the hardware device
+    """
     if source_module == "code":
         print("Copying code.py...", end = "", flush = True)
         dst = f"{module_output_path}/code.py"

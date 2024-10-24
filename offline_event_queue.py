@@ -1,3 +1,7 @@
+"""
+A queue of events that happened offline and that should be replayed once back online.
+"""
+
 import json
 import os
 import traceback
@@ -140,6 +144,17 @@ class OfflineEventQueue:
 		on_failed_event: Callable[[Optional[APIRequest]], bool] = None,
 		delete_on_success: bool = True
 	) -> None:
+		"""
+		Replay all events that are stored in the queue.
+
+		:param on_replay: Do this just before replaying an event, like updating a progress bar; callback is given the
+		index of the event being replayed and the total number of events being replayed
+		:param on_failed_event: Do this when an event fails; callback is given the event that failed to replay and must
+		return True to delete the failed event and continue or False to keep the event in the queue and keep going. If
+		the callback is None, then failed events raise exceptions.
+		:param delete_on_success: Delete events that successfully replay
+		"""
+
 		index = 0
 		files = self.get_json_files()
 		if not files:

@@ -1,3 +1,7 @@
+"""
+Abstraction of the rotary encoder and associated callbacks.
+"""
+
 import time
 
 import microcontroller
