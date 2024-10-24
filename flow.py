@@ -31,6 +31,10 @@ except:
 	# ignore, just for IDE's sake, not supported on board
 
 class Flow:
+	"""
+	The UX.
+	"""
+
 	def __init__(self, devices: Devices):
 		self.requests = None
 		self.child_id = None
@@ -97,6 +101,12 @@ class Flow:
 		self.device_name = os.getenv("DEVICE_NAME") or "BabyPod"
 
 	def on_reset_requested(self) -> None:
+		"""
+		Invoked when the user holds the Down arrow for a few seconds. Shows an error modal and then hardware resets.
+
+		:return: Never does because it calls microcontroller.reset()
+		"""
+
 		ErrorModal(
 			devices = self.devices,
 			message = "Resetting",
@@ -105,6 +115,10 @@ class Flow:
 		microcontroller.reset()
 
 	def refresh_rtc(self) -> None:
+		"""
+		Refresh the hardware UTC with status messages.
+		"""
+
 		if NVRAMValues.OFFLINE:
 			print("Going online for next reboot")
 			NVRAMValues.OFFLINE.write(False)
@@ -120,10 +134,16 @@ class Flow:
 			print(f"RTC synced: {self.devices.rtc.now()}")
 		except Exception as e:
 			print(f"{e} when syncing RTC; forcing sync on next online boot")
-			NVRAMValues.FORCE_RTC_UPDATE.write(True)
+			NVRAMValues.FORCE_RTC_UPDATE.write(True) # FIXME this probably shouldn't be here because it's sticky
 			raise e
 
 	def auto_connect(self) -> None:
+		"""
+		Connect to Wi-Fi assuming the BabyPod isn't offline. If it's offline and there's no hardware RTC, raise an
+		exception because offline support requires an RTC. If connecting fails, the BabyPod goes offline assuming it
+		has the necessary hardware (SD card and RTC).
+		"""
+
 		if not NVRAMValues.OFFLINE:
 			StatusMessage(devices = self.devices, message = "Connecting...").render()
 			# noinspection PyBroadException
@@ -142,6 +162,15 @@ class Flow:
 			print("Working offline")
 
 	def init_rtc(self) -> None:
+		"""
+		Initializes the hardware RTC and syncs it if any of the following are true:
+
+		* NVRAMValues.FORCE_RTC_UPDATE is set to True
+		* The RTC is set to an implausible date/time
+		* There's no history of the RTC ever being set
+		* The RTC was set more than a day ago
+		"""
+
 		if self.devices.rtc:
 			if NVRAMValues.FORCE_RTC_UPDATE:
 				print("RTC update forced")
@@ -154,7 +183,7 @@ class Flow:
 			else:
 				now = self.devices.rtc.now()
 				last_rtc_set_delta = now - self.offline_state.last_rtc_set
-				if last_rtc_set_delta.seconds >= 60 * 60 * 24 or last_rtc_set_delta.days >= 1:
+				if last_rtc_set_delta.seconds >= 60 * 60 * 24 or last_rtc_set_delta.days >= 1: # FIXME first condition is probably redundant
 					print("RTC last set more than a day ago")
 
 					if NVRAMValues.OFFLINE:
@@ -164,6 +193,10 @@ class Flow:
 						self.refresh_rtc()
 
 	def init_battery(self) -> None:
+		"""
+		Checks if the battery is > 15% and if not shows a noisy modal.
+		"""
+
 		if self.devices.battery_monitor:
 			battery_percent = self.devices.battery_monitor.get_percent()
 			if battery_percent is not None and battery_percent <= 15:
@@ -175,6 +208,13 @@ class Flow:
 					auto_dismiss_after_seconds = 2).render().wait()
 
 	def build_feeding_menu_name(self):
+		"""
+		Builds the name of the "Feeding" menu option by attempting to get the most recent feeding, either online or
+		offline, and adding its data to the Feeding menu action.
+
+		:return: Text of the Feeding menu option
+		"""
+
 		if self.use_offline_feeding_stats or NVRAMValues.OFFLINE:
 			last_feeding = self.offline_state.last_feeding
 			method = self.offline_state.last_feeding_method
@@ -217,6 +257,18 @@ class Flow:
 		return last_feeding_str
 
 	def start(self) -> None:
+		"""
+		Launch the flow by, in order:
+
+		* Device startup (Wi-Fi connection, etc.)
+		* Gets the child ID this BabyPod will manage if not already cached in NVRAM
+		* Jumps to any active known running timer
+		* Checks if there's a message-of-the-day (MOTD) and shows then deletes it
+		* Shows the main menu in a loop
+
+		:return: Doesn't return because it's an infinite loop
+		"""
+
 		self.device_startup()
 
 		self.init_child_id()
@@ -266,6 +318,11 @@ class Flow:
 				self.on_error(e)
 
 	def check_motd(self) -> None:
+		"""
+		Shows the current message of the day (MOTD) if any then deletes it. If offline or the device lacks an RTC,
+		does nothing.
+		"""
+
 		if self.devices.rtc and not NVRAMValues.OFFLINE:
 			now = self.devices.rtc.now()
 			last_checked = self.offline_state.last_motd_check
@@ -298,11 +355,22 @@ class Flow:
 					print(f"Getting MOTD failed: {e}")
 
 	def device_startup(self) -> None:
+		"""
+		Connects to Wi-Fi, sets up the RTC, and checks battery status.
+		"""
+
 		self.auto_connect()
 		self.init_rtc()
 		self.init_battery()
 
 	def init_child_id(self) -> None:
+		"""
+		Checks which child ID this BabyPod is managing with the result stored in self.child_id.
+
+		* If there is a value in NVRAMValues.CHILD_ID, use that
+		* If not, query Baby Buddy for a list of children and pick the first one found, then persist it into NVRAM
+		"""
+
 		child_id = NVRAMValues.CHILD_ID.get()
 		if not child_id:
 			StatusMessage(devices = self.devices, message = "Getting children...").render()
@@ -316,6 +384,11 @@ class Flow:
 		self.child_id = child_id
 
 	def jump_to_running_timer(self) -> None:
+		"""
+		Checks if there is a timer running with a name known to the BabyPod. If there is one, launches that portion of
+		the flow directly. If there isn't, does nothing.
+		"""
+
 		timer = self.check_for_running_timer()
 
 		if timer is not None:
@@ -341,6 +414,16 @@ class Flow:
 				print(f"Don't know how to resume a {timer.name} timer")
 
 	def check_for_running_timer(self) -> Optional[Timer]:
+		"""
+		Checks the offline state for a running timer if offline or queries Baby Buddy for the first named timer if
+		online.
+
+		If querying Baby Buddy for a running timer fails, the exception is swallowed and None is returned.
+
+		:return: The first named timer running or the one stored in the offline state or None if there's no known
+		running timer
+		"""
+
 		if NVRAMValues.OFFLINE:
 			if self.offline_state and self.offline_state.active_timer is not None:
 				return self.offline_state.active_timer
@@ -355,6 +438,12 @@ class Flow:
 			return None
 
 	def on_error(self, e: Exception) -> None:
+		"""
+		Shows uncaught exceptions to the user with an ErrorModal.
+
+		:param e: Exception raised
+		"""
+
 		traceback.print_exception(e)
 		message = f"Got {type(e).__name__}!"
 		if isinstance(e, APIRequestFailedException):
@@ -378,6 +467,15 @@ class Flow:
 		ErrorModal(devices = self.devices, message = message).render().wait()
 
 	def render_success_splash(self, message: str = "Saved!", is_stopped_timer: bool = False) -> None:
+		"""
+		Shows a success message to the user. If soft power control is enabled, NVRAMValues.TIMERS_AUTO_OFF is True,
+		and is_stopped_timer is True, then the BabyPod shuts off after a brief delay.
+
+		:param message: Message to show
+		:param is_stopped_timer: True if the success resulted in stopping a timer and, if options are provided, the
+		BabyPod should then shut down
+		"""
+
 		SuccessModal(devices = self.devices, message = message).render().wait()
 
 		if is_stopped_timer and NVRAMValues.TIMERS_AUTO_OFF and self.devices.power_control is not None:
@@ -392,6 +490,10 @@ class Flow:
 				self.devices.power_control.shutdown(silent = True)
 
 	def settings(self) -> None:
+		"""
+		Presents boolean settings to the user and persists them.
+		"""
+
 		all_settings = [
 			Setting(
 				name = "Off after timers",
@@ -431,7 +533,13 @@ class Flow:
 				value = responses[i]
 				setting.save(value)
 
-	def offline(self, silent: bool = False):
+	def offline(self, silent: bool = False) -> None:
+		"""
+		Go offline after showing a notification.
+
+		:param silent: True to just go offline without showing any notification, False to warn the user first
+		"""
+
 		if not silent:
 			NoisyBrightModal(
 				devices = self.devices,
@@ -442,11 +550,28 @@ class Flow:
 		NVRAMValues.OFFLINE.write(True)
 
 	def back_online(self) -> None:
+		"""
+		Go back online after previously being offline. Going back online will:
+
+		* Reconnect to Wi-Fi
+		* Change NVRAMValues.OFFLINE
+		* Replay the offline event queue
+
+		If an exception is raised while this happens, the BabyPod goes offline again.
+		"""
+
 		NVRAMValues.OFFLINE.write(False)
 		self.auto_connect()
 
 		progress_bar: Optional[ProgressBar] = None
 		def update_replay_status(index: int, count: int) -> None:
+			"""
+			Updates the progress bar with current replay status.
+
+			:param index: Index of the event about to be replayed
+			:param count: Number of events being replayed
+			"""
+
 			nonlocal progress_bar
 			if progress_bar is None:
 				progress_bar = ProgressBar(
@@ -459,6 +584,13 @@ class Flow:
 				progress_bar.set_index(index)
 
 		def on_failed_event(request: Optional[APIRequest]) -> bool:
+			"""
+			Triggered when a request fails to replay.
+
+			:param request: Request that failed to replay, if known
+			:return: True to delete the offending request, False to ignore the error. Either way, the replay continues.
+			"""
+
 			message = "Failed event"
 			if request is not None:
 				names = {
@@ -500,6 +632,10 @@ class Flow:
 			raise e
 
 	def diaper(self) -> None:
+		"""
+		Diaper change flow.
+		"""
+
 		selected_index = VerticalMenu(
 			header = "How was diaper?",
 			options = [
@@ -525,6 +661,19 @@ class Flow:
 							  existing_timer: Optional[Timer] = None,
 							  after_idle_for: Optional[tuple[int, Callable[[float], None]]] = None
   	) -> Optional[Timer]:
+		"""
+		Starts or resumes a timer.
+
+		:param header_text: Name of the timer to show to the user
+		:param timer_name: Name of the timer as to be stored in Baby Buddy
+		:param subtext: Text to show underneath the timer as it runs
+		:param periodic_chime: Logic for periodic piezo tunes
+		:param existing_timer: Resume this existing timer
+		:param after_idle_for: After this many seconds of user inactivity, do this thing. The callback is passed the
+		elapsed time.
+		:return: Resulting timer that was created or resumed or None if the timer was canceled
+		"""
+
 		if existing_timer is not None:
 			timer = existing_timer
 			timer.start_or_resume(self.devices.rtc)
@@ -583,6 +732,12 @@ class Flow:
 		return timer
 
 	def feeding(self, timer: Optional[Timer] = None) -> None:
+		"""
+		Feeding flow.
+
+		:param timer: Optional feeding timer to resume
+		"""
+
 		while True:
 			timer = self.start_or_resume_timer(
 				existing_timer = timer,
@@ -631,6 +786,13 @@ class Flow:
 			break
 
 	def get_feeding_method_selection(self, food_type_metadata: dict[str, str]) -> Optional[str]:
+		"""
+		Prompts the user for the method of feeding.
+
+		:param food_type_metadata: Data from FeedingAPIRequest.FEEDING_METHODS
+		:return: Selected method name as defined by Baby Buddy for the API request or None if canceled
+		"""
+
 		method_names = []
 		for available_method in FeedingAPIRequest.FEEDING_METHODS:
 			for allowed_method in food_type_metadata["methods"]:
@@ -647,6 +809,14 @@ class Flow:
 		return method_names[selected_index]
 
 	def get_food_type_selection(self) -> tuple[Optional[str], Optional[Dict[str, str]]]:
+		"""
+		Prompts the user for the type of food that was fed. If the bitmask in NVRAMValues.ENABLED_FOOD_TYPES_MASK only
+		allows for one food type, that type is returned without prompting the user.
+
+		:return: Food type the user selected (or was automatically picked if only one is applicable) or None if
+		canceled
+		"""
+
 		enabled_food_types = NVRAMValues.ENABLED_FOOD_TYPES_MASK.get()
 		options = []
 		for food_type in FeedingAPIRequest.FOOD_TYPES:
@@ -671,6 +841,12 @@ class Flow:
 		return food_type, food_type_metadata
 
 	def pumping(self, timer: Optional[Timer] = None) -> None:
+		"""
+		Breast pumping flow.
+
+		:param timer: Optional timer to resume
+		"""
+
 		saved = False
 		while not saved:
 			timer = self.start_or_resume_timer(
@@ -703,6 +879,12 @@ class Flow:
 				saved = True
 
 	def sleep(self, timer: Optional[Timer] = None) -> None:
+		"""
+		Sleep (naps or nighttime) flow.
+
+		:param timer: Optional timer to resume
+		"""
+
 		after_idle_for = None
 		subtext = None
 		if NVRAMValues.TIMERS_AUTO_OFF and self.devices.power_control:
@@ -722,6 +904,12 @@ class Flow:
 			self.commit(PostSleepAPIRequest(child_id = self.child_id, timer = timer), timer)
 
 	def tummy_time(self, timer: Optional[Timer] = None) -> None:
+		"""
+		Tummy time flow.
+
+		:param timer: Optional timer to resume
+		"""
+
 		timer = self.start_or_resume_timer(
 			existing_timer = timer,
 			header_text = "Tummy time",
@@ -736,6 +924,16 @@ class Flow:
 			self.commit(PostTummyTimeAPIRequest(child_id = self.child_id, timer = timer), timer)
 
 	def commit(self, request: APIRequest, timer: Optional[Timer] = None) -> None:
+		"""
+		Commits the given request, either to Baby Buddy if online or the offline event queue if offline. Once committed
+		the timer stored in the offline state is removed as the timer is assumed to have been stopped.
+
+		On success either way a success splash is rendered which might cause a shutdown.
+
+		:param request: Request to commit
+		:param timer: Timer that applies to this request, if any
+		"""
+
 		if NVRAMValues.OFFLINE:
 			self.commit_offline(request, timer)
 		else:
@@ -746,7 +944,14 @@ class Flow:
 			self.offline_state.active_timer_name = None
 			self.offline_state.to_sdcard()
 
-	def commit_online(self, request, timer):
+	def commit_online(self, request: APIRequest, timer: Optional[Timer] = None) -> None:
+		"""
+		Commits a request to Baby Buddy.
+
+		:param request: Request to commit
+		:param timer: Timer that applies to this request, if any
+		"""
+
 		StatusMessage(devices = self.devices, message = "Saving...").render()
 		try:
 			request.invoke()
@@ -772,7 +977,14 @@ class Flow:
 				self.offline()
 				self.commit_offline(request, timer)
 
-	def commit_offline(self, request, timer):
+	def commit_offline(self, request: APIRequest, timer: Optional[Timer]) -> None:
+		"""
+		Commits the given request to the offline event queue.
+
+		:param request: Request to commit
+		:param timer: Optional timer that applies to this request
+		"""
+
 		if timer.started_at and not timer.ended_at:
 			timer.ended_at = self.devices.rtc.now()
 
