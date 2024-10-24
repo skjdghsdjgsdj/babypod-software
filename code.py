@@ -22,10 +22,11 @@ try:
 
 	# see why it woke up; if it's a TimeAlarm, it's likely because there was a soft shutdown and the battery needs to be
 	# refreshed periodically
-	import alarm
-	from alarm.time import TimeAlarm
-	import os
-	just_refresh_shutdown_screen = use_soft_power_control and isinstance(alarm.wake_alarm, TimeAlarm)
+	just_refresh_shutdown_screen = False
+	if use_soft_power_control:
+		import alarm
+		from alarm.time import TimeAlarm
+		just_refresh_shutdown_screen = use_soft_power_control and isinstance(alarm.wake_alarm, TimeAlarm)
 
 	# init I2C and at a higher frequency than default
 	from busio import I2C
@@ -40,9 +41,10 @@ try:
 		piezo.tone("startup")
 
 	# get LCD set up, but only turn on the backlight and show startup message if this is a normal startup
-	from lcd import LCD, BacklightColors
+	from lcd import LCD
 	lcd = LCD.get_instance(i2c)
 	if not just_refresh_shutdown_screen:
+		from lcd import BacklightColors
 		lcd.backlight.set_color(BacklightColors.DEFAULT)
 		lcd.write_centered("Starting up...")
 
