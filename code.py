@@ -15,8 +15,7 @@ if not os.getenv("CIRCUITPY_PYSTACK_SIZE") or int(os.getenv("CIRCUITPY_PYSTACK_S
 	print("Warning: CIRCUITPY_PYSTACK_SIZE is too small! If you get \"pystack exhausted\" errors, it needs to be increased.")
 
 try:
-	# see if soft power control is available, and if the INT pin is wired to D11, it should read high by default and
-	# low if disconnected
+	# see if soft power control is available
 	from power_control import PowerControl
 	use_soft_power_control = PowerControl.is_available()
 	print(f"Soft power control is {'available' if use_soft_power_control else 'unavailable'}")
