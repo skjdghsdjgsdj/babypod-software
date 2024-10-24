@@ -40,7 +40,7 @@ class ConnectionManager:
 	@staticmethod
 	def connect() -> adafruit_requests.Session:
 		"""
-		Connects to Wi-Fi using the information from settings.toml.
+		Connects to Wi-Fi using the information from settings.toml and wifi.json, whichever is available.
 
 		:return: A session object for making requests, or an existing one if already connected.
 		"""
@@ -84,6 +84,14 @@ class ConnectionManager:
 
 	@staticmethod
 	def scan_for_best_credentials(all_credentials: Iterable[tuple[str, str, Optional[int]]]) -> tuple[str, str, Optional[int]]:
+		"""
+		Scans nearby Wi-Fi access points for SSIDs for which there are known credentials and returns the first available
+		one.
+
+		:param all_credentials: The respective SSIDs, passwords, and optional channel numbers of known Wi-Fi networks
+		:return: The SSID, password, and optional channel number of the Wi-Fi network to connect to
+		"""
+
 		all_credentials = list(all_credentials)
 
 		# if all listed credentials are only under one channel, only scan that channel
@@ -134,6 +142,13 @@ class ConnectionManager:
 
 	@staticmethod
 	def get_settings_credentials() -> Optional[tuple[str, str, Optional[int]]]:
+		"""
+		Gets Wi-Fi settings defined in settings.toml, if any.
+
+		:return: Respective SSID, password, and optional channel number of Wi-Fi network credentials as defined in
+		settings.toml or None if none are defined.
+		"""
+
 		ssid = os.getenv("CIRCUITPY_WIFI_SSID_DEFER")
 		password = os.getenv("CIRCUITPY_WIFI_PASSWORD_DEFER")
 
@@ -145,6 +160,12 @@ class ConnectionManager:
 
 	@staticmethod
 	def has_json_credentials() -> bool:
+		"""
+		Checks if there is a /wifi.json.
+
+		:return: True if /wifi.json exists, False if not or on a read error
+		"""
+
 		# noinspection PyBroadException
 		try:
 			os.stat("/wifi.json")
@@ -154,6 +175,13 @@ class ConnectionManager:
 
 	@staticmethod
 	def get_json_credentials() -> Iterable[tuple[str, str, Optional[int]]]:
+		"""
+		Gets all credentials defined in /wifi.json or an empty list if there are none. Given networks should be defined
+		in the preferred order of connection priority in /wifi.json, so are the results of this method.
+
+		:return: A list of respective SSIDs, passwords, and optional channel numbers defined in /wifi.json, if any
+		"""
+
 		if not ConnectionManager.has_json_credentials():
 			return []
 
@@ -169,6 +197,14 @@ class ConnectionManager:
 
 	@staticmethod
 	def get_credentials() -> Iterable[tuple[str, str, Optional[int]]]:
+		"""
+		Gets a list of all known Wi-Fi credentials from both settings.toml and /wifi.json. The values, if any, defined
+		in settings.toml come first, followed by the values if any defined in /wifi.json and in the order defined in
+		that file. That is, the first item returned is the most preferred connection and the last the least preferred.
+
+		:return: Iteration of SSIDs, passwords, and optional channel numbers of all known Wi-Fi networks
+		"""
+
 		settings_credentials = ConnectionManager.get_settings_credentials()
 		if settings_credentials:
 			yield settings_credentials
@@ -183,6 +219,7 @@ class ConnectionManager:
 		"""
 		Disables the Wi-Fi radio and disconnects.
 		"""
+
 		wifi.radio.enabled = False
 		ConnectionManager.requests = None
 
@@ -249,7 +286,7 @@ class APIRequest:
 		If the given serialized request contains a "notes" attribute, merge it into the payload that goes to Baby
 		Buddy.
 
-		:param json_object:
+		:param json_object: JSON serialized payload
 		:return: self
 		"""
 
@@ -436,6 +473,10 @@ class APIRequestFailedException(Exception):
 		self.http_status_code = http_status_code
 
 class TimerAPIRequest(APIRequest, ABC):
+	"""
+	Marks requests that accept timer data.
+	"""
+
 	pass
 
 class GetAPIRequest(APIRequest):
@@ -621,6 +662,8 @@ class Timer:
 	def start_or_resume(self, rtc: Optional[ExternalRTC] = None) -> None:
 		"""
 		Starts this timer, or if one already exists with this one's name, resumes it.
+
+		:param rtc: Device's RTC if available
 		"""
 
 		elapsed = 0
@@ -748,6 +791,8 @@ class PostChangeAPIRequest(PostAPIRequest):
 
 	def __init__(self, child_id: int, is_wet: bool, is_solid: bool):
 		"""
+		is_wet and is_solid aren't mutually exclusive. In fact both can be false but it's kinda pointless.
+
 		:param child_id: Child ID for the change
 		:param is_wet: Peed?
 		:param is_solid: Pooped?
@@ -1042,10 +1087,14 @@ class GetFirstChildIDAPIRequest(GetAPIRequest):
 
 			return response["results"][0]["id"]
 
-class TimerAPIRequest:
+class TimerActionAPIRequest(APIRequest, ABC):
+	"""
+	Marks requests that perform actions on Timers themselves.
+	"""
+
 	pass
 
-class CreateTimerAPIRequest(PostAPIRequest, TimerAPIRequest):
+class CreateTimerAPIRequest(PostAPIRequest, TimerActionAPIRequest):
 	"""
 	Creates a new timer in Baby Buddy.
 	"""
@@ -1058,7 +1107,7 @@ class CreateTimerAPIRequest(PostAPIRequest, TimerAPIRequest):
 			"name": name
 		})
 
-class GetNamedTimerAPIRequest(GetAPIRequest, TimerAPIRequest):
+class GetNamedTimerAPIRequest(GetAPIRequest, TimerActionAPIRequest):
 	"""
 	Gets timers (data, not Timer instances) that match a given name.
 	"""
@@ -1072,7 +1121,7 @@ class GetNamedTimerAPIRequest(GetAPIRequest, TimerAPIRequest):
 			"name": name
 		})
 
-class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
+class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerActionAPIRequest):
 	"""
 	Gets concrete timer instances from Baby Buddy that match given information.
 	"""
@@ -1087,7 +1136,7 @@ class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
 
 	def get_active_timers(self, rtc: Optional[ExternalRTC] = None) -> Generator[Timer]:
 		"""
-		Yields Timer instances that match the given request.
+		Yields Timer instances that match the given request. Only timers with names are returned.
 
 		:return: Timer instances that match the given request
 		"""
@@ -1107,7 +1156,7 @@ class GetAllTimersAPIRequest(TaggableLimitableGetAPIRequest, TimerAPIRequest):
 
 				yield timer
 
-class DeleteTimerAPIRequest(DeleteAPIRequest):
+class DeleteTimerAPIRequest(DeleteAPIRequest, TimerActionAPIRequest):
 	"""
 	Deletes a running timer from Baby Buddy, which effectively stops it without creating any new data like feedings,
 	etc.
