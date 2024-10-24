@@ -56,10 +56,6 @@ class OfflineState:
         self.active_timer: Optional[Timer] = None
 
     @staticmethod
-    def load_state():
-        pass
-
-    @staticmethod
     def from_sdcard(sdcard: SDCard):
         """
         Gets offline state as stored on the SD card. If one doesn't exist on the SD card, it is created.
