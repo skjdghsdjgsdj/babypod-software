@@ -30,6 +30,7 @@ class WaitTickListener:
 		"""
 		:param seconds: How frequently to do the thing
 		:param on_tick: What the thing is to do; gets passed elapsed time
+		:param only_invoke_if: Only do the thing if this returns True, or if None, always do the thing
 		:param recurring: Do the thing just once (False) or at a regular interval (True)
 		:param name: Name for debugging's sake
 		"""
@@ -82,7 +83,11 @@ class Button(DigitalIO):
 		self.press_start: float = 0
 		self.is_pressed = False
 
-	def init_rotary_encoder(self):
+	def init_rotary_encoder(self) -> None:
+		"""
+		Sets up the digital IO as an input with pull-up.
+		"""
+
 		super().__init__(self.seesaw_controller, self.pin)
 		self.direction = digitalio.Direction.INPUT
 		self.pull = digitalio.Pull.UP
@@ -116,6 +121,8 @@ class RotaryEncoder:
 	Careful! Because this assumes you built a BabyPod using the instructions at
 	https://github.com/skjdghsdjgsdj/babypod-hardware, it also assumes the rotary encoder is rotated 90°! Therefore,
 	UP isn't necessarily UP as it appears on the board, but rather how the board is mounted in the enclosure.
+	That is, "UP" is at the top of the rotary encoder as it's mounted in the enclosure, not necessarily how it would
+	be if the board is oriented to align with the text printed on it.
 	"""
 
 	SELECT = 1
@@ -190,7 +197,7 @@ class RotaryEncoder:
 	) -> int:
 		"""
 		Waits for the user to make any user input: either for a button press and/or for rotation. While waiting,
-		various listeners may be triggered.
+		various listeners may be triggered. At least one of the listen arguments must be True.
 
 		:param listen_for_buttons: Listen for any button press
 		:param listen_for_rotation: Listen for a rotation in any direction
