@@ -63,6 +63,7 @@ class UIComponent(ABC):
 
 		The base method:
 		* Clears the screen
+		* Renders the header, if applicable
 		* Renders the battery percent at the top-right, if available
 		* Renders the Cancel and Save widgets, if applicable
 
@@ -94,13 +95,11 @@ class UIComponent(ABC):
 	def wait(self):
 		"""
 		Wait for user input and returns what the user inputted. How that's actually defined is up to a subclass to
-		implement. The base method just throws RuntimeError.
-
-		Some UIComponents don't wait, like progress bars or status messages, because the code is expected to keep
-		doing things after rendering and no user input is expected.
+		implement. The base method just throws RuntimeError because some UIComponents don't wait, like progress bars or
+		status messages as the code is expected to keep doing things after rendering and no user input is expected.
 
 		:return: Up to a subclass to define, but a good practice is to return None if the equivalent of cancelling the
-		input was performed
+		input was performed. Don't implement if waiting doesn't make sense.
 		"""
 
 		raise RuntimeError(f"UIComponents of type {type(self).__name__} are non-blocking")
@@ -178,6 +177,7 @@ class Modal(UIComponent):
 		"""
 		:param devices: Devices dependency injection
 		:param message: Message to show to the user; keep it <= 20 characters long
+		:param save_text: Text for the Save widget
 		:param auto_dismiss_after_seconds: 0 to keep the modal open indefinitely or > 0 to automatically dismiss the
 		modal if it wasn't manually dismissed by the user by this many seconds.
 		"""
@@ -188,6 +188,11 @@ class Modal(UIComponent):
 		self.message = message
 
 	def render(self) -> UIComponent:
+		"""
+		Calls the base render() and then writes the message centered on the screen.
+		:return: self for call chaining
+		"""
+
 		super().render()
 		self.devices.lcd.write_centered(self.message)
 		return self
@@ -268,12 +273,23 @@ class NoisyBrightModal(Modal):
 		self.piezo_tone = piezo_tone
 
 	def render(self) -> UIComponent:
+		"""
+		Calls the base method() and then sets the backlight color if one was provided.
+
+		:return: self for call chaining
+		"""
+
 		super().render()
 		if self.color is not None:
 			self.devices.lcd.backlight.set_color(BacklightColors.DEFAULT)
 		return self
 
 	def wait(self) -> bool:
+		"""
+		Same as the base wait() method but sets and reverts the backlight color and plays piezo tones as applicable.
+		:return: Same as the base wait() method
+		"""
+
 		if self.color is not None:
 			self.devices.lcd.backlight.set_color(self.color)
 		if self.piezo_tone is not None:
@@ -377,7 +393,8 @@ class ProgressBar(UIComponent):
 
 	def render_progress(self) -> None:
 		"""
-		Updates the progress shown. As a consumer of this component, you probably want to use set_index().
+		Updates the progress shown. As a consumer of this component, you probably want to use set_index(); this just
+		redraws the relevant parts of the screen based on the component's current data.
 		"""
 
 		self.devices.lcd.write(
@@ -397,6 +414,7 @@ class ProgressBar(UIComponent):
 	def render(self) -> UIComponent:
 		"""
 		Renders the progress bar in its initial state. Use set_index() to update it.
+		:return: self for call chaining
 		"""
 
 		super().render()
@@ -430,6 +448,7 @@ class ActiveTimer(UIComponent):
 		:param periodic_chime: Logic for how often to chime, or None for never
 		:param start_at: Starting time in seconds of the timer, or 0 to start fresh
 		:param header: UI header text
+		:param subtext: Text to show under the timer value or None to omit
 		:param save_text: Save widget text or None to omit
 		:param after_idle_for: Do this thing after this many seconds have elapsed from inactivity; only triggers once
 		"""
@@ -450,6 +469,11 @@ class ActiveTimer(UIComponent):
 		self.subtext = subtext
 
 	def render(self) -> UIComponent:
+		"""
+		Renders the initial state of the timer.
+		:return: self for call chaining
+		"""
+
 		super().render()
 		if self.subtext is not None:
 			self.devices.lcd.write_centered(self.subtext, y_delta = 1)
@@ -556,6 +580,7 @@ class NumericSelector(UIComponent):
 		:param maximum: Maximum allowed value or None for no upper bound
 		:param allow_cancel: True if this can be dismissed, False if not
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
+		:param save_text: Widget text for saving the input
 		:param format_str: Python format string to render the value
 		:param header: UI header text
 		"""
@@ -595,6 +620,11 @@ class NumericSelector(UIComponent):
 		self.row = 1 if self.header else 0
 
 	def render(self) -> UIComponent:
+		"""
+		Renders the initial UI with the starting value.
+		:return: self for call chaining
+		"""
+
 		super().render()
 		self.devices.lcd.write(self.devices.lcd[LCD.UP_DOWN], (0, self.row))
 
@@ -604,7 +634,8 @@ class NumericSelector(UIComponent):
 		"""
 		Waits for the user to enter a number and save it.
 
-		:return: The number entered or None if it was canceled
+		:return: The number entered or None if it was canceled. Remember None can loosely equal zero in some cases, so
+		you should strictly check for "is None" for what this returns.
 		"""
 
 		last_value = None
@@ -659,7 +690,7 @@ class VerticalMenu(UIComponent):
 		:param allow_cancel: True if this can be dismissed, False if not
 		:param cancel_text: Widget text for dismissing the modal; gets prepended with a right arrow
 		:param cancel_align: Alignment (UIComponent.LEFT or .RIGHT) of the Cancel widget
-		:param header: UI header text
+		:param header: UI header text; won't be shown if the menu has four items because there's not enough room
 		:param save_text: Text of the Save widget or None to omit
 		:param initial_selection: Index of the initial item to select
 		"""
@@ -747,6 +778,12 @@ class VerticalMenu(UIComponent):
 		return name
 
 	def render(self) -> UIComponent:
+		"""
+		Draws the initial menu and sets the arrow to the initially selected item.
+
+		:return: self for call chaining
+		"""
+
 		super().render()
 
 		i = 0
@@ -762,7 +799,7 @@ class VerticalMenu(UIComponent):
 
 	def wait(self) -> Optional[int]:
 		"""
-		Returns once the user selects a menu item.
+		Waits for the user to select a menu item.
 
 		:return: Index of the item selected or None if canceled
 		"""
@@ -828,6 +865,10 @@ class VerticalMenu(UIComponent):
 		self.selected_row_index = row_index
 
 class BooleanPrompt(VerticalMenu):
+	"""
+	A VerticalMenu with only two options.
+	"""
+
 	def __init__(self,
 		devices: Devices,
 		header: str,
@@ -835,6 +876,14 @@ class BooleanPrompt(VerticalMenu):
 		no_text: str = "No",
 		save_text: str = "Save"
 	) -> None:
+		"""
+		:param devices: Devices dependency injection
+		:param header: Header to show at the top-left of the screen
+		:param yes_text: What True means
+		:param no_text: What False means
+		:param save_text: Text of the Save widget
+		"""
+
 		super().__init__(
 			devices = devices,
 			options = [yes_text, no_text],
@@ -844,6 +893,12 @@ class BooleanPrompt(VerticalMenu):
 		)
 
 	def wait(self) -> bool:
+		"""
+		Waits for the user to select a boolean option. If the response is None, the input was canceled.
+
+		:return: The user's response or None if canceled
+		"""
+
 		response = super().wait()
 		return response == 0
 
@@ -862,6 +917,17 @@ class VerticalCheckboxes(VerticalMenu):
 		header: Optional[str] = None,
 		save_text: str = "Save"
 	):
+		"""
+		:param devices: Devices dependency injection
+		:param options: List of option names
+		:param initial_states: Checked/unchecked initial states of each option in the same order as options
+		:param allow_cancel: True to allow the input to be canceled, False to require an input
+		:param cancel_align: LEFT or RIGHT of the cancel widget
+		:param cancel_text: Text of the Cancel widget
+		:param header: Text to show at the top-left of the screen or None to omit
+		:param save_text: Text of the Save widget
+		"""
+
 		super().__init__(
 			devices = devices,
 			options = options,
