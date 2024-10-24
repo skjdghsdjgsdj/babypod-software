@@ -9,6 +9,11 @@ microcontroller.watchdog.timeout = 20
 microcontroller.watchdog.mode = watchdog.WatchDogMode.RESET
 microcontroller.watchdog.feed()
 
+# warn if the stack size is too small
+import os
+if not os.getenv("CIRCUITPY_PYSTACK_SIZE") or int(os.getenv("CIRCUITPY_PYSTACK_SIZE")) <= 1536:
+	print("Warning: CIRCUITPY_PYSTACK_SIZE is too small! If you get \"pystack exhausted\" errors, it needs to be increased.")
+
 try:
 	# see if soft power control is available, and if the INT pin is wired to D11, it should read high by default and
 	# low if disconnected
