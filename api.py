@@ -118,7 +118,10 @@ class ConnectionManager:
 
 			raise ValueError(f"No Wi-Fi networks found on channel {only_channel}")
 
-		print(f"Found networks: {', '.join(network.ssid for network in available_networks)}")
+		network_names = []
+		for network in available_networks:
+			network_names.append(f"\"{network.ssid}\" ({network.channel})")
+		print(f"Found networks: {', '.join(sorted(network_names))}")
 
 		# return the first network that matches given credentials (JSON is ordered by connection priority)
 		for credentials in all_credentials:
