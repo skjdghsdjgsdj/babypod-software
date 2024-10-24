@@ -170,7 +170,7 @@ class MAX17048BatteryMonitor(BatteryMonitor):
 		"""
 		Returns True if the base class does, and if not, returns True if the charge rate exceeds 5%/hr or False if not.
 
-		:return: True if the battery is likely charging, False if not or indeterminite
+		:return: True if the battery is likely charging, False if not or indeterminate
 		"""
 
 		self.init_device()
