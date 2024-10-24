@@ -733,6 +733,9 @@ class Timer:
 		else:
 			value += " ongoing"
 
+		if self.resume_from_duration is not None:
+			value += f" (resume from {self.resume_from_duration} sec)"
+
 		return value
 
 class PostChangeAPIRequest(PostAPIRequest):
