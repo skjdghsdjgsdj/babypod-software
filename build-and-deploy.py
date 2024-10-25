@@ -189,8 +189,10 @@ else:
                 zip_file.write(filename = output, arcname = os.path.relpath(output, output_path))
 
 if zip_file is not None:
+    print("Adding setting.toml.example to zip...", end = "", flush = True)
     zip_file.write("settings.toml.example", "settings.toml.example")
     zip_file.close()
+    print("done")
 
 if not args.no_reboot:
     print("Rebooting")
