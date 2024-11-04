@@ -30,6 +30,7 @@ class Util:
 		:param elapsed: Seconds elapsed
 		:return: Like "1h 23m 56s" for 5,036 seconds
 		"""
+		elapsed = int(elapsed)
 
 		if elapsed < 60:
 			return f"{elapsed:.0f} sec"
