@@ -1,3 +1,4 @@
+# Remember this list is for IDE integration like in PyCharm; circup can manage the actual library files in lib/
 Adafruit-Blinka==8.50.0
 adafruit-circuitpython-74hc595==1.4.5
 adafruit-circuitpython-busdevice==5.2.10
