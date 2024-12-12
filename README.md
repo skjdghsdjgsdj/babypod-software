@@ -1,39 +1,124 @@
 # BabyPod
 
-This repository is just for the CircuitPython code that runs on the hardware. See the [`babypod-hardware`](https://github.com/skjdghsdjgsdj/babypod-hardware/) repository for the hardware setup and more general information about the project.
+This repository is just for the CircuitPython code that runs on the hardware. See the [`babypod-hardware`](https://github.com/skjdghsdjgsdj/babypod-hardware/) repository for what a BabyPod is and how to build one.
 
-You need to install [Baby Buddy](https://docs.baby-buddy.net/setup/deployment/) for this to work. It can be installed on your local network or on the internet (AWS, etc.), so long as it's reachable through your Wi-Fi network. BabyPod can work offline, but not indefinitely; it's still intended to sync at least periodically, if not in real-time, with Baby Buddy.
+## User guide
 
-## Features
+### Controls
 
-### General
-- Simple text-based interface that can be scrolled with the rotary encoder's wheel or the up/down buttons. Select and Right buttons are usually interchangeable, and Left usually means cancel or back. The design objective is you can give the BabyPod to someone with no experience using it and they can understand how it works easily.
-- Backlight color and piezo are used for interface feedback, like successful saving of data back to Baby Buddy, reporting of errors, periodic chimes during timers, low battery warnings, etc.
-- Some user-configurable options are exposed directly through the interface instead of messing with `settings.toml`, like turning off the piezo if it bothers your baby. The values are stored in NVRAM to persist across reboots.
-- Battery percentage shown on most screens and updates periodically.
-- Backlight dims after inactivity to save power, although you should turn off the BabyPod when not using it anyway.
-- Information is contextual and non-relevant information isn't shown. For example, when feeding solid food, no bottle options are shown.
-- Support for both hard power switches wired across `EN` and `GND` and a soft power switch by holding the center button to enter deep sleep and pressing it to wake.
+| Button                | Effect                                                                                                                                                                                             |
+|-----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| <kbd>⊙ Center</kbd>   | <ul><li>Power on (brief press when BabyPod is off)</li><li>Power off (press and hold 3 seconds)</lil><li>Accept current selection</li><li>Toggle checkbox on/off</li><li>Dismiss message</li></ul> |
+| <kbd>↻ Rotation</kbd> | <ul><li>Move selection up/down</li><li>Increase/decrease number</li></ul>                                                                                                                          |
+| <kbd>◀ Left</kbd>     | <ul><li>Go back/cancel</li><li>Abort current timer</li><li>Change settings (home screen only)</li></ul>                                                                                            |
+| <kbd>▶ Right</kbd>    | <ul><li>Accept selection/save</li><li>Dismiss message</li></ul>                                                                                                                                    |
+| <kbd>▲ Up</kbd>       | <ul><li>Move selection up</li><li>Increase number</li></ul>                                                                                                                                        |
+| <kbd>▼ Down</kbd>     | <ul><li>Move selection down</li><li>Decrease number</li><li>Force reset (press and hold)</li></ul>                                                                                                 |
 
-### Offline support
-In scenarios where you're away from your predefined Wi-Fi location, you can go offline. When you go offline, actions get buffered to JSON files on a microSD card, and when you go online, they get replayed. You should only go offline when you're forced to; otherwise, in the event the microSD card gets corrupted or there's some other issue, you could lose all the buffered actions you took while offline.
+Holding <kbd>⊙ Center</kbd> to turn off the BabyPod and holding <kbd>▼ Down</kbd> to reset it only work when the BabyPod is waiting for input from you, like showing a menu or running a timer. If the BabyPod is busy doing something, like loading data from or sending data to Baby Buddy, wait for the operation to complete.
 
-Successful events replays are deleted from the microSD card as each one is successfully replayed when going back online. If a specific event fails to play back, playback will stop at that point in history and subsequent events are kept on the microSD card, and the device stays offline.
+The orange LED by the USB C port is illuminated when the battery is charging. If it is not illuminated, the battery is fully charged or the USB C cable isn't inserted fully, is faulty, or is connected to a bad power supply.
 
-#### Hardware requirements
-For offline support to be available, the BabyPod must both have the following additional hardware which is assumed in the hardware build documentation:
+The soft power control options with pressing or holding <kbd>⊙ Center</kbd> are only enabled if `USE_SOFT_POWER_CONTROL` is enabled in `settings.toml.` Additionally, enabling this option will make the BabyPod shut off automatically after five minutes of inactivity except during timers.
 
-- A PCF8523-based real-time clock (RTC) at I2C address `0x68`.
-- An SPI-based microSD card reader, or [something that looks like one to CircuitPython](https://www.adafruit.com/product/4899) with the `CS` pin wired to `D10` and a FAT32-formatted microSD card inserted. The capacity and speed are pretty much irrelevant because only a few hundred KB of JSON are likely to be written.
+### Messages
 
-You have two options for controlling power. They are mutually exclusive!
+The percentage at top-right is the battery level.
 
-- Connect the `INT` pin on the rotary encoder to `D11`. If these pins aren't wired together, then pressing and holding the center button does nothing and you must have a separate hard power switch.
-- Wire a [physical switch](https://www.adafruit.com/product/3870) across `EN` and `GND`. When `EN` and `GND` are connected, the 3.3V regulator is disabled and power is cut to the Feather's processor. However, STEMMA QT devices stay on! To avoid this, wire the first device normally connected to the STEMMA QT port to `3V` (red), `GND` (black), `SDA` (blue), and `SCL` (yellow).
+The last feeding on the main menu, if shown, denotes the last feeding method:
 
-If you don't wire either if these power options, the BabyPod will stay on until the battery drains! If you wire both, then both will work, but it will be confusing because you can turn off the BabyPod with the hard power switch but it won't turn back on with soft power control.
+| Label | Meaning      |
+|-------|--------------|
+| `R`   | Right breast |
+| `L`   | Left breast  |
+| `RL`  | Both breasts |
+| `B`   | Bottle       |
+| `S`   | Solid food   |
 
-If either the RTC isn't available or the microSD reader fails to initialize, offline support is disabled (the user isn't shown the option) and the BabyPod is forced to be online.
+Various messages are shown at startup and during typical usage:
+
+| Message              | Meaning                                                                                                                        |
+|----------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| Starting up...       | Initial code is booting up.                                                                                                    |
+| Connecting...        | Establishing Wi-Fi connection (DHCP, etc.). This doesn't necessarily mean connected to Baby Buddy yet, just the Wi-Fi network. |
+| Going offline        | Wi-Fi connection failed so offline mode was forced.                                                                            |
+| Low battery!         | Battery is less than 15% charged.                                                                                              |
+| Getting feeding...   | Getting most recent feeding from Baby Buddy to show on the main menu                                                           |
+| Setting clock...     | Syncing the RTC; happens if clock was never set or about once daily                                                            |
+| Getting children...  | Getting child list from Baby Buddy. The first one is used. This only appears once unless you clear NVRAM.                      |
+| Saving...            | Sending data to Baby Buddy or SD card, depending on whether you're online or offline.                                          |
+| Canceling...         | Deleting the currently active timer                                                                                            |
+| Checking status...   | Checking for a currently running timer, or starting a new one if it doesn't exist                                              |
+| Checking timers...   | Seeing if there's a known timer running so the main menu can be skipped and that timer resumed                                 |
+| Checking messages... | Checking notes if there's a message of the day                                                                                 |
+
+### Sounds
+
+The piezo makes some chimes and beeps to keep you informed. Remember you can turn off the piezo in the settings.
+
+| Sound              | Reason                                                                                                                                                                                                                                                                                                                        |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Startup            | The BabyPod is starting up                                                                                                                                                                                                                                                                                                    |
+| Low battery        | Battery is less than 15% charged                                                                                                                                                                                                                                                                                              |
+| Success            | Saving data was successful, either to Baby Buddy (if online) or to the SD card (if offline)                                                                                                                                                                                                                                   |
+| Error              | Something went wrong, most likely a failed request to Baby Buddy                                                                                                                                                                                                                                                              |
+| Idle warning       | The BabyPod is on, but no timer is running and it's been left idle, so you're being reminded to turn off the BabyPod if not in use.                                                                                                                                                                                           |
+| Chime              | Happens every minute during tummy time, or 15 minutes into feeding and then every minute after 30 minutes have elapsed during feeding. The tummy time chime is to keep track of your baby's progress without watching the screen. The feeding timer is to remind you it's still running and about the time to switch breasts. |
+| Info               | The BabyPod is going offline because the Wi-Fi connection failed. You will need to manually go online later; it won't try on its own.                                                                                                                                                                                         |
+| Shutdown           | You held <kbd>⊙ Center</kbd> for three seconds so the BabyPod is shutting down.                                                                                                                                                                                                                                               |
+| Message of the Day | There's a message of the day available                                                                                                                                                                                                                                                                                        |
+
+### User settings
+
+The user of the BabyPod can configure some of its settings directly through its interface (i.e., not just through `settings.toml`). To access settings, from the home screen, press <kbd>◀ Left</kbd>.
+
+Some options aren't shown if hardware support isn't available or something is configured in `settings.toml`.
+
+| Setting          | Default | Effect                                                                     | Notes                                                                 |
+|------------------|---------|----------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| Play sounds      | On      | Enables (on) or disables (off) sounds played through the piezo             |                                                                       |
+| Off after timers | Off     | Shut down (on) or keep powered on (off) the BabyPod after a timer is saved | Only shown on devices with soft power control enabled                 |
+| Offline          | Off     | Enters (on) or leaves (off) offline mode; see that section below           | Only shown on devices with offline support (hardware RTC and SD card) |
+
+Settings are persisted to NVRAM so they remain in effect across power cycles and battery discharges.
+
+### Offline usage
+
+You should go offline when:
+
+* Using BabyPod away from home
+* You don't have an internet connection
+* Baby Buddy is down
+* Your Wi-Fi connection fails (this switches to offline automatically)
+
+To go offline:
+
+1. On the main menu, press <kbd>◀ Left</kbd> to enter settings.
+2. Scroll down to Offline and press <kbd>⊙ Center</kbd> to check it.
+3. Press <kbd>▶ Right</kbd> to save.
+
+The main menu will now show ◀☐ at the bottom-right indicating that you're offline.
+
+To go back online, repeat the same steps as above but uncheck the Offline checkbox. The BabyPod will show a progress bar as it reconnects to Baby Buddy and replays everything that happened while you were offline. Once complete, the main menu will now show ◀✓ to show that you're online.
+
+Don't go offline unless you need to. By staying online, you sync data regularly to Baby Buddy.
+
+If you don't see the offline option, your BabyPod is missing either the RTC or the SD card reader, or they failed to initialize.
+
+### Message of the day
+
+You can push a message of the day (MOTD) to a BabyPod. The message can be up to 20 characters in length. To do this:
+
+1. Create a new note in Baby Buddy with your desired text.
+2. Tag it with "BabyPod MOTD", creating the tag if it doesn't exist.
+
+BabyPod will consume the MOTD by checking notes every few hours for a note with that tag. If it finds one, it shows a modal to the user with a special chime. The note is deleted so it doesn't get consumed twice. If multiple BabyPods connect to the same instance of Baby Buddy, the first one to pull the note wins.
+
+BabyPod will only try to consume MOTDs if online, there's an RTC available, and it's been a while since the last check. Remember the character LCD only supports a small subset of characters so don't try Unicode emojis or anything outside the lower ASCII character set.
+
+## For developers
+
+### Technical details for offline usage
 
 #### Real-time clock (RTC)
 When online, the RTC gets set automatically using `adafruit.io`'s `time` service in the following situations:
@@ -66,32 +151,11 @@ The main differences between running online vs. offline are:
 
 On the main menu, the bottom-right navigation shows a check if online and unchecked box if offline. That doesn't necessarily mean a positively confirmed connection to the server, just that the offline option is enabled or disabled.
 
-### Feedings
-- Record feedings, including start and end times, food types, which breasts(s) were used for feeding, etc.
-- A live timer that runs to keep track of how long the current feeding session has been, with chimes at every 15 minutes as a reminder to switch breasts, then every minute once 30 minutes have elapsed in case you forgot to stop the timer.
-- Last feeding is shown on the main menu for quick reference.
+### Building and Deploying
 
-### Diaper changes
-- Record diaper changes, including if they were wet, solid or both.
+If you want to make changes to the code or use code newer than the latest formal release, do this.
 
-### Pumping
-- Record pumping sessions, including amount pumped.
-
-### Tummy Time
-- Record tummy time sessions, including durations.
-
-### Sleep
-- Record sleep (naps and night sleep). Baby Buddy's settings are authoritative on whether the sleep counts as a nap or not.
-
-### Options
-User-configurability that persists across power cycles of:
-
-- Switching between online and offline (online by default)
-- Enabling or disabling the piezo (on by default)
-
-## Building and Deploying
-
-### `settings.toml`
+#### `settings.toml`
 You need a `settings.toml` at the root of the `CIRCUITPY` drive. The [CircuitPython documentation](https://docs.circuitpython.org/en/latest/docs/environment.html) describes the format of the file.
 
 Here are the possible keys for `settings.toml`. Strings must be quoted and `int`s aren't.
@@ -111,6 +175,7 @@ Here are the possible keys for `settings.toml`. Strings must be quoted and `int`
 | `BACKLIGHT_COLOR_DIM`            | Backlight color to use when there hasn't been user input for a little while, expressed as an `int`; defaults to `0x808080` (white, but dimmer) | No                                 |
 | `BACKLIGHT_COLOR_ERROR`          | Backlight color to use when showing an error message, expressed as an `int`; defaults to `0xFF0000` (red)                                      | No                                 |
 | `BACKLIGHT_COLOR_SUCCESS`        | Backlight color to use when showing a success message, expressed as an `int`; defaults to `0x00FF00` (green)                                   | No                                 |
+| `USE_SOFT_POWER_CONTROL`         | Whether or not soft power control is enabled. The latest hardware builds require this to be `1` so that's what is by default.                  | Yes                                |
 
 Note the Wi-Fi related settings have a suffix of `_DEFER`. This is because you *don't* want CircuitPython connecting to Wi-Fi automatically as that precedes `code.py` starting and therefore the user doesn't get any startup feedback. Don't use the default CircuitPython Wi-Fi setting names!
 
@@ -130,7 +195,7 @@ List the networks in order of connection preference. The channel number is optio
 
 If you have multiple Wi-Fi networks defined, that implies you're using the BabyPod in multiple physical locations. That further implies that your Baby Buddy instance is accessible on the internet given a LAN address at home won't work when you're at work, for example, short of a VPN or other setup. Keep that in mind if you intend on using your BabyPod in multiple locations.
 
-### Requirements
+#### Build environment
 
 These instructions assume you've already built a BabyPod per the instructions at [the hardware repository](https://github.com/skjdghsdjgsdj/babypod-hardware/), including copying a release to the `CIRCUITPY` drive along with setting up `settings.toml`. That is, you have a functioning BabyPod already, and now you want to change the code on it.
 
@@ -147,7 +212,7 @@ To make code changes, you need to do the following to build and deploy them.
 
 If you update CircuitPython on the Feather, you will likely need to build a corresponding new `mpy-cross`.
 
-### macOS and Linux
+#### macOS and Linux
 
 1. On Linux, edit `build-and-deploy.py` to point to the correct path for your `CIRCUITPY` drive. For now, it assumes you're on macOS. You may also need to edit `/dev/tty.usbmodem*` to point to the correct serial console for CircuitPython. Feel free to make the script less dumb and submit a pull request so others can build on Linux or macOS automatically without needing to edit the script.
 2. With the Feather plugged in and turned on, run `build-and-deploy.py`. This script will
@@ -169,13 +234,13 @@ To set up a brand new BabyPod, all you should need to do is:
 2. Create a valid `settings.toml`.
 3. Run `build-and-deploy.py --clean` to build all the BabyPod files and also copy the necessary Adafruit modules.
 
-### Windows
+#### Windows
 
 I haven't tried, but you should be able to modify `build-and-deploy.py` with Windows paths. I'm not sure how you can programmatically reboot the Feather without a `tty` device, though.
 
-### Caveats
+#### Caveats
 
-#### Manual reboot needed
+##### Manual reboot needed
 
 Unlike CircuitPython's default behavior, the Feather won't reboot automatically when you copy a file to the `CIRCUITPY` drive. This is deliberate to avoid a storm of reboots as compiled files are copied to the Feather. Instead, you can reboot the Feather by:
 
@@ -184,9 +249,9 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 - Cycling the power switch, assuming you have one wired across `EN` and `GND`. Not ideal if you have a serial console open because it'll disconnect and even if it reconnects you may miss some startup messages, but if CircuitPython says it "crashed hard", then you need to do this.
 - Press the Feather's reset button or jumping the `RESET` pin to `GND`, if accessible.
 
-## Code design and architectural principles
+### Code design and architectural principles
 
-### General
+#### General
 - Load only the necessary libraries and load them just in time. CircuitPython is slow at importing modules. The build process compiles as much as it can to `.mpy` files for faster loading.
 - Get something shown on the display as quickly as possible so the user knows the device powered on properly.
 - Try to use one codebase for most Feathers and let the code discover its own environment rather than needing to override pins, I2C addresses, etc. for different hardware.
@@ -194,7 +259,7 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 - Keep a given screen simple. For example, don't make vertical menus scrollable such that they have more than four items and you have to scroll to see them. Instead, make a user experience flow that negates the need for scrolling.
 - There is a global exception handler in `code.py`. If there is an exception raised that isn't caught elsewhere in the call stack, then it's printed to the console and the system sleeps for a minute to allow for a USB debugging window. Then `microcontroller.reset()` is called to force a reboot. This provides some protection against crashes that happen on BabyPods with soft power control because there's no exposed reset button and USB debugging might not be available, thus requiring you to unscrew the BabyPod and physically press the Feather's reset button.
 
-### Files
+#### Files
 | File                     | Purpose                                                                                                                                                                              |
 |--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `api.py`                 | Connectivity to Wi-Fi and Baby Buddy                                                                                                                                                 |
@@ -217,7 +282,7 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 | `user_input.py`          | Abstraction of the rotary encoder, which takes into account the 90° physical rotation when mounted in the enclosure                                                                  |
 | `util.py`                | Helper methods, like a workaround for [a CircuitPython bug that doesn't support UTC ISO-formatted timestamps](https://github.com/adafruit/Adafruit_CircuitPython_datetime/issues/22) |
 
-### UI Components
+#### UI Components
 
 | Class                | Purpose                                                                                        |
 |----------------------|------------------------------------------------------------------------------------------------|
@@ -230,9 +295,9 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 | `ProgressBar`        | Shows a progress bar; unlike the other components, `render_and_wait()` doesn't block           |
 | `Modal`              | Shows a message and a Dismiss button                                                           |
 
-## Tips and Tricks
+### Tips and Tricks
 
-### Feeding menu simplification
+#### Feeding menu simplification
 
 You can hide types of feeding options (breast milk, fortified breast milk, formula, and solid food) with a bitmask stored in NVRAM. If only one is enabled, the user isn't prompted at all for the food type.
 
@@ -255,7 +320,7 @@ nvram.NVRAMValues.ENABLED_FOOD_TYPES_MASK.write(value)
 ...where `value` is the bitmask. There's no user interface to do this for now, but being in NVRAM, this will
 persist across reboots.
 
-### Accessing the microSD card for debugging
+#### Accessing the microSD card for debugging
 Most obviously, you can always just remove the microSD card from your device, if it's accessible and powered off, then put it in your computer. But if that's not feasible, like you don't want to disassemble the BabyPod from its enclosure, you can access the microSD card via the REPL console. You also might be using a [device with non-removable storage](https://www.adafruit.com/product/4899).
 
 To do this:
