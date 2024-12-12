@@ -35,7 +35,7 @@ try:
 	# init I2C and at a higher frequency than default
 	from busio import I2C
 	import board
-	i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 400000)
+	i2c = I2C(sda = board.SDA, scl = board.SCL, frequency = 100000)
 
 	# set up piezo, but only play the sound if this is a normal startup
 	piezo = None
