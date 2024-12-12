@@ -11,7 +11,7 @@
 # below. You do not want the BabyPod to connect automatically to Wi-Fi, and CIRCUITPY_WIFI_SSID and
 # CIRCUITPY_WIFI_PASSWORD will do so before code.py starts.
 
-# Required settings in all cases
+# Required settings in all cases:
 
 # Your Wi-Fi's SSID (network name)
 CIRCUITPY_WIFI_SSID_DEFER=""
@@ -24,8 +24,13 @@ BABYBUDDY_AUTH_TOKEN=""
 # Increase the CircuitPython stack size; must be a multiple of 4 and larger than the default of
 # 1536. Try 1600. If you still get "pystack exhausted" errors, nudge this up slowly.
 CIRCUITPY_PYSTACK_SIZE=1600
+# Must be 1 if your BabyPod does NOT have a physical power switch wired across EN and GND. Set to 1 to press the Center
+# button to wake the BabyPod and press and hold to turn it off. Depending on user options it will also sleep
+# automatically after inactivity, starting certain timers, etc. Set to 0 to always keep the BabyPod on and rely on an
+# external physical power switch to manage power.
+USE_SOFT_POWER_CONTROL=1
 
-# Required settings if your BabyPod has an RTC
+# Required settings if your BabyPod has an RTC:
 
 # Your adafruit.io API user's username: https://io.adafruit.com/api/docs/#authentication
 ADAFRUIT_AIO_USERNAME=""
