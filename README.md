@@ -14,8 +14,9 @@ This repository is just for the CircuitPython code that runs on the hardware. Se
 | <kbd>▶ Right</kbd>    | <ul><li>Accept selection/save</li><li>Dismiss message</li></ul>                                                                                                                                    |
 | <kbd>▲ Up</kbd>       | <ul><li>Move selection up</li><li>Increase number</li></ul>                                                                                                                                        |
 | <kbd>▼ Down</kbd>     | <ul><li>Move selection down</li><li>Decrease number</li><li>Force reset (press and hold)</li></ul>                                                                                                 |
+| Reset (via paperclip) | Hardware reset                                                                                                                                                                                     |
 
-Holding <kbd>⊙ Center</kbd> to turn off the BabyPod and holding <kbd>▼ Down</kbd> to reset it only work when the BabyPod is waiting for input from you, like showing a menu or running a timer. If the BabyPod is busy doing something, like loading data from or sending data to Baby Buddy, wait for the operation to complete.
+Holding <kbd>⊙ Center</kbd> to turn off the BabyPod and holding <kbd>▼ Down</kbd> to reset it only work when the BabyPod is waiting for input from you, like showing a menu or running a timer. If the BabyPod is busy doing something, like loading data from or sending data to Baby Buddy, wait for the operation to complete. A hard reset by poking a paperclip in the hole below the rotary encoder will always work.
 
 The orange LED by the USB C port is illuminated when the battery is charging. If it is not illuminated, the battery is fully charged or the USB C cable isn't inserted fully, is faulty, or is connected to a bad power supply.
 
@@ -257,30 +258,31 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 - Try to use one codebase for most Feathers and let the code discover its own environment rather than needing to override pins, I2C addresses, etc. for different hardware.
 - Provide abstractions for the devices, and in cases where there could be different hardware variants like different battery monitor chips, use polymorphism to hide the underlying hardware from the application.
 - Keep a given screen simple. For example, don't make vertical menus scrollable such that they have more than four items and you have to scroll to see them. Instead, make a user experience flow that negates the need for scrolling.
-- There is a global exception handler in `code.py`. If there is an exception raised that isn't caught elsewhere in the call stack, then it's printed to the console and the system sleeps for a minute to allow for a USB debugging window. Then `microcontroller.reset()` is called to force a reboot. This provides some protection against crashes that happen on BabyPods with soft power control because there's no exposed reset button and USB debugging might not be available, thus requiring you to unscrew the BabyPod and physically press the Feather's reset button.
+- There is a global exception handler in `code.py`. If there is an exception raised that isn't caught elsewhere in the call stack, then it's printed to the console and the system sleeps for a minute to allow for a USB debugging window. Then `microcontroller.reset()` is called to force a reboot. This provides some protection against crashes that happen on BabyPods with soft power control where it's inconvenient to reset the Feather given you need a paperclip. Of course that's by design considering, if you have to hard reset the Feather often, something is going quite wrong.
 
 #### Files
-| File                     | Purpose                                                                                                                                                                              |
-|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `api.py`                 | Connectivity to Wi-Fi and Baby Buddy                                                                                                                                                 |
-| `battery_monitor.py`     | Abstraction of LC709203F and MAX17048 battery monitors with autoselection of the appropriate chip                                                                                    |
-| `build-and-deploy.py`    | Build script that uses `mpy-cross` to compile the code and copy it to the `CIRCUITPY` drive                                                                                          |
-| `code.py`                | CircuitPython's entry point                                                                                                                                                          |
-| `devices.py`             | Dependency injection of the various device abstractions instead of passing a million arguments around                                                                                |
-| `external_rtc.py`        | Abstraction of the real-time clock (RTC)                                                                                                                                             |
-| `flow.py`                | Drives the UX                                                                                                                                                                        |
-| `lcd.py`                 | Abstraction of the LCD text and backlight including defining special characters like arrows                                                                                          |
-| `nvram.py`               | Persists values in NVRAM across reboots                                                                                                                                              |
-| `offline_event_queue.py` | Queue that buffers up API requests that would happen if the device was online and serializes them to JSON on the microSD card                                                        |
-| `offline_state.py`       | Stores some state needed for offline use to the microSD card, like last feeding that happened locally and when the RTC was last synced                                               |
-| `periodic_chime.py`      | Logic for when to periodically nudge the user during feedings, tummy times, etc.                                                                                                     |
-| `piezo.py`               | Abstraction of the piezo, including allowing playback of tones by name rather than specifying them externally                                                                        |
-| `power_control.py`       | Provides soft shutdown and wakeup capability, if so enabled in `settings.toml`                                                                                                       |
-| `sdcard.py`              | Abstraction of the microSD card reader                                                                                                                                               |
-| `settings.py`            | User-accessible settings backed by NVRAM values                                                                                                                                      |
-| `ui_components.py`       | Definition of various UI components, detailed below                                                                                                                                  |
-| `user_input.py`          | Abstraction of the rotary encoder, which takes into account the 90° physical rotation when mounted in the enclosure                                                                  |
-| `util.py`                | Helper methods, like a workaround for [a CircuitPython bug that doesn't support UTC ISO-formatted timestamps](https://github.com/adafruit/Adafruit_CircuitPython_datetime/issues/22) |
+| File                     | Purpose                                                                                                                                                                                                                                                                     |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `api.py`                 | Connectivity to Wi-Fi and Baby Buddy                                                                                                                                                                                                                                        |
+| `battery_monitor.py`     | Abstraction of LC709203F and MAX17048 battery monitors with autoselection of the appropriate chip. Current hardware builds use MAX17048 so LC709203F might eventually be deprecated and then removed.                                                                       |
+| `build-and-deploy.py`    | Build script that uses `mpy-cross` to compile the code and copy it to the `CIRCUITPY` drive. This doesn't end up on the BabyPod itself, just your computer.                                                                                                                 |
+| `code.py`                | CircuitPython's entry point                                                                                                                                                                                                                                                 |
+| `devices.py`             | Dependency injection of the various device abstractions instead of passing a million arguments around                                                                                                                                                                       |
+| `external_rtc.py`        | Abstraction of the real-time clock (RTC)                                                                                                                                                                                                                                    |
+| `flow.py`                | Drives the UX                                                                                                                                                                                                                                                               |
+| `lcd.py`                 | Abstraction of the LCD text and backlight including defining special characters like arrows. Implementations cover the Sparkfun LCD and the Adafruit character backpack, but the former is used for new builds as it's much simpler to wire, faster to render, and cheaper. |
+| `nvram.py`               | Persists values in NVRAM across reboots                                                                                                                                                                                                                                     |
+| `offline_event_queue.py` | Queue that buffers up API requests that would happen if the device was online and serializes them to JSON on the microSD card                                                                                                                                               |
+| `offline_state.py`       | Stores some state needed for offline use to the microSD card, like last feeding that happened locally and when the RTC was last synced                                                                                                                                      |
+| `periodic_chime.py`      | Logic for when to periodically nudge the user during feedings, tummy times, etc.                                                                                                                                                                                            |
+| `piezo.py`               | Abstraction of the piezo, including allowing playback of tones by name rather than specifying them externally                                                                                                                                                               |
+| `power_control.py`       | Provides soft shutdown and wakeup capability, if so enabled in `settings.toml`                                                                                                                                                                                              |
+| `sdcard.py`              | Abstraction of the microSD card reader                                                                                                                                                                                                                                      |
+| `settings.py`            | User-accessible settings backed by NVRAM values                                                                                                                                                                                                                             |
+| `settings.toml.example`  | A template for creating your own `settings.toml`, necessary for configuration for all BabyPods.                                                                                                                                                                             |
+| `ui_components.py`       | Definition of various UI components, detailed below                                                                                                                                                                                                                         |
+| `user_input.py`          | Abstraction of the rotary encoder, which takes into account the 90° physical rotation when mounted in the enclosure                                                                                                                                                         |
+| `util.py`                | Helper methods, like a workaround for [a CircuitPython bug that doesn't support UTC ISO-formatted timestamps](https://github.com/adafruit/Adafruit_CircuitPython_datetime/issues/22)                                                                                        |
 
 #### UI Components
 
@@ -299,7 +301,7 @@ Unlike CircuitPython's default behavior, the Feather won't reboot automatically 
 
 #### Feeding menu simplification
 
-You can hide types of feeding options (breast milk, fortified breast milk, formula, and solid food) with a bitmask stored in NVRAM. If only one is enabled, the user isn't prompted at all for the food type.
+You can hide types of feeding options (breast milk, fortified breast milk, formula, and solid food) with a bitmask stored in NVRAM. If only one is enabled, that type is autoselected and the user isn't prompted at all for the food type.
 
 The values are:
 
@@ -317,13 +319,12 @@ import nvram
 nvram.NVRAMValues.ENABLED_FOOD_TYPES_MASK.write(value)
 ```
 
-...where `value` is the bitmask. There's no user interface to do this for now, but being in NVRAM, this will
-persist across reboots.
+...where `value` is the bitmask. There's no user interface to do this for now, but being in NVRAM, this will persist across reboots.
 
 #### Accessing the microSD card for debugging
-Most obviously, you can always just remove the microSD card from your device, if it's accessible and powered off, then put it in your computer. But if that's not feasible, like you don't want to disassemble the BabyPod from its enclosure, you can access the microSD card via the REPL console. You also might be using a [device with non-removable storage](https://www.adafruit.com/product/4899).
+Sometimes when developing for the BabyPod you want to see what's actually written on the SD card. Newer hardware revisions use an embedded SD card rather than a removable one in a reader, so you can't just plug it into your computer. Even if you _are_ using a removable card, you'd have to disassemble the BabyPod to get at it.
 
-To do this:
+So, you can read and write to and from the SD card via the REPL console. To do this:
 - With the BabyPod on and connected by USB, [open a serial console](https://learn.adafruit.com/welcome-to-circuitpython/kattni-connecting-to-the-serial-console).
 - Press Ctrl-C to enter the REPL.
 - Run the following to mount the microSD card to `/sd`:
@@ -343,16 +344,17 @@ If you are writing files this way, remember to flush file handles or your change
 
 Please contribute and submit pull requests if you can help!
 
-- `build-and-deploy.py` assumes a macOS environment.
+- `build-and-deploy.py` assumes a macOS environment. Linux is pretty close if not identical, but untested. Windows will be very different unless you're doing some travesty like Cygwin.
+- If the LCD fails to initialize, you won't see any error on the screen...obviously. But there's also no error tone or other suggestion to the user that initialization failed other than a blank screen. The LCD will also fail to initialize if I2C is broken somehow, which could be caused by another device in the chain like the rotary encoder or RTC.
 - Startup takes a few seconds, mostly due to waiting for Wi-Fi to connect and loading imports. Startup is a bit faster if waking from deep sleep vs. a cold start.
 - Wi-Fi is periodically slow to connect as are network requests in general. Sometimes it takes a couple seconds, but other times 10 or 15 seconds.
 - The rotary encoder doesn't always respond on the first input. There is retry logic in the abstraction for that reason.
-- Some things are hardcoded, like chime intervals during active timers, instead of either user-configurable or defined in `settings.toml`.
-- Only one child is supported. If multiple are defined in Baby Buddy, the first is used.
-- Writing to the Adafruit LCD is slow, but not unbearably so. The Sparkfun LCD is faster.
-- On MAX17048 battery monitor chips, the battery percent isn't immediately available and is hidden until the chip reports a plausible (non-None, >0) value.
+- Some things are hardcoded, like chime intervals during active timers, instead of either user-configurable or defined in `settings.toml`. Considering babies, you know, change over time, this isn't ideal because things like breast feedings can take a different amount of time as the baby grows and the hardcoded times aren't as useful.
+- Only one child is supported. If multiple are defined in Baby Buddy, the first is used. If the child ID changes after the BabyPod first detects it, the value it stored in NVRAM will be wrong and needs to be manually cleared to be rediscovered.
+- Writing to the Adafruit LCD is slow, but not unbearably so. The Sparkfun LCD is faster and is used for new builds, so this isn't really relevant anymore.
+- On MAX17048 battery monitor chips, the battery percent isn't immediately available and is hidden until the chip reports a plausible (non-None, >0) value. If the BabyPod starts up really quickly, mainly when offline, the main menu might not show the battery level.
 - If no battery is connected, it may get reported as 100% or other clearly implausible numbers. This only poses a problem when you're debugging because in normal use, you'd have a battery connected.
-- Some Feathers don't allow CircuitPython to read the `VBUS` pin to know if the battery is charging, so the battery monitor reports an indeterminate `None` status instead of `True` or `False`. On such Feathers, the BabyPod will nag you to turn it off even if it's plugged in and charging. A partial workaround is checking for a USB *data* connection, and if one exists, assuming the battery is charging.
+- The Adafruit ESP32-S3 Feathers don't allow CircuitPython to read the `VBUS` pin to know if the battery is charging, so the battery monitor reports an indeterminate `None` status instead of `True` or `False`. On such Feathers, the BabyPod will nag you to turn it off even if it's plugged in and charging. A partial workaround is checking for a USB *data* connection, and if one exists, assuming the battery is charging. Some other Feathers do support reading this pin, notably the Unexpected Maker ESP32-S3 Feather.
 - Presumably, the code doesn't know if the battery health is degrading or knowing when it's degraded enough to need replacement. Perhaps there's a way of tracking charging cycles and guessing, even if the battery monitor chip can't tell?
 - Baby Buddy should be set to your local timezone, not UTC, and if you're travelling across time zones, the data could be confusing. This is particularly important when working offline.
 
@@ -362,11 +364,11 @@ Please contribute and submit pull requests if you can help! But some of these th
 
 - Have the build process somehow merge everything but `code.py` into a single `.mpy` to make imports faster, or not necessary in the first place.
 - Connect to Wi-Fi asynchronously! The slowest part of startup is usually waiting for Wi-Fi, but every selection from the main menu will need a connection; may as well let the menu render and then connect to Wi-Fi in the background so the experience seems faster.
-- Support multiple children, although if there's only one, don't require the user to select him/her. Right now, the API is queried for the list of children, but if there's more than one, only the first is used.
-- Have the build process burn all the code into the CircuitPython image, and the imports go from slow to near-instant. That's no small feat but could be really useful.
+- Support multiple children, although if there's only one, don't require the user to select him/her. Also add a way for the selected child to be changed easily if the ID changes in Baby Buddy. Right now, the API is queried for the list of children, but if there's more than one, only the first is used, and if the ID changes, you need to clear the NVRAM value manually for the ID to be rediscovered.
+- Have the build process burn all the code into the CircuitPython image, and the imports go from slow to near-instant. That's no small feat but could be really useful. Speaking from experience, it's a colossal pain to set up a CircuitPython build environment for ESP32.
 - Better error handling and recovery.
-- Use interrupts for rotary encoder events instead of polling in a loop. I really want this one, but CircuitPython's design seems antithetical to interrupts. The encoder breakout board does support interrupts, but you still need to poll for one instead of just being...well, interrupted.
-- On devices with multiple CPU cores, use secondary cores for multithreading to do things in the background, like API requests. Same caveat as above: I don't think it'll happen.
+- Use interrupts for rotary encoder events instead of polling in a loop. I really want this one, but CircuitPython's design team has made it clear they prefer `async` vs. true interrupts, which isn't really the same thing. The rotary encoder breakout board does support actual hardware interrupts, but you still need to poll for one instead of just being...well, interrupted.
+- On devices with multiple CPU cores, use secondary cores for multithreading to do things in the background, like API requests. Same caveat as above: I don't think it'll happen. The second core in the ESP32-S3 is not used by CircuitPython userspace code.
 - Localization stuff:
   - Fluid ounces are the assumed unit for pumping. Baby Buddy itself seems unitless, so this could be a localization option for `settings.toml` to change the units shown in the pumping interface. 0.5 increments are used too, so changing units might call for a different increment.
-  - Support 24-hour time in addition to AM/PM.
+  - Support 24-hour time in addition to AM/PM. Probably straightforward to do, actually, but only if someone actually requests it.
