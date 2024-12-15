@@ -362,6 +362,7 @@ Please contribute and submit pull requests if you can help!
 
 Please contribute and submit pull requests if you can help! But some of these things I'm not sure CircuitPython can do.
 
+- Rewrite the spaghetti code that manages timers. It's a mess for several reasons, but mainly because it tries to support BabyPods with and without RTCs, online and offline modes, and permutations of both. The current hardware builds all use RTCs now anyway, so rewriting this code to require an RTC and having a failed RTC be an actual error condition would make testing much easier.
 - Have the build process somehow merge everything but `code.py` into a single `.mpy` to make imports faster, or not necessary in the first place.
 - Connect to Wi-Fi asynchronously! The slowest part of startup is usually waiting for Wi-Fi, but every selection from the main menu will need a connection; may as well let the menu render and then connect to Wi-Fi in the background so the experience seems faster.
 - Support multiple children, although if there's only one, don't require the user to select him/her. Also add a way for the selected child to be changed easily if the ID changes in Baby Buddy. Right now, the API is queried for the list of children, but if there's more than one, only the first is used, and if the ID changes, you need to clear the NVRAM value manually for the ID to be rediscovered.
