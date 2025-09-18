@@ -282,7 +282,7 @@ class Flow:
 			0x2: ("Diaper change", self.diaper),
 			0x4: ("Pumping", self.pumping),
 			0x8: ("Sleep", self.sleep),
-			0x16: ("Tummy time", self.tummy_time)
+			0x10: ("Tummy time", self.tummy_time)
 		}
 		while True:
 			try:
