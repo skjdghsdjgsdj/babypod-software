@@ -1012,27 +1012,29 @@ class PostFeedingAPIRequest(PostAPIRequest, FeedingAPIRequest, TimerAPIRequest):
 	Saves a feeding to Baby Buddy.
 	"""
 
-	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer):
+	def __init__(self, child_id: int, food_type: str, method: str, timer: Timer, amount: float = 0):
 		"""
 		:param child_id: Child ID who fed
 		:param food_type: One of: "breast milk", "formula", "fortified breast milk", "solid food"
 		:param method: One of: "bottle", "left breast", "right breast", "both breasts", "parent fed", "self fed"
 		:param timer: Feeding session timer
+		:param amount: Amount fed; Baby Buddy is unitless, so this is too
 		"""
 
 		super().__init__(uri = "feedings", payload = APIRequest.merge({
 			"child": child_id,
 			"type": food_type,
-			"method": method
+			"method": method,
+			"amount": amount if amount > 0 else 0
 		}, timer))
-
 		self.timer = timer
 
 	def serialize_to_json(self) -> object:
 		return APIRequest.merge(payload = {
 			"child_id": self.payload["child"],
 			"food_type": self.payload["type"],
-			"method": self.payload["method"]
+			"method": self.payload["method"],
+			"amount": self.payload["amount"]
 		}, timer = self.timer)
 
 	@classmethod
@@ -1042,7 +1044,8 @@ class PostFeedingAPIRequest(PostAPIRequest, FeedingAPIRequest, TimerAPIRequest):
 			child_id = json_object["child_id"],
 			food_type = json_object["food_type"],
 			method = json_object["method"],
-			timer = timer
+			timer = timer,
+			amount = json_object["amount"]
 		)
 
 		return request.merge_serialized_notes(json_object)

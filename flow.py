@@ -775,6 +775,19 @@ class Flow:
 					method = available_method["method"]
 					break
 
+			amount = 0
+			if method == "bottle":
+				amount = NumericSelector(
+					header = "How much?",
+					devices = self.devices,
+					minimum = 0,
+					step = 0.5,
+					format_str = "%.1f fl oz"
+				).render().wait()
+
+				if amount is None:
+					continue
+
 			if self.offline_state is not None:
 				self.offline_state.last_feeding = timer.started_at
 				self.offline_state.last_feeding_method = method
@@ -785,7 +798,8 @@ class Flow:
 				child_id = self.child_id,
 				timer = timer,
 				food_type = food_type,
-				method = method
+				method = method,
+				amount = amount
 			), timer)
 			break
 
